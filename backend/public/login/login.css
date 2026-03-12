@@ -147,27 +147,6 @@ body{
   color:var(--success);
 }
 
-.demo-box{
-  margin-top:22px;
-  border-top:1px solid var(--border);
-  padding-top:18px;
-}
-
-.demo-title{
-  font-size:13px;
-  color:var(--muted);
-  margin-bottom:8px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:.04em;
-}
-
-.demo-row{
-  font-size:14px;
-  color:#d8dee9;
-  margin-bottom:6px;
-}
-
 @media (max-width:520px){
   .login-card{
     padding:22px 18px;

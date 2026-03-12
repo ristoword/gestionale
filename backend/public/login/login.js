@@ -17,6 +17,8 @@ function getRedirectByRole(role) {
   if (r === "supervisor") return "/supervisor/supervisor.html";
   if (r === "staff") return "/staff/staff.html";
   if (r === "bar" || r === "bar_manager") return "/bar/bar.html";
+  if (r === "pizzeria") return "/pizzeria/pizzeria.html";
+  if (r === "magazzino") return "/magazzino/magazzino.html";
   if (r === "customer") return "/dashboard/dashboard.html";
   return "/dashboard/dashboard.html";
 }

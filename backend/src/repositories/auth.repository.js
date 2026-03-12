@@ -7,24 +7,40 @@ const { safeReadJson } = require("../utils/safeFileIO");
 
 const DEMO_HASHES_PATH = path.join(__dirname, "..", "..", "data", "demo-hashes.json");
 
+const DEFAULT_PASSWORD = "Gestionesemplificata1";
+
 const DEMO_USERS = [
-  { id: 1, username: "supervisor", password: "1234", role: "supervisor", redirectTo: "/supervisor/supervisor.html" },
-  { id: 2, username: "cassa", password: "1234", role: "cashier", redirectTo: "/cassa/cassa.html" },
-  { id: 3, username: "cucina", password: "1234", role: "kitchen", redirectTo: "/cucina/cucina.html" },
-  { id: 4, username: "staff", password: "1234", role: "staff", redirectTo: "/staff/staff.html" },
-  { id: 5, username: "cliente", password: "1234", role: "customer", redirectTo: "/dashboard/dashboard.html" },
-  { id: 6, username: "cash_manager", password: "5678", role: "cash_manager", department: "cassa", redirectTo: "/cassa/cassa.html" },
-  { id: 7, username: "kitchen_manager", password: "6789", role: "kitchen_manager", department: "cucina", redirectTo: "/cucina/cucina.html" },
-  { id: 8, username: "sala_manager", password: "7890", role: "sala_manager", department: "sala", redirectTo: "/sala/sala.html" },
-  { id: 9, username: "bar_manager", password: "8901", role: "bar_manager", department: "bar", redirectTo: "/bar/bar.html" },
-  { id: 10, username: "supervisor_mgr", password: "9012", role: "supervisor", department: "supervisor", redirectTo: "/supervisor/supervisor.html" },
+  { id: 1, username: "risto_owner", password: DEFAULT_PASSWORD, role: "owner", redirectTo: "/dashboard/dashboard.html" },
+  { id: 2, username: "risto_supervisor", password: DEFAULT_PASSWORD, role: "supervisor", redirectTo: "/supervisor/supervisor.html" },
+  { id: 3, username: "risto_sala", password: DEFAULT_PASSWORD, role: "sala", redirectTo: "/sala/sala.html" },
+  { id: 4, username: "risto_cucina", password: DEFAULT_PASSWORD, role: "cucina", redirectTo: "/cucina/cucina.html" },
+  { id: 5, username: "risto_cassa", password: DEFAULT_PASSWORD, role: "cassa", redirectTo: "/cassa/cassa.html" },
+  { id: 6, username: "risto_bar", password: DEFAULT_PASSWORD, role: "bar", redirectTo: "/bar/bar.html" },
+  { id: 7, username: "risto_pizzeria", password: DEFAULT_PASSWORD, role: "pizzeria", redirectTo: "/pizzeria/pizzeria.html" },
+  { id: 8, username: "risto_magazzino", password: DEFAULT_PASSWORD, role: "magazzino", redirectTo: "/magazzino/magazzino.html" },
+  { id: 9, username: "risto_staff", password: DEFAULT_PASSWORD, role: "staff", redirectTo: "/staff/staff.html" },
+  { id: 10, username: "risto_cashier", password: DEFAULT_PASSWORD, role: "cashier", redirectTo: "/cassa/cassa.html" },
+  { id: 11, username: "risto_kitchen", password: DEFAULT_PASSWORD, role: "kitchen", redirectTo: "/cucina/cucina.html" },
+  { id: 12, username: "risto_customer", password: DEFAULT_PASSWORD, role: "customer", redirectTo: "/dashboard/dashboard.html" },
+  { id: 13, username: "risto_cash_manager", password: DEFAULT_PASSWORD, role: "cash_manager", department: "cassa", redirectTo: "/cassa/cassa.html" },
+  { id: 14, username: "risto_kitchen_manager", password: DEFAULT_PASSWORD, role: "kitchen_manager", department: "cucina", redirectTo: "/cucina/cucina.html" },
+  { id: 15, username: "risto_sala_manager", password: DEFAULT_PASSWORD, role: "sala_manager", department: "sala", redirectTo: "/sala/sala.html" },
+  { id: 16, username: "risto_bar_manager", password: DEFAULT_PASSWORD, role: "bar_manager", department: "bar", redirectTo: "/bar/bar.html" },
 ];
 
 const ROLE_REDIRECT = {
   owner: "/dashboard/dashboard.html",
+  supervisor: "/supervisor/supervisor.html",
   sala: "/sala/sala.html",
   cucina: "/cucina/cucina.html",
   cassa: "/cassa/cassa.html",
+  bar: "/bar/bar.html",
+  pizzeria: "/pizzeria/pizzeria.html",
+  magazzino: "/magazzino/magazzino.html",
+  staff: "/staff/staff.html",
+  cashier: "/cassa/cassa.html",
+  kitchen: "/cucina/cucina.html",
+  customer: "/dashboard/dashboard.html",
 };
 
 function buildToken(user) {

@@ -2,30 +2,65 @@
   "users": [
     {
       "id": "1",
-      "username": "owner",
-      "password": "migliore",
+      "username": "risto_owner",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
       "role": "owner",
       "is_active": true
     },
     {
       "id": "2",
-      "username": "sala",
-      "password": "$2b$10$GYii0tzorm4SP0bvYgRC6.1pyiPVuJio9FAhcjKTyygATAITAGQtu",
-      "role": "sala",
+      "username": "risto_supervisor",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "supervisor",
       "is_active": true
     },
     {
       "id": "3",
-      "username": "cucina",
-      "password": "$2b$10$f/8kUhpuCf88oE1q5G/uF.vW1MLUgTaIo1aH/oS.qab9Flc8o0GdW",
-      "role": "cucina",
+      "username": "risto_sala",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "sala",
       "is_active": true
     },
     {
       "id": "4",
-      "username": "cassa",
-      "password": "$2b$10$.qCeUz86WNMPXZyF.Za49.W2uyLS9udfmLna0hJ703/Z5asdd0bNe",
+      "username": "risto_cucina",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "cucina",
+      "is_active": true
+    },
+    {
+      "id": "5",
+      "username": "risto_cassa",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
       "role": "cassa",
+      "is_active": true
+    },
+    {
+      "id": "6",
+      "username": "risto_bar",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "bar",
+      "is_active": true
+    },
+    {
+      "id": "7",
+      "username": "risto_pizzeria",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "pizzeria",
+      "is_active": true
+    },
+    {
+      "id": "8",
+      "username": "risto_magazzino",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "magazzino",
+      "is_active": true
+    },
+    {
+      "id": "9",
+      "username": "risto_staff",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "staff",
       "is_active": true
     }
   ]

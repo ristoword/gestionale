@@ -17,15 +17,18 @@
         </div>
       </div>
 
-      <form id="login-form" class="login-form">
+      <form id="login-form" class="login-form" autocomplete="off">
         <div class="field">
           <label for="username">Utente</label>
           <input
             type="text"
             id="username"
             name="username"
-            placeholder="Es. supervisor"
-            autocomplete="username"
+            placeholder="Es. risto_owner"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
             required
           />
         </div>
@@ -37,7 +40,7 @@
             id="password"
             name="password"
             placeholder="Inserisci password"
-            autocomplete="current-password"
+            autocomplete="new-password"
             required
           />
         </div>
@@ -46,10 +49,14 @@
           <label for="role">Ruolo</label>
           <select id="role" name="role">
             <option value="owner">Owner</option>
+            <option value="supervisor">Supervisor</option>
             <option value="sala">Sala</option>
             <option value="cucina">Cucina</option>
             <option value="cassa">Cassa</option>
-            <option value="supervisor">Supervisor</option>
+            <option value="bar">Bar</option>
+            <option value="pizzeria">Pizzeria</option>
+            <option value="magazzino">Magazzino</option>
+            <option value="staff">Staff</option>
             <option value="cashier">Cassa (demo)</option>
             <option value="kitchen">Cucina (demo)</option>
             <option value="customer">Cliente</option>
@@ -62,14 +69,6 @@
 
         <div id="login-message" class="login-message"></div>
       </form>
-
-      <div class="demo-box">
-        <div class="demo-title">Accesso (users.json)</div>
-        <div class="demo-row"><strong>Owner</strong> → owner / admin123</div>
-        <div class="demo-row"><strong>Sala</strong> → sala / sala123</div>
-        <div class="demo-row"><strong>Cucina</strong> → cucina / cucina123</div>
-        <div class="demo-row"><strong>Cassa</strong> → cassa / cassa123</div>
-      </div>
     </div>
   </div>
 

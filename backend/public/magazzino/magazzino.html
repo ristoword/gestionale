@@ -38,6 +38,8 @@
       <button class="mag-tab active" data-tab="centrale">Magazzino Centrale</button>
       <button class="mag-tab" data-tab="cucina">Scorta Cucina</button>
       <button class="mag-tab" data-tab="sala">Scorta Sala</button>
+      <button class="mag-tab" data-tab="bar">Scorta Bar</button>
+      <button class="mag-tab" data-tab="proprieta">Scorta Proprietà</button>
       <button class="mag-tab" data-tab="movimenti">Movimenti interni</button>
     </nav>
 
@@ -127,6 +129,22 @@
         <div class="card-body list" id="inventory-sala-list"></div>
       </section>
 
+      <!-- SCORTA BAR -->
+      <section class="card card-tab" id="tab-bar">
+        <header class="card-header">
+          <h2>Scorta Bar</h2>
+        </header>
+        <div class="card-body list" id="inventory-bar-list"></div>
+      </section>
+
+      <!-- SCORTA PROPRIETÀ -->
+      <section class="card card-tab" id="tab-proprieta">
+        <header class="card-header">
+          <h2>Scorta Proprietà</h2>
+        </header>
+        <div class="card-body list" id="inventory-proprieta-list"></div>
+      </section>
+
       <!-- MOVIMENTI INTERNI -->
       <section class="card card-tab" id="tab-movimenti">
         <header class="card-header">
@@ -195,6 +213,8 @@
           <select id="transfer-dept">
             <option value="cucina">Cucina</option>
             <option value="sala">Sala</option>
+            <option value="bar">Bar</option>
+            <option value="proprieta">Proprietà</option>
           </select>
         </label>
         <label>

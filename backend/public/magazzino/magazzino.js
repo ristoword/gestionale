@@ -28,6 +28,13 @@ let currentTab = "centrale";
 
 const UNITS = ["kg", "lt", "unità", "pezzi"];
 
+const DEPT_LABELS = {
+  cucina: "Cucina",
+  sala: "Sala",
+  bar: "Bar",
+  proprieta: "Proprietà",
+};
+
 function getSearchFilter() {
   return document.getElementById("search-input").value.toLowerCase().trim();
 }
@@ -57,6 +64,8 @@ function renderCurrentTab() {
   if (currentTab === "centrale") renderCentralList();
   else if (currentTab === "cucina") renderDepartmentList("cucina");
   else if (currentTab === "sala") renderDepartmentList("sala");
+  else if (currentTab === "bar") renderDepartmentList("bar");
+  else if (currentTab === "proprieta") renderDepartmentList("proprieta");
   else if (currentTab === "movimenti") renderTransfersList();
 }
 
@@ -128,11 +137,11 @@ function renderDepartmentList(dept) {
       }))
       .filter((i) => i.qtyDept > 0)
   );
+  const deptLabel = DEPT_LABELS[dept] || dept;
   if (!items.length) {
-    listEl.innerHTML = `<p class='muted'>Nessun prodotto nella Scorta ${dept === "cucina" ? "Cucina" : "Sala"}.</p>`;
+    listEl.innerHTML = `<p class='muted'>Nessun prodotto nella Scorta ${deptLabel}.</p>`;
     return;
   }
-  const deptLabel = dept === "cucina" ? "Cucina" : "Sala";
   listEl.innerHTML = items
     .map((item) => {
       const qty = item.qtyDept;
@@ -166,7 +175,7 @@ function renderTransfersList() {
     listEl.innerHTML = "<p class='muted'>Nessun movimento interno registrato.</p>";
     return;
   }
-  const deptLabel = (d) => (d === "cucina" ? "Cucina" : d === "sala" ? "Sala" : d || "?");
+  const deptLabel = (d) => DEPT_LABELS[d] || d || "?";
   listEl.innerHTML = transfersCache
     .map((t) => {
       const dt = t.createdAt || t.date || "";
@@ -301,7 +310,7 @@ let returnFromDept = null;
 function openReturnModal(dataset) {
   returnProductId = dataset.id;
   returnFromDept = dataset.dept || "";
-  const deptLabel = returnFromDept === "cucina" ? "Cucina" : "Sala";
+  const deptLabel = DEPT_LABELS[returnFromDept] || returnFromDept;
   document.getElementById("return-product-name").textContent = dataset.name || "—";
   document.getElementById("return-dept-label").textContent = `Reparto: ${deptLabel}`;
   document.getElementById("return-unit").textContent = dataset.unit || "un";

@@ -1,10 +1,11 @@
 const inventoryRepository = require("../repositories/inventory.repository");
 const inventoryTransfersRepository = require("../repositories/inventory-transfers.repository");
 
-// GET /api/inventory (query: ?location=central|cucina|sala)
+// GET /api/inventory (query: ?location=central|cucina|sala|bar|proprieta)
 exports.listInventory = async (req, res) => {
   const location = (req.query.location || "").toLowerCase();
-  if (location && ["central", "cucina", "sala"].includes(location)) {
+  const validLocations = ["central", "cucina", "sala", "bar", "proprieta"];
+  if (location && validLocations.includes(location)) {
     const data = inventoryRepository.getByLocation(location);
     return res.json(data);
   }
@@ -90,7 +91,7 @@ exports.transferInventory = async (req, res) => {
     return res.status(400).json({ error: "productId obbligatorio" });
   }
   if (!toDepartment || typeof toDepartment !== "string") {
-    return res.status(400).json({ error: "toDepartment obbligatorio (cucina o sala)" });
+    return res.status(400).json({ error: "toDepartment obbligatorio (cucina, sala, bar o proprieta)" });
   }
   const result = inventoryRepository.transfer(
     productId,
@@ -123,7 +124,7 @@ exports.returnToCentral = async (req, res) => {
     return res.status(400).json({ error: "productId obbligatorio" });
   }
   if (!fromDepartment || typeof fromDepartment !== "string") {
-    return res.status(400).json({ error: "fromDepartment obbligatorio (cucina o sala)" });
+    return res.status(400).json({ error: "fromDepartment obbligatorio (cucina, sala, bar o proprieta)" });
   }
   const result = inventoryRepository.returnToCentral(
     productId,

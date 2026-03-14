@@ -974,9 +974,10 @@ async function gatherInventoryContext() {
  */
 async function getInventoryWarehouseSuggestion() {
   const inventory = inventoryRepository.getAll();
-  const DEPARTMENTS = inventoryRepository.DEPARTMENTS || ["cucina", "sala"];
+  const DEPARTMENTS = inventoryRepository.DEPARTMENTS || ["cucina", "sala", "bar", "proprieta"];
   const centralLow = [];
-  const deptLow = { cucina: [], sala: [] };
+  const deptLow = {};
+  DEPARTMENTS.forEach((d) => { deptLow[d] = []; });
   const suggestTransfer = [];
   const topMoved = [];
 
@@ -1010,11 +1011,13 @@ async function getInventoryWarehouseSuggestion() {
       `Centrale sotto soglia: ${centralLow.map((x) => x.name).join(", ")}. Valuta riordino.`
     );
   }
+  const deptLabels = { cucina: "Cucina", sala: "Sala", bar: "Bar", proprieta: "Proprietà" };
   for (const dept of DEPARTMENTS) {
     const list = deptLow[dept] || [];
     if (list.length > 0) {
+      const label = deptLabels[dept] || dept;
       messages.push(
-        `Scorta ${dept} quasi esaurita: ${list.map((x) => x.name).join(", ")}. Trasferisci dal centrale.`
+        `Scorta ${label} quasi esaurita: ${list.map((x) => x.name).join(", ")}. Trasferisci dal centrale.`
       );
     }
   }

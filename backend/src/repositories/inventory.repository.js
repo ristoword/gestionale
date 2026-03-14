@@ -5,7 +5,7 @@ const paths = require("../config/paths");
 const tenantContext = require("../context/tenantContext");
 const { safeReadJson, atomicWriteJson } = require("../utils/safeFileIO");
 
-const DEPARTMENTS = ["cucina", "sala"];
+const DEPARTMENTS = ["cucina", "sala", "bar", "proprieta"];
 
 function getDataPath() {
   return paths.tenant(tenantContext.getRestaurantId(), "inventory.json");

@@ -2,7 +2,8 @@ const paymentsRepository = require("../repositories/payments.repository");
 const ordersRepository = require("../repositories/orders.repository");
 const closuresRepository = require("../repositories/closures.repository");
 const paymentsService = require("../service/payments.service");
-const { broadcastSupervisorSyncFromData } = require("../service/websocket.service");
+const ordersService = require("../service/orders.service");
+const { broadcastOrders, broadcastSupervisorSyncFromData } = require("../service/websocket.service");
 
 // =============================
 // HELPERS
@@ -160,6 +161,21 @@ async function createPayment(req, res) {
     closedAt: payload.closedAt || new Date().toISOString()
   });
 
+  // Chiude atomicamente gli ordini del tavolo (evita fallimenti parziali frontend)
+  for (const oid of orderIds) {
+    try {
+      await ordersService.setStatus(oid, "chiuso");
+    } catch (err) {
+      console.warn("[Payments] setStatus chiuso fallito per ordine", oid, err.message);
+    }
+  }
+
+  try {
+    const activeOrders = await ordersService.listActiveOrders();
+    broadcastOrders(activeOrders);
+  } catch (err) {
+    console.warn("[Payments] broadcast orders fallito:", err.message);
+  }
   broadcastSupervisorSyncFromData();
 
   res.status(201).json(payment);

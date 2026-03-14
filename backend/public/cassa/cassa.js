@@ -1100,10 +1100,7 @@ function setupBillInteractions() {
               }
             : null,
       });
-
-      for (const o of orders) {
-        await patchOrderStatus(o.id, "chiuso");
-      }
+      // Il backend chiude atomicamente gli ordini (createPayment imposta status chiuso)
 
       addRevenueToDailyReport(todayISO(), bill.finalTotal, bill.coversTotal);
 

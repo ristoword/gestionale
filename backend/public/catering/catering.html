@@ -4,103 +4,177 @@
   <meta charset="UTF-8" />
   <title>RISTOWORD – Catering</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/cucina/cucina.css" />
   <link rel="stylesheet" href="catering.css" />
 </head>
 <body>
   <div class="layout">
 
     <header class="topbar">
-      <div>
+      <div class="topbar-left">
         <h1>RISTOWORD – Catering</h1>
-        <p>Gestione eventi, costi reali, food cost e incassi separati</p>
+        <p class="subtitle">Menu builder, preset, proposte clienti e stampa</p>
+      </div>
+      <div class="topbar-right">
+        <button class="btn ghost" id="btn-refresh-all">Aggiorna</button>
       </div>
     </header>
 
+    <nav class="cat-nav">
+      <button class="nav-btn active" data-view="presets">Preset menu</button>
+      <button class="nav-btn" data-view="builder">Event builder</button>
+      <button class="nav-btn" data-view="events">Eventi</button>
+      <button class="nav-btn" data-view="calcolatore">Calcolatore</button>
+    </nav>
+
     <main class="main">
 
-      <!-- DATI EVENTO -->
-      <section class="card">
-        <h2>Dati evento</h2>
-
-        <div class="grid">
-          <label>Cliente
-            <input type="text" id="cliente">
-          </label>
-
-          <label>Data evento
-            <input type="date" id="dataEvento">
-          </label>
-
-          <label>Persone previste
-            <input type="number" id="personePreviste" value="100">
-          </label>
-
-          <label>Persone effettive
-            <input type="number" id="personeEffettive" value="100">
-          </label>
-
-          <label>Prezzo per persona €
-            <input type="number" id="prezzoPersona" value="50">
-          </label>
+      <!-- VIEW: PRESET MENUS -->
+      <section id="view-presets" class="view active-view">
+        <div class="two-cols">
+          <article class="card">
+            <header class="card-header">
+              <h2><span id="preset-form-title">Nuovo preset</span></h2>
+              <p>Modello riutilizzabile – non viene modificato quando usato per un evento</p>
+            </header>
+            <div class="card-body form-grid">
+              <input type="hidden" id="preset-id" />
+              <label class="full">
+                Nome preset
+                <input type="text" id="preset-name" placeholder="Es. Matrimonio Silver" />
+              </label>
+              <label class="full">
+                Descrizione
+                <input type="text" id="preset-description" placeholder="Breve descrizione" />
+              </label>
+              <label>
+                Prezzo default/persona (€)
+                <input type="number" id="preset-default-price" step="0.01" min="0" placeholder="0" />
+              </label>
+              <label class="full">
+                Note
+                <textarea id="preset-notes" rows="2" placeholder="Note interne..."></textarea>
+              </label>
+              <div class="full">
+                <h4 style="margin:8px 0;">Sezioni</h4>
+                <div id="preset-sections-list"></div>
+                <button type="button" class="btn ghost btn-sm" id="btn-add-preset-section">+ Aggiungi sezione</button>
+              </div>
+              <div class="form-actions full">
+                <button class="btn ghost" id="btn-preset-clear">Annulla</button>
+                <button class="btn primary" id="btn-save-preset">Salva preset</button>
+              </div>
+            </div>
+          </article>
+          <article class="card">
+            <header class="card-header">
+              <h2>Preset menu</h2>
+              <p>Usa un preset per creare un nuovo evento personalizzato</p>
+            </header>
+            <div class="card-body list" id="presets-list"></div>
+          </article>
         </div>
       </section>
 
-      <!-- MENU -->
-      <section class="card">
-        <h2>Menu catering</h2>
-
-        <div class="menu-type">
-          <button onclick="setMenuType(3)">3 Portate</button>
-          <button onclick="setMenuType(4)">4 Portate</button>
-          <button onclick="setMenuType(5)">5 Portate</button>
-          <button onclick="setMenuType('degustazione')">Degustazione</button>
-        </div>
-
-        <div id="menuContainer"></div>
+      <!-- VIEW: EVENT BUILDER -->
+      <section id="view-builder" class="view">
+        <article class="card">
+          <header class="card-header">
+            <h2>Nuovo evento / Proposta cliente</h2>
+            <p>Crea da zero o da preset – le modifiche non alterano il preset originale</p>
+          </header>
+          <div class="card-body">
+            <div class="form-grid builder-meta">
+              <label>
+                Titolo evento
+                <input type="text" id="event-title" placeholder="Es. Catering Bianchi" />
+              </label>
+              <label>
+                Cliente
+                <input type="text" id="event-client" placeholder="Nome cliente" />
+              </label>
+              <label>
+                Data evento
+                <input type="date" id="event-date" />
+              </label>
+              <label>
+                Numero ospiti
+                <input type="number" id="event-guests" min="1" value="50" />
+              </label>
+              <label>
+                Prezzo/persona (€)
+                <input type="number" id="event-price-pp" step="0.01" min="0" placeholder="0" />
+              </label>
+              <label class="full">
+                Note
+                <input type="text" id="event-notes" placeholder="Note per il cliente" />
+              </label>
+            </div>
+            <div class="builder-actions" style="margin:16px 0;">
+              <button class="btn primary" id="btn-new-custom">Nuovo evento vuoto</button>
+              <span style="margin:0 8px;color:var(--text-muted);">oppure</span>
+              <select id="select-preset-for-event" style="padding:8px 12px;border-radius:8px;background:var(--bg-alt);color:inherit;">
+                <option value="">Usa preset...</option>
+              </select>
+              <button class="btn ghost" id="btn-use-preset">Crea da preset</button>
+            </div>
+            <div id="event-sections-wrapper" style="display:none;">
+              <h4>Sezioni e piatti</h4>
+              <div id="event-sections-list"></div>
+              <button type="button" class="btn ghost btn-sm" id="btn-add-event-section">+ Aggiungi sezione</button>
+              <div class="form-actions" style="margin-top:20px;">
+                <button class="btn primary" id="btn-save-event">Salva evento</button>
+                <button class="btn ghost" id="btn-print-event">Stampa</button>
+                <button class="btn ghost" id="btn-pdf-event">Esporta PDF</button>
+              </div>
+            </div>
+          </div>
+        </article>
       </section>
 
-      <!-- SPESE EXTRA -->
-      <section class="card">
-        <h2>Spese Catering Extra</h2>
-
-        <div class="grid">
-          <label>Noleggio attrezzature €
-            <input type="number" id="spesaNoleggio" value="0">
-          </label>
-
-          <label>Personale extra €
-            <input type="number" id="spesaPersonale" value="0">
-          </label>
-
-          <label>Trasporto €
-            <input type="number" id="spesaTrasporto" value="0">
-          </label>
-
-          <label>Altro €
-            <input type="number" id="spesaAltro" value="0">
-          </label>
-        </div>
+      <!-- VIEW: EVENTI (list) -->
+      <section id="view-events" class="view">
+        <article class="card">
+          <header class="card-header">
+            <h2>Eventi catering</h2>
+            <p>Eventi salvati – modifica, stampa o elimina</p>
+          </header>
+          <div class="card-body list" id="event-list"></div>
+        </article>
       </section>
 
-      <!-- RISULTATI -->
-      <section class="card results">
-        <h2>Risultato economico</h2>
-
-        <div id="risultati"></div>
-
-        <button onclick="calcolaCatering()">Calcola</button>
-        <button onclick="aggiungiIncassoGiornaliero()">Aggiungi all'incasso giornaliero</button>
-      </section>
-
-      <!-- EVENTI CATERING (API) -->
-      <section class="card">
-        <h2>Eventi catering</h2>
-        <p style="font-size:12px;color:#999;margin-bottom:10px;">
-          Salva l'evento corrente o visualizza/elimina eventi salvati.
-        </p>
-        <button id="btn-save-event" style="margin-right:8px;">Salva evento corrente</button>
-        <button id="btn-refresh-events" class="btn-ghost">Aggiorna</button>
-        <div id="event-list" class="event-list"></div>
+      <!-- VIEW: CALCOLATORE (legacy) -->
+      <section id="view-calcolatore" class="view">
+        <article class="card">
+          <header class="card-header">
+            <h2>Calcolatore catering</h2>
+            <p>Calcolo rapido costi e margini</p>
+          </header>
+          <div class="card-body">
+            <div class="grid">
+              <label>Persone previste <input type="number" id="personePreviste" value="100"></label>
+              <label>Persone effettive <input type="number" id="personeEffettive" value="100"></label>
+              <label>Prezzo per persona € <input type="number" id="prezzoPersona" value="50"></label>
+            </div>
+            <div class="menu-type" style="margin:16px 0;">
+              <button type="button" data-portate="3">3 Portate</button>
+              <button type="button" data-portate="4">4 Portate</button>
+              <button type="button" data-portate="5">5 Portate</button>
+              <button type="button" data-portate="6">Degustazione</button>
+            </div>
+            <div id="menuContainer"></div>
+            <div class="grid" style="margin-top:16px;">
+              <label>Noleggio € <input type="number" id="spesaNoleggio" value="0"></label>
+              <label>Personale € <input type="number" id="spesaPersonale" value="0"></label>
+              <label>Trasporto € <input type="number" id="spesaTrasporto" value="0"></label>
+              <label>Altro € <input type="number" id="spesaAltro" value="0"></label>
+            </div>
+            <div style="margin-top:16px;">
+              <button class="btn primary" id="btn-calcola">Calcola</button>
+              <div id="risultati" class="risultati-box"></div>
+            </div>
+          </div>
+        </article>
       </section>
 
     </main>

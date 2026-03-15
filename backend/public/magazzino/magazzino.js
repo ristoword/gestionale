@@ -29,6 +29,7 @@ let currentTab = "centrale";
 const UNITS = ["kg", "lt", "unità", "pezzi"];
 
 const DEPT_LABELS = {
+  central: "Centrale",
   cucina: "Cucina",
   sala: "Sala",
   bar: "Bar",
@@ -62,6 +63,7 @@ function showTab(tabName) {
 
 function renderCurrentTab() {
   if (currentTab === "centrale") renderCentralList();
+  else if (currentTab === "ricezione") { /* form only */ }
   else if (currentTab === "cucina") renderDepartmentList("cucina");
   else if (currentTab === "sala") renderDepartmentList("sala");
   else if (currentTab === "bar") renderDepartmentList("bar");
@@ -191,11 +193,16 @@ function renderTransfersList() {
       const op = t.operator ? ` · ${escapeHtml(t.operator)}` : "";
       const note = t.note ? ` · ${escapeHtml(t.note)}` : "";
       const isReturn = t.type === "return_to_central";
+      const isLoad = t.type === "load";
       const badge = isReturn
         ? '<span class="badge return">RIENTRO</span>'
+        : isLoad
+        ? '<span class="badge load">RICEVUTA</span>'
         : '<span class="badge transfer">TRASFERIMENTO</span>';
       const routeText = isReturn
         ? `da ${deptLabel(t.from)} → Centrale`
+        : isLoad
+        ? `→ ${deptLabel(t.to)}`
         : `da Centrale → ${deptLabel(t.to)}`;
       return `
         <div class="transfer-row ${isReturn ? "transfer-row-return" : ""}">
@@ -260,6 +267,13 @@ function attachCentralListeners(container) {
 
 let transferProductId = null;
 
+const TRANSFER_DEPT_LABELS = {
+  cucina: "Cucina (kitchen)",
+  sala: "Sala",
+  bar: "Bar",
+  proprieta: "Proprietà",
+};
+
 function openTransferModal(dataset) {
   transferProductId = dataset.id;
   document.getElementById("transfer-product-name").textContent = dataset.name || "—";
@@ -268,6 +282,12 @@ function openTransferModal(dataset) {
   document.getElementById("transfer-qty").max = Number(dataset.max) || 9999;
   document.getElementById("transfer-operator").value = "";
   document.getElementById("transfer-note").value = "";
+  const deptSel = document.getElementById("transfer-dept");
+  const labelEl = document.getElementById("transfer-to-label");
+  if (labelEl && deptSel) {
+    const v = deptSel.value || "cucina";
+    labelEl.textContent = TRANSFER_DEPT_LABELS[v] || v;
+  }
   document.getElementById("modal-transfer").classList.add("open");
 }
 
@@ -417,6 +437,195 @@ async function addProduct() {
   }
 }
 
+async function barcodeLookup(code) {
+  if (!code || !code.trim()) return null;
+  try {
+    const product = await fetchJSON("/api/inventory/barcode/" + encodeURIComponent(code.trim()));
+    return product;
+  } catch {
+    return null;
+  }
+}
+
+function clearReceiveForm() {
+  const ids = [
+    "receive-barcode",
+    "receive-product-name",
+    "receive-quantity",
+    "receive-lot",
+    "receive-cost",
+    "receive-supplier",
+    "receive-notes",
+  ];
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  document.getElementById("receive-unit").value = "kg";
+  document.getElementById("receive-destination").value = "central";
+  document.getElementById("receive-create-if-unknown").checked = false;
+}
+
+function showReceiveStatus(msg, type) {
+  const el = document.getElementById("receive-status");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "receive-status " + (type || "info");
+}
+
+async function doReceive() {
+  const barcode = document.getElementById("receive-barcode")?.value?.trim();
+  const productName = document.getElementById("receive-product-name")?.value?.trim();
+  const quantity = parseFloat(document.getElementById("receive-quantity")?.value);
+  const unit = document.getElementById("receive-unit")?.value || "kg";
+  const destination = document.getElementById("receive-destination")?.value || "central";
+  const receivedBy = document.getElementById("receive-operator")?.value?.trim();
+  const lot = document.getElementById("receive-lot")?.value?.trim();
+  const unitCost = document.getElementById("receive-cost")?.value;
+  const supplier = document.getElementById("receive-supplier")?.value?.trim();
+  const notes = document.getElementById("receive-notes")?.value?.trim();
+  const createIfUnknown = document.getElementById("receive-create-if-unknown")?.checked === true;
+
+  if (!quantity || quantity <= 0) {
+    showReceiveStatus("Inserisci una quantità valida.", "error");
+    return;
+  }
+  if (!barcode && !productName) {
+    showReceiveStatus("Inserisci barcode o nome prodotto. Per barcode sconosciuto, spunta 'Crea prodotto' e inserisci il nome.", "error");
+    return;
+  }
+  if (!createIfUnknown && !barcode) {
+    showReceiveStatus("Inserisci barcode per cercare il prodotto, oppure spunta 'Crea prodotto se barcode sconosciuto'.", "error");
+    return;
+  }
+
+  const payload = {
+    quantity,
+    unit,
+    destinationWarehouse: destination,
+    receivedBy: receivedBy || undefined,
+    lot: lot || undefined,
+    unitCost: unitCost ? parseFloat(unitCost) : undefined,
+    supplier: supplier || undefined,
+    notes: notes || undefined,
+    createIfUnknown: createIfUnknown && !!productName,
+  };
+  if (barcode) payload.barcode = barcode;
+  if (productName) payload.productName = productName;
+
+  try {
+    showReceiveStatus("Registrazione in corso...", "info");
+    await fetchJSON("/api/inventory/receive", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    showReceiveStatus("Ricevuta registrata correttamente.", "success");
+    clearReceiveForm();
+    document.getElementById("receive-barcode").focus();
+    await loadAll();
+    setTimeout(() => showReceiveStatus("", ""), 3000);
+  } catch (err) {
+    showReceiveStatus(err.message || "Errore registrazione ricevuta.", "error");
+  }
+}
+
+function initReceive() {
+  const barcodeInput = document.getElementById("receive-barcode");
+  const btnLookup = document.getElementById("btn-barcode-lookup");
+  const btnReceive = document.getElementById("btn-receive");
+  const btnVoice = document.getElementById("btn-voice-receive");
+
+  if (btnLookup) {
+    btnLookup.addEventListener("click", async () => {
+      const code = barcodeInput?.value?.trim();
+      if (!code) {
+        showReceiveStatus("Inserisci un barcode.", "error");
+        return;
+      }
+      showReceiveStatus("Ricerca...", "info");
+      const product = await barcodeLookup(code);
+      if (product) {
+        document.getElementById("receive-product-name").value = product.name || "";
+        document.getElementById("receive-unit").value = product.unit || "kg";
+        document.getElementById("receive-cost").value = product.cost ? String(product.cost) : "";
+        showReceiveStatus("Prodotto trovato: " + (product.name || ""), "success");
+      } else {
+        showReceiveStatus("Barcode non trovato. Inserisci nome prodotto e spunta 'Crea prodotto se barcode sconosciuto'.", "error");
+      }
+    });
+  }
+
+  if (barcodeInput) {
+    barcodeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        btnLookup?.click();
+      }
+    });
+  }
+
+  if (btnReceive) {
+    btnReceive.addEventListener("click", doReceive);
+  }
+
+  if (btnVoice) {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+      let recognizing = false;
+      const rec = new SpeechRec();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = "it-IT";
+      rec.onresult = (e) => {
+        const t = (e.results[0]?.[0]?.transcript || "").trim();
+        if (!t) return;
+        fetch("/api/inventory/receive/voice-preview", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: t }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.preview?.parsed) {
+              const p = data.preview;
+              if (p.productName) document.getElementById("receive-product-name").value = p.productName;
+              if (p.quantity) document.getElementById("receive-quantity").value = String(p.quantity);
+              if (p.unit) document.getElementById("receive-unit").value = p.unit;
+              if (p.destinationWarehouse) document.getElementById("receive-destination").value = p.destinationWarehouse;
+              document.getElementById("receive-create-if-unknown").checked = true;
+              showReceiveStatus("Campi precompilati dalla voce. Verifica e conferma.", "success");
+            } else {
+              document.getElementById("receive-product-name").value = t;
+              document.getElementById("receive-create-if-unknown").checked = true;
+              showReceiveStatus("Testo inserito. Completa quantità e destinazione.", "info");
+            }
+          })
+          .catch(() => showReceiveStatus("Errore elaborazione vocale.", "error"));
+      };
+      rec.onend = () => {
+        recognizing = false;
+        btnVoice?.classList.remove("recording");
+      };
+      rec.onerror = () => {
+        recognizing = false;
+        btnVoice?.classList.remove("recording");
+      };
+      btnVoice.addEventListener("click", () => {
+        if (recognizing) {
+          rec.stop();
+          return;
+        }
+        recognizing = true;
+        btnVoice.classList.add("recording");
+        rec.start();
+      });
+    } else {
+      btnVoice.style.display = "none";
+    }
+  }
+}
+
 async function loadAISuggestion() {
   const el = document.getElementById("ai-message");
   el.textContent = "Caricamento suggerimenti...";
@@ -497,6 +706,11 @@ function initMagazzino() {
     loadAISuggestion();
   });
 
+  document.getElementById("transfer-dept")?.addEventListener("change", (e) => {
+    const labelEl = document.getElementById("transfer-to-label");
+    if (labelEl) labelEl.textContent = TRANSFER_DEPT_LABELS[e.target.value] || e.target.value;
+  });
+
   document.getElementById("modal-transfer-close").addEventListener("click", closeTransferModal);
   document.getElementById("modal-transfer-cancel").addEventListener("click", closeTransferModal);
   document.getElementById("modal-transfer-confirm").addEventListener("click", confirmTransfer);
@@ -512,6 +726,7 @@ function initMagazzino() {
   });
 
   initVoice();
+  initReceive();
   loadAll();
   loadAISuggestion();
 }

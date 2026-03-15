@@ -73,6 +73,7 @@ function showView(viewName) {
   const map = {
     comande: "view-comande",
     ricette: "view-ricette",
+    ricezione: "view-ricezione",
     spesa: "view-spesa",
     haccp: "view-haccp",
     turni: "view-turni",
@@ -333,103 +334,292 @@ function initKds() {
 }
 
 // =======================================
-//   RICETTE (localStorage)
+//   RICETTE (API /api/recipes)
 // =======================================
 
-function loadRecipesFromStorage() {
-  recipes = safeJSONParse(localStorage.getItem(LS_RECIPES_KEY), []);
+const RECIPES_API = "/api/recipes";
+const INVENTORY_API = "/api/inventory";
+const RECIPE_UNITS = ["g", "kg", "ml", "cl", "l", "pcs"];
+let inventoryCache = [];
+
+async function fetchRecipes() {
+  const res = await fetch(RECIPES_API, { credentials: "same-origin" });
+  if (!res.ok) throw new Error("Errore caricamento ricette");
+  return res.json();
 }
 
-function saveRecipesToStorage() {
-  localStorage.setItem(LS_RECIPES_KEY, JSON.stringify(recipes));
+async function fetchInventory() {
+  const res = await fetch(INVENTORY_API, { credentials: "same-origin" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+function getKitchenStock(productName) {
+  const n = String(productName || "").trim().toLowerCase();
+  const item = inventoryCache.find(
+    (i) => String(i.name || "").trim().toLowerCase() === n
+  );
+  if (!item || !item.stocks) return null;
+  return Number(item.stocks.cucina) || 0;
+}
+
+function getInventoryUnit(productName) {
+  const n = String(productName || "").trim().toLowerCase();
+  const item = inventoryCache.find(
+    (i) => String(i.name || "").trim().toLowerCase() === n
+  );
+  return item ? (item.unit || "") : "";
+}
+
+function addIngredientRow(container, data = {}) {
+  const tpl = document.getElementById("ingredient-row-tpl");
+  if (!tpl || !container) return;
+  const row = tpl.content.cloneNode(true);
+  const ingRow = row.querySelector(".ingredient-row");
+  ingRow.querySelector(".ing-name").value = data.name || data.ingredientName || "";
+  ingRow.querySelector(".ing-qty").value = data.quantity ?? data.qty ?? "";
+  const unitSel = ingRow.querySelector(".ing-unit");
+  const u = (data.unit || "g").toLowerCase();
+  unitSel.value = RECIPE_UNITS.includes(u) ? u : "g";
+  ingRow.querySelector(".ing-remove").addEventListener("click", () => ingRow.remove());
+  function updateStock() {
+    const nm = ingRow.querySelector(".ing-name").value.trim();
+    const st = getKitchenStock(nm);
+    ingRow.querySelector(".ing-stock").textContent =
+      nm && st !== null ? `Cucina: ${st}` : "";
+  }
+  ingRow.querySelector(".ing-name").addEventListener("blur", updateStock);
+  container.appendChild(row);
+  updateStock();
+}
+
+function collectIngredients() {
+  const rows = document.querySelectorAll("#recipe-ingredients-list .ingredient-row");
+  const ings = [];
+  rows.forEach((r) => {
+    const name = r.querySelector(".ing-name")?.value?.trim();
+    const qty = parseFloat(r.querySelector(".ing-qty")?.value);
+    const unit = r.querySelector(".ing-unit")?.value || "g";
+    if (!name || !Number.isFinite(qty) || qty <= 0) return;
+    ings.push({ name, ingredientName: name, quantity: qty, unit });
+  });
+  return ings;
+}
+
+function clearRecipeForm() {
+  document.getElementById("recipe-id").value = "";
+  document.getElementById("recipe-form-title").textContent = "Nuova ricetta";
+  document.getElementById("recipe-name").value = "";
+  document.getElementById("recipe-category").value = "";
+  document.getElementById("recipe-department").value = "cucina";
+  document.getElementById("recipe-yield").value = "";
+  document.getElementById("recipe-selling-price").value = "";
+  document.getElementById("recipe-target-fc").value = "";
+  document.getElementById("recipe-description").value = "";
+  document.getElementById("recipe-notes").value = "";
+  const list = document.getElementById("recipe-ingredients-list");
+  list.innerHTML = "";
+  addIngredientRow(list);
+  document.getElementById("recipe-food-cost-section").style.display = "none";
+}
+
+function loadRecipeIntoForm(r) {
+  document.getElementById("recipe-id").value = r.id || "";
+  document.getElementById("recipe-form-title").textContent = "Modifica ricetta";
+  document.getElementById("recipe-name").value = r.menuItemName || r.name || "";
+  document.getElementById("recipe-category").value = r.category || "";
+  document.getElementById("recipe-department").value = r.department || r.area || "cucina";
+  document.getElementById("recipe-yield").value = r.yieldPortions ?? r.yield_portions ?? r.servings ?? "";
+  document.getElementById("recipe-selling-price").value = r.sellingPrice ?? r.selling_price ?? "";
+  document.getElementById("recipe-target-fc").value = r.targetFoodCost ?? r.target_food_cost ?? "";
+  document.getElementById("recipe-description").value = r.description || "";
+  document.getElementById("recipe-notes").value = r.notes || r.note || "";
+  const list = document.getElementById("recipe-ingredients-list");
+  list.innerHTML = "";
+  const ings = Array.isArray(r.ingredients) ? r.ingredients : [];
+  if (ings.length === 0) {
+    addIngredientRow(list);
+  } else {
+    ings.forEach((i) =>
+      addIngredientRow(list, {
+        name: i.name || i.ingredientName,
+        quantity: i.quantity ?? i.qty,
+        unit: i.unit || "g",
+      })
+    );
+  }
+  document.getElementById("recipe-food-cost-section").style.display = "block";
+  refreshRecipeFoodCost(r.id);
+}
+
+async function refreshRecipeFoodCost(recipeId) {
+  if (!recipeId) return;
+  try {
+    const res = await fetch(`${RECIPES_API}/${recipeId}/food-cost`, {
+      credentials: "same-origin",
+    });
+    if (!res.ok) return;
+    const fc = await res.json();
+    document.getElementById("fc-total").textContent =
+      "€ " + (Number(fc.recipeTotalCost) || 0).toFixed(2);
+    document.getElementById("fc-portion").textContent =
+      "€ " + (Number(fc.costPerPortion) || 0).toFixed(2);
+    document.getElementById("fc-percent").textContent =
+      fc.foodCostPercent != null ? (fc.foodCostPercent.toFixed(1) + " %") : "—";
+    document.getElementById("fc-suggested").textContent =
+      fc.suggestedPrice != null ? "€ " + fc.suggestedPrice.toFixed(2) : "—";
+  } catch (_) {}
 }
 
 function renderRecipesList() {
   const container = document.getElementById("recipes-list");
+  const loading = container?.querySelector(".recipes-loading");
   if (!container) return;
-
-  container.innerHTML = "";
+  if (loading) loading.remove();
 
   if (!recipes.length) {
-    container.innerHTML =
-      '<div class="list-item">Nessuna ricetta salvata.</div>';
+    container.innerHTML = '<div class="list-item">Nessuna ricetta. Creane una dal form.</div>';
     return;
   }
 
-  recipes.forEach((r, idx) => {
+  recipes.forEach((r) => {
     const div = document.createElement("div");
     div.className = "list-item";
+    const name = r.menuItemName || r.name || "Senza titolo";
     div.innerHTML = `
       <div class="list-item-header">
-        <div class="list-item-title">${r.name || "Senza titolo"}</div>
-        <button data-index="${idx}" class="btn-xs danger">Elimina</button>
+        <div class="list-item-title">${escapeHtml(name)}</div>
+        <div>
+          <button data-id="${r.id}" class="btn-xs">Modifica</button>
+          <button data-id="${r.id}" class="btn-xs danger">Elimina</button>
+        </div>
       </div>
       <div class="list-item-meta">
-        Categoria: ${r.category || "-"} • Porzioni: ${r.servings || "-"}
+        ${r.category ? escapeHtml(r.category) + " • " : ""}Porzioni: ${r.yieldPortions ?? r.yield_portions ?? "-"}
+        ${r.sellingPrice ? " • € " + r.sellingPrice : ""}
       </div>
-      <div style="margin-top:4px;font-size:12px;">
-        ${r.notes ? r.notes.replace(/\n/g, "<br>") : ""}
-      </div>
-      ${
-        r.photo
-          ? `<div style="margin-top:4px;font-size:11px;color:#b7bccd;">Foto: ${r.photo}</div>`
-          : ""
-      }
     `;
     container.appendChild(div);
   });
 
-  container.querySelectorAll("button.btn-xs.danger").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.dataset.index);
-      recipes.splice(idx, 1);
-      saveRecipesToStorage();
-      renderRecipesList();
-    });
+  container.querySelectorAll("button[data-id]").forEach((btn) => {
+    const id = btn.dataset.id;
+    if (btn.classList.contains("danger")) {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Eliminare questa ricetta?")) return;
+        try {
+          const res = await fetch(`${RECIPES_API}/${id}`, {
+            method: "DELETE",
+            credentials: "same-origin",
+          });
+          if (res.ok) await loadRecipesAndRender();
+          else alert("Errore eliminazione");
+        } catch (e) {
+          alert("Errore: " + (e.message || "Riprova"));
+        }
+      });
+    } else {
+      btn.addEventListener("click", () => {
+        const r = recipes.find((x) => x.id === id);
+        if (r) loadRecipeIntoForm(r);
+      });
+    }
   });
 }
 
-function initRecipes() {
-  loadRecipesFromStorage();
+function escapeHtml(s) {
+  if (s == null) return "";
+  const div = document.createElement("div");
+  div.textContent = String(s);
+  return div.innerHTML;
+}
 
-  const btnSave = document.getElementById("btn-save-recipe");
-  if (!btnSave) return;
-
-  btnSave.addEventListener("click", () => {
-    const name = document.getElementById("recipe-name").value.trim();
-    const category = document.getElementById("recipe-category").value.trim();
-    const servings = Number(
-      document.getElementById("recipe-servings").value.trim()
-    );
-    const notes = document.getElementById("recipe-notes").value.trim();
-    const photo = document.getElementById("recipe-photo").value.trim();
-
-    if (!name) {
-      alert("Inserisci il nome della ricetta.");
-      return;
-    }
-
-    const rec = {
-      name,
-      category,
-      servings: Number.isFinite(servings) && servings > 0 ? servings : "",
-      notes,
-      photo,
-      createdAt: new Date().toISOString(),
-    };
-
-    recipes.push(rec);
-    saveRecipesToStorage();
+async function loadRecipesAndRender() {
+  const container = document.getElementById("recipes-list");
+  if (container) {
+    container.innerHTML = '<div class="recipes-loading">Caricamento...</div>';
+  }
+  try {
+    recipes = await fetchRecipes();
+    if (!Array.isArray(recipes)) recipes = [];
+    inventoryCache = await fetchInventory();
+    if (!Array.isArray(inventoryCache)) inventoryCache = [];
     renderRecipesList();
+  } catch (err) {
+    if (container) {
+      container.innerHTML =
+        '<div class="list-item" style="color:var(--accent-danger);">Errore caricamento ricette.</div>';
+    }
+    console.error(err);
+  }
+}
 
-    document.getElementById("recipe-name").value = "";
-    document.getElementById("recipe-category").value = "";
-    document.getElementById("recipe-servings").value = "";
-    document.getElementById("recipe-notes").value = "";
-    document.getElementById("recipe-photo").value = "";
+function initRecipes() {
+  const btnSave = document.getElementById("btn-save-recipe");
+  const btnClear = document.getElementById("btn-recipe-clear");
+  const btnAddIng = document.getElementById("btn-add-ingredient");
+  const ingredientsList = document.getElementById("recipe-ingredients-list");
+
+  if (btnAddIng && ingredientsList) {
+    btnAddIng.addEventListener("click", () => addIngredientRow(ingredientsList));
+    addIngredientRow(ingredientsList);
+  }
+
+  if (btnClear) {
+    btnClear.addEventListener("click", clearRecipeForm);
+  }
+
+  if (btnSave) {
+    btnSave.addEventListener("click", async () => {
+      const name = document.getElementById("recipe-name").value.trim();
+      const ings = collectIngredients();
+      if (!name) {
+        alert("Inserisci il nome della ricetta.");
+        return;
+      }
+      if (ings.length < 1) {
+        alert("Aggiungi almeno un ingrediente con quantità > 0.");
+        return;
+      }
+      const payload = {
+        name,
+        menuItemName: name,
+        category: document.getElementById("recipe-category").value.trim(),
+        department: document.getElementById("recipe-department").value,
+        description: document.getElementById("recipe-description").value.trim(),
+        yieldPortions: Number(document.getElementById("recipe-yield").value) || 1,
+        sellingPrice: Number(document.getElementById("recipe-selling-price").value) || 0,
+        targetFoodCost: Number(document.getElementById("recipe-target-fc").value) || 0,
+        notes: document.getElementById("recipe-notes").value.trim(),
+        ingredients: ings,
+      };
+      const id = document.getElementById("recipe-id").value;
+      try {
+        const url = id ? `${RECIPES_API}/${id}` : RECIPES_API;
+        const method = id ? "PATCH" : "POST";
+        const res = await fetch(url, {
+          method,
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          alert(data.error || "Errore salvataggio");
+          return;
+        }
+        clearRecipeForm();
+        await loadRecipesAndRender();
+      } catch (e) {
+        alert("Errore: " + (e.message || "Riprova"));
+      }
+    });
+  }
+
+  document.querySelector(".nav-btn[data-view='ricette']")?.addEventListener("click", () => {
+    loadRecipesAndRender();
   });
-
-  renderRecipesList();
+  loadRecipesAndRender();
 }
 
 // =======================================
@@ -1067,10 +1257,144 @@ function initStaffAccess() {
   refreshStaffUI();
 }
 
+// =======================================
+//   RICEZIONE MERCE VOCALE (Cucina)
+// =======================================
+
+let receiveRecognition = null;
+let receiveRecognizing = false;
+let lastReceivePreview = null;
+
+function initReceiveVoice() {
+  const btnStart = document.getElementById("btn-voice-receive-start");
+  const btnStop = document.getElementById("btn-voice-receive-stop");
+  const statusEl = document.getElementById("voice-receive-status");
+  const transcriptEl = document.getElementById("voice-receive-transcript");
+  const previewSection = document.getElementById("receive-preview-section");
+  const previewGrid = document.getElementById("receive-preview-grid");
+  const btnConfirm = document.getElementById("btn-receive-confirm");
+  const btnCancel = document.getElementById("btn-receive-cancel");
+
+  if (!btnStart || !transcriptEl) return;
+
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    if (statusEl) statusEl.textContent = "Voce non supportata";
+    return;
+  }
+
+  receiveRecognition = new SpeechRec();
+  receiveRecognition.lang = "it-IT";
+  receiveRecognition.continuous = false;
+  receiveRecognition.interimResults = false;
+
+  receiveRecognition.onresult = (e) => {
+    const t = (e.results[0]?.[0]?.transcript || "").trim();
+    if (!t) return;
+    transcriptEl.value = t;
+    if (statusEl) statusEl.textContent = "Elaborazione...";
+
+    fetch(INVENTORY_API + "/receive/voice-preview", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript: t }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        lastReceivePreview = data.preview;
+        if (data.preview?.parsed) {
+          previewGrid.innerHTML = `
+            <div><strong>Prodotto:</strong> ${escapeHtml(data.preview.productName || "-")}</div>
+            <div><strong>Quantità:</strong> ${data.preview.quantity} ${data.preview.unit}</div>
+            <div><strong>Destinazione:</strong> ${data.preview.destinationWarehouse === "cucina" ? "Cucina" : data.preview.destinationWarehouse}</div>
+          `;
+          previewSection.style.display = "block";
+          if (statusEl) statusEl.textContent = "Verifica e conferma";
+        } else {
+          if (statusEl) statusEl.textContent = "Frase non riconosciuta. Riprova (es. aggiungi 2 kg mozzarella in cucina)";
+        }
+      })
+      .catch(() => {
+        if (statusEl) statusEl.textContent = "Errore elaborazione";
+      });
+  };
+
+  receiveRecognition.onend = () => {
+    receiveRecognizing = false;
+    if (statusEl && statusEl.textContent === "Ascolto...") statusEl.textContent = "Pronto";
+  };
+
+  receiveRecognition.onerror = () => {
+    receiveRecognizing = false;
+    if (statusEl) statusEl.textContent = "Errore riconoscimento";
+  };
+
+  btnStart.addEventListener("click", () => {
+    if (receiveRecognizing) return;
+    transcriptEl.value = "";
+    previewSection.style.display = "none";
+    lastReceivePreview = null;
+    receiveRecognizing = true;
+    if (statusEl) statusEl.textContent = "Ascolto...";
+    receiveRecognition.start();
+  });
+
+  if (btnStop) {
+    btnStop.addEventListener("click", () => {
+      if (receiveRecognizing) receiveRecognition.stop();
+    });
+  }
+
+  if (btnConfirm) {
+    btnConfirm.addEventListener("click", async () => {
+      const p = lastReceivePreview;
+      if (!p || !p.productName || !p.quantity || p.quantity <= 0) {
+        alert("Dati insufficienti. Riprova a dettare.");
+        return;
+      }
+      const username = (await fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.ok ? r.json() : {}).catch(() => ({}))).username;
+      try {
+        const res = await fetch(INVENTORY_API + "/receive", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productName: p.productName,
+            quantity: p.quantity,
+            unit: p.unit,
+            destinationWarehouse: p.destinationWarehouse || "cucina",
+            receivedBy: username || "cucina",
+            createIfUnknown: true,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Errore");
+        previewSection.style.display = "none";
+        transcriptEl.value = "";
+        lastReceivePreview = null;
+        if (statusEl) statusEl.textContent = "Ricevuta registrata!";
+        setTimeout(() => { if (statusEl) statusEl.textContent = "Pronto"; }, 2000);
+      } catch (err) {
+        alert(err.message || "Errore registrazione ricevuta");
+      }
+    });
+  }
+
+  if (btnCancel) {
+    btnCancel.addEventListener("click", () => {
+      previewSection.style.display = "none";
+      lastReceivePreview = null;
+      if (statusEl) statusEl.textContent = "Pronto";
+    });
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initViewSwitcher();
   initKds();
   initRecipes();
+  initReceiveVoice();
   initShopping();
   initHaccp();
   initShifts();

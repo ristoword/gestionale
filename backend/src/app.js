@@ -108,6 +108,15 @@ try {
   console.warn("orders.routes non trovato (ok se non ancora creato)");
 }
 
+// QR TABLES (admin – protected; supervisor included for QR management)
+try {
+  const qrRouter = require("./routes/qr.routes");
+  const ROLES_QR = ["owner", "sala", "cucina", "cassa", "supervisor"];
+  app.use("/api/qr", requireAuth, requireRole(ROLES_QR), qrRouter);
+} catch (e) {
+  console.warn("qr.routes non trovato:", e.message);
+}
+
 // MENU (public GET for QR ordering)
 try {
   const menuRouter = require("./routes/menu.routes");
@@ -137,7 +146,8 @@ try {
 // INVENTORY (Magazzino)
 try {
   const inventoryRouter = require("./routes/inventory.routes");
-  app.use("/api/inventory", requireAuth, requireRole(ROLES_ALL), inventoryRouter);
+  const ROLES_INVENTORY = ["owner", "sala", "cucina", "cassa", "magazzino"];
+  app.use("/api/inventory", requireAuth, requireRole(ROLES_INVENTORY), inventoryRouter);
 } catch (e) {
   console.warn("inventory.routes non trovato (ok se non ancora creato)");
 }
@@ -252,6 +262,30 @@ try {
   app.use("/api/customers", requireAuth, requireRole(ROLES_ALL), customersRouter);
 } catch (e) {
   console.warn("customers.routes non trovato (ok se non ancora creato)");
+}
+
+// DEVICES / HARDWARE
+try {
+  const devicesRouter = require("./routes/devices.routes");
+  app.use("/api/devices", requireAuth, requireRole(ROLES_ALL), devicesRouter);
+} catch (e) {
+  console.warn("devices.routes non trovato:", e.message);
+}
+
+// PRINT ROUTES
+try {
+  const printRoutesRouter = require("./routes/print-routes.routes");
+  app.use("/api/print-routes", requireAuth, requireRole(ROLES_ALL), printRoutesRouter);
+} catch (e) {
+  console.warn("print-routes.routes non trovato:", e.message);
+}
+
+// PRINT JOBS
+try {
+  const printJobsRouter = require("./routes/print-jobs.routes");
+  app.use("/api/print-jobs", requireAuth, requireRole(ROLES_ALL), printJobsRouter);
+} catch (e) {
+  console.warn("print-jobs.routes non trovato:", e.message);
 }
 
 // ERROR HANDLER

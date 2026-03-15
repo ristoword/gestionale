@@ -90,8 +90,12 @@ async function apiSetStatus(id, status) {
     body: JSON.stringify({ status }),
   });
   if (!res.ok) {
-    const txt = await res.text();
-    throw new Error("Errore cambio stato: " + txt);
+    let msg = "Errore cambio stato";
+    try {
+      const data = await res.json();
+      if (data && data.error) msg = data.error;
+    } catch (_) {}
+    throw new Error(msg);
   }
   return await res.json();
 }
@@ -601,13 +605,35 @@ async function handleCreateOrder() {
   };
 
   try {
-    await apiCreateOrder(payload);
+    const order = await apiCreateOrder(payload);
 
     document.getElementById("field-table").value = "";
     document.getElementById("field-covers").value = "";
     document.getElementById("field-waiter").value = "";
     document.getElementById("field-notes").value = "";
     resetSelectedItems();
+
+    if (order && order._printJobs && order._printJobs.length > 0) {
+      const withWarning = order._printJobs.filter((p) => p.warning);
+      const routed = order._printJobs.filter((p) => p.routed);
+      if (withWarning.length > 0) {
+        console.warn("Print routing:", withWarning.map((p) => p.warning).join("; "));
+      }
+      if (routed.length > 0) {
+        routed.forEach((p) => {
+          if (p.jobId) {
+            const w = window.open(`/api/print-jobs/${p.jobId}/print`, "_blank", "width=400,height=500");
+            if (w) setTimeout(() => w.print(), 600);
+          }
+        });
+      } else if (order._printJobs.some((p) => p.jobId)) {
+        order._printJobs.forEach((p) => {
+          if (p.jobId) {
+            window.open(`/api/print-jobs/${p.jobId}/print`, "_blank", "width=400,height=500");
+          }
+        });
+      }
+    }
 
     await loadOrdersAndRender();
   } catch (err) {

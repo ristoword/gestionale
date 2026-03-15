@@ -69,6 +69,7 @@
 
       <!-- viste interne di questa pagina -->
       <button class="nav-btn" data-view="ricette">Ricette</button>
+      <button class="nav-btn" data-view="ricezione">Ricezione merce</button>
       <button class="nav-btn" data-view="spesa">Lista spesa</button>
       <button class="nav-btn" data-view="haccp">HACCP</button>
       <button class="nav-btn" data-view="turni">Turni cucina</button>
@@ -118,12 +119,13 @@
         <div class="two-cols">
           <article class="card">
             <header class="card-header">
-              <h2>Nuova ricetta</h2>
-              <p>Dettagli base + note di lavorazione</p>
+              <h2><span id="recipe-form-title">Nuova ricetta</span></h2>
+              <p>Dettagli base + ingredienti + food cost</p>
             </header>
             <div class="card-body form-grid">
+              <input type="hidden" id="recipe-id" />
               <label class="full">
-                Nome ricetta
+                Nome ricetta / Voce menù
                 <input type="text" id="recipe-name" placeholder="Es. Risotto ai funghi" />
               </label>
               <label>
@@ -131,33 +133,109 @@
                 <input type="text" id="recipe-category" placeholder="Primo / Secondo / Dessert..." />
               </label>
               <label>
-                Porzioni
-                <input type="number" id="recipe-servings" min="1" placeholder="Es. 4" />
+                Reparto
+                <select id="recipe-department">
+                  <option value="cucina">Cucina</option>
+                  <option value="bar">Bar</option>
+                  <option value="sala">Sala</option>
+                </select>
+              </label>
+              <label>
+                Porzioni (yield)
+                <input type="number" id="recipe-yield" min="1" placeholder="4" />
+              </label>
+              <label>
+                Prezzo vendita (€)
+                <input type="number" id="recipe-selling-price" step="0.01" min="0" placeholder="12.00" />
+              </label>
+              <label>
+                Food cost target (%)
+                <input type="number" id="recipe-target-fc" step="0.1" min="0" max="100" placeholder="30" />
+              </label>
+              <label class="full">
+                Descrizione
+                <input type="text" id="recipe-description" placeholder="Breve descrizione piatto" />
               </label>
               <label class="full">
                 Note / Procedimento
-                <textarea id="recipe-notes" rows="4" placeholder="Dettatura o appunti della ricetta..."></textarea>
+                <textarea id="recipe-notes" rows="2" placeholder="Appunti della ricetta..."></textarea>
               </label>
-              <label class="full">
-                URL foto (opzionale)
-                <input type="text" id="recipe-photo" placeholder="In futuro: scatto diretto dalla cucina" />
-              </label>
+              <div class="full">
+                <h4 style="margin:8px 0;">Ingredienti</h4>
+                <div id="recipe-ingredients-list"></div>
+                <button type="button" class="btn ghost btn-sm" id="btn-add-ingredient">+ Aggiungi ingrediente</button>
+                <template id="ingredient-row-tpl">
+                  <div class="ingredient-row">
+                    <input type="text" class="ing-name" placeholder="Nome ingrediente" />
+                    <input type="number" class="ing-qty" step="0.01" min="0.01" placeholder="Qty" />
+                    <select class="ing-unit">
+                      <option value="g">g</option>
+                      <option value="kg">kg</option>
+                      <option value="ml">ml</option>
+                      <option value="cl">cl</option>
+                      <option value="l">l</option>
+                      <option value="pcs">pcs</option>
+                    </select>
+                    <span class="ing-stock muted"></span>
+                    <button type="button" class="btn-xs danger ing-remove">✕</button>
+                  </div>
+                </template>
+              </div>
               <div class="form-actions full">
+                <button class="btn ghost" id="btn-recipe-clear">Annulla</button>
                 <button class="btn primary" id="btn-save-recipe">Salva ricetta</button>
+              </div>
+            </div>
+            <div class="card-body" id="recipe-food-cost-section" style="display:none;">
+              <h4>Food Cost</h4>
+              <div class="food-cost-grid">
+                <div><span class="fc-label">Costo ricetta:</span> <span id="fc-total">€ 0.00</span></div>
+                <div><span class="fc-label">Costo/porzione:</span> <span id="fc-portion">€ 0.00</span></div>
+                <div><span class="fc-label">Food cost %:</span> <span id="fc-percent">—</span></div>
+                <div><span class="fc-label">Prezzo suggerito:</span> <span id="fc-suggested">—</span></div>
               </div>
             </div>
           </article>
 
           <article class="card">
             <header class="card-header">
-              <h2>Ricette salvate</h2>
-              <p>Memorizzate in questo dispositivo (localStorage)</p>
+              <h2>Ricette</h2>
+              <p>Da backend /api/recipes – scarico da magazzino cucina</p>
             </header>
             <div class="card-body list" id="recipes-list">
-              <!-- popolato da cucina.js -->
+              <div class="recipes-loading">Caricamento...</div>
             </div>
           </article>
         </div>
+      </section>
+
+      <!-- VIEW: RICEZIONE MERCE VOCALE -->
+      <section id="view-ricezione" class="view">
+        <article class="card">
+          <header class="card-header">
+            <h2>Ricezione merce – Voce</h2>
+          </header>
+          <div class="card-body">
+            <p class="voice-hint">Detta la ricevuta (es. "aggiungi 2 kg mozzarella in cucina") e conferma prima di salvare.</p>
+            <div class="voice-row">
+              <button class="btn primary" id="btn-voice-receive-start">🎤 Dettare ricevuta</button>
+              <button class="btn ghost" id="btn-voice-receive-stop">Stop</button>
+              <span class="voice-status" id="voice-receive-status">Pronto</span>
+            </div>
+            <label class="voice-textarea-label">
+              Transcript
+              <textarea id="voice-receive-transcript" rows="2" placeholder="Qui apparirà il testo dettato..." readonly></textarea>
+            </label>
+            <div class="receive-preview-section" id="receive-preview-section" style="display:none;">
+              <h4>Anteprima (verifica e conferma)</h4>
+              <div class="receive-preview-grid" id="receive-preview-grid"></div>
+              <div class="form-actions" style="margin-top:12px;">
+                <button class="btn primary" id="btn-receive-confirm">Conferma e registra</button>
+                <button class="btn ghost" id="btn-receive-cancel">Annulla</button>
+              </div>
+            </div>
+          </div>
+        </article>
       </section>
 
       <!-- VIEW 3: LISTA SPESA / COMANDI VOCALI -->

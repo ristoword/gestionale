@@ -21,6 +21,8 @@ const PROTECTED_PATTERNS = [
   /^\/supervisor\/supervisor\.html$/,
   /^\/supervisor\/staff\/staff\.html$/,
   /^\/supervisor\/customers\/customers\.html$/,
+  /^\/hardware\/hardware\.html$/,
+  /^\/qr-tables\/qr-tables\.html$/,
   /^\/menu-admin\/menu-admin\.html$/,
   /^\/daily-menu\/daily-menu\.html$/,
 ];

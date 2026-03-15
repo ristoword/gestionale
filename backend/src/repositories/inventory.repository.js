@@ -79,6 +79,14 @@ function findInventoryItemByName(name) {
   return inventory.find((item) => normalizeName(item.name) === n) || null;
 }
 
+function findInventoryItemByBarcode(barcode) {
+  if (!barcode || typeof barcode !== "string") return null;
+  const code = String(barcode).trim();
+  if (!code) return null;
+  const inventory = readInventory();
+  return inventory.find((item) => String(item.barcode || "").trim() === code) || null;
+}
+
 function getCostPerUnit(item) {
   if (!item) return 0;
   const cpu = Number(item.cost_per_unit);
@@ -104,6 +112,54 @@ function getMinStock(item) {
   const m = Number(item.min_stock);
   if (Number.isFinite(m)) return m;
   return Number(item.threshold) || 0;
+}
+
+/**
+ * Deduct from a department's stock (e.g. cucina) instead of central.
+ * Validates sufficient stock and blocks if insufficient.
+ * Assumes quantity and inventory use same unit (recipe unit must match product unit).
+ */
+function deductFromDepartment(ingredientName, amount, department) {
+  if (!DEPARTMENTS.includes(department)) {
+    return { success: false, reason: "invalid_department" };
+  }
+  const inventory = readInventory();
+  const n = normalizeName(ingredientName);
+  const index = inventory.findIndex((item) => normalizeName(item.name) === n);
+  if (index === -1) return { success: false, reason: "not_found" };
+
+  const item = inventory[index];
+  const currentDept = getDepartmentStock(item, department);
+  const deduct = Number(amount) || 0;
+  if (deduct <= 0) return { success: false, reason: "invalid_amount" };
+  if (currentDept < deduct) {
+    return {
+      success: false,
+      reason: "insufficient_stock",
+      available: currentDept,
+      requested: deduct,
+      ingredientName: item.name,
+    };
+  }
+
+  const stocks = { ...(item.stocks || {}) };
+  stocks[department] = Math.max(0, currentDept - deduct);
+
+  inventory[index] = normalizeItem({
+    ...item,
+    stocks,
+    updatedAt: new Date().toISOString(),
+  });
+  writeInventory(inventory);
+
+  const minS = getMinStock(item);
+  const newDept = stocks[department];
+  return {
+    success: true,
+    newStock: newDept,
+    belowMin: minS > 0 && newDept < minS,
+    ingredientName: item.name,
+  };
 }
 
 function deductInventoryItem(ingredientName, amount, unitHint) {
@@ -197,6 +253,7 @@ function create(data) {
     category: String(data.category || "").trim(),
     lot: String(data.lot || "").trim(),
     notes: String(data.notes || "").trim(),
+    barcode: data.barcode ? String(data.barcode).trim() : "",
     createdAt: now,
     updatedAt: now,
   });
@@ -278,6 +335,73 @@ function transfer(productId, toDepartment, quantity, note, operator) {
   };
 }
 
+/**
+ * Direct load: add quantity to central or department without transfer.
+ * Used for goods receiving from supplier.
+ * fromWarehouse = null (external source).
+ */
+function load(productId, destinationWarehouse, quantity, options = {}) {
+  const dest = String(destinationWarehouse || "").trim().toLowerCase();
+  const validDestinations = ["central", ...DEPARTMENTS];
+  if (!validDestinations.includes(dest)) {
+    return { success: false, error: "Destinazione non valida. Usa: central, cucina, sala, bar, proprieta" };
+  }
+  const qty = Number(quantity) || 0;
+  if (qty <= 0) return { success: false, error: "Quantità non valida" };
+
+  const inventory = readInventory();
+  const index = inventory.findIndex((item) => String(item.id) === String(productId));
+  if (index === -1) return { success: false, error: "Prodotto non trovato" };
+
+  const item = inventory[index];
+  const cost = options.unitCost != null ? Number(options.unitCost) : (Number(item.cost) ?? 0);
+  const lot = options.lot != null ? String(options.lot).trim() : (item.lot || "");
+
+  if (dest === "central") {
+    const before = Number(item.central ?? item.quantity) || 0;
+    const after = before + qty;
+    inventory[index] = normalizeItem({
+      ...item,
+      quantity: after,
+      central: after,
+      stock: after,
+      cost: cost > 0 ? cost : item.cost,
+      lot: lot || item.lot,
+      updatedAt: new Date().toISOString(),
+    });
+  } else {
+    const stocks = { ...(item.stocks || {}) };
+    const before = Number(stocks[dest]) || 0;
+    stocks[dest] = before + qty;
+    inventory[index] = normalizeItem({
+      ...item,
+      stocks,
+      cost: cost > 0 ? cost : item.cost,
+      lot: lot || item.lot,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  writeInventory(inventory);
+
+  const updated = inventory[index];
+  const afterQty = dest === "central" ? Number(updated.central ?? updated.quantity) || 0 : Number(updated.stocks && updated.stocks[dest]) || 0;
+
+  return {
+    success: true,
+    item: updated,
+    load: {
+      productId: item.id,
+      productName: item.name,
+      unit: item.unit,
+      quantity: qty,
+      fromWarehouse: null,
+      toWarehouse: dest,
+      before: dest === "central" ? Number(item.central ?? item.quantity) || 0 : Number(item.stocks && item.stocks[dest]) || 0,
+      after: afterQty,
+    },
+  };
+}
+
 function returnToCentral(productId, fromDepartment, quantity, note, operator) {
   if (!DEPARTMENTS.includes(fromDepartment)) {
     return { success: false, error: "Reparto non valido" };
@@ -334,15 +458,18 @@ module.exports = {
   create,
   remove,
   adjustQuantity,
+  load,
   transfer,
   returnToCentral,
   readInventory,
   writeInventory,
   findInventoryItemByName,
+  findInventoryItemByBarcode,
   getCostPerUnit,
   getStock,
   getDepartmentStock,
   getMinStock,
   deductInventoryItem,
   deductInventoryIngredients,
+  deductFromDepartment,
 };

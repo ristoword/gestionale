@@ -29,6 +29,7 @@ async function createMovement(data) {
   const movements = readAll();
   const movement = {
     id: uuid(),
+    restaurantId: data.restaurantId || tenantContext.getRestaurantId(),
     type: data.type || "deduction",
     orderId: data.orderId || null,
     orderStatus: data.orderStatus || null,
@@ -39,7 +40,19 @@ async function createMovement(data) {
     before: Number(data.before) || 0,
     after: Number(data.after) || 0,
     note: data.note || "",
-    createdAt: new Date().toISOString()
+    fromWarehouse: data.fromWarehouse || null,
+    toWarehouse: data.toWarehouse || null,
+    productId: data.productId || null,
+    productName: data.productName || "",
+    recipeId: data.recipeId || null,
+    sourceModule: data.sourceModule || null,
+    reason: data.reason || null,
+    receivedBy: data.receivedBy || null,
+    barcode: data.barcode || null,
+    lot: data.lot || null,
+    unitCost: data.unitCost != null ? Number(data.unitCost) : null,
+    supplier: data.supplier || null,
+    createdAt: new Date().toISOString(),
   };
 
   movements.push(movement);

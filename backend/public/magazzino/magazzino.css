@@ -361,6 +361,77 @@ input, select {
   margin-right: 6px;
 }
 
+.badge.load {
+  background: rgba(245, 184, 0, 0.25);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  margin-right: 6px;
+}
+
+/* RICEZIONE MERCE */
+.receive-hint {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-bottom: 14px;
+}
+
+.receive-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+
+.receive-form label.full {
+  grid-column: 1 / -1;
+}
+
+.barcode-input-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.barcode-input-wrap input {
+  flex: 1;
+}
+
+.receive-barcode-row {
+  grid-column: 1 / -1;
+}
+
+.receive-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.receive-create input[type="checkbox"] {
+  width: auto;
+}
+
+.receive-status {
+  margin-top: 12px;
+  font-size: 13px;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.receive-status.success {
+  background: rgba(42, 127, 98, 0.2);
+  color: #5fd9a8;
+}
+
+.receive-status.error {
+  background: rgba(255, 75, 75, 0.15);
+  color: var(--danger);
+}
+
+.receive-status.info {
+  color: var(--text-soft);
+}
+
 .transfer-meta {
   font-size: 11px;
   color: var(--text-soft);

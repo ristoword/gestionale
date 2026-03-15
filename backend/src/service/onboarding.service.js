@@ -27,9 +27,13 @@ const TENANT_FILES = [
   "customers.json",
   "haccp-checks.json",
   "catering-events.json",
+  "catering-presets.json",
   "sessions.json",
   "daily-menu.json",
   "inventory-transfers.json",
+  "devices.json",
+  "print-routes.json",
+  "print-jobs.json",
 ];
 
 function sanitizeSlug(name) {

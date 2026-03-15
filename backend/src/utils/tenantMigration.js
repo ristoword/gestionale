@@ -24,9 +24,13 @@ const TENANT_FILES = [
   "staff-requests.json",
   "haccp-checks.json",
   "catering-events.json",
+  "catering-presets.json",
   "sessions.json",
   "daily-menu.json",
   "inventory-transfers.json",
+  "devices.json",
+  "print-routes.json",
+  "print-jobs.json",
 ];
 
 let migrated = false;

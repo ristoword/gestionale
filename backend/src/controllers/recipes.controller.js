@@ -1,4 +1,5 @@
 const recipesRepository = require("../repositories/recipes.repository");
+const inventoryRepository = require("../repositories/inventory.repository");
 
 // GET /api/recipes
 exports.listRecipes = async (req, res) => {
@@ -17,21 +18,46 @@ exports.getRecipeById = async (req, res) => {
   res.json(recipe);
 };
 
+// GET /api/recipes/:id/food-cost (must be before :id in route order - use /food-cost as sub-route)
+exports.getRecipeFoodCost = async (req, res) => {
+  const foodCost = await recipesRepository.getFoodCost(req.params.id, inventoryRepository);
+
+  if (!foodCost) {
+    return res.status(404).json({ error: "Ricetta non trovata" });
+  }
+
+  res.json(foodCost);
+};
+
 // POST /api/recipes
 exports.createRecipe = async (req, res) => {
-  const recipe = await recipesRepository.create(req.body || {});
-  res.status(201).json(recipe);
+  try {
+    const recipe = await recipesRepository.create(req.body || {});
+    res.status(201).json(recipe);
+  } catch (err) {
+    if (err.validationErrors) {
+      return res.status(400).json({ error: err.message, validationErrors: err.validationErrors });
+    }
+    throw err;
+  }
 };
 
 // PATCH /api/recipes/:id
 exports.updateRecipe = async (req, res) => {
-  const recipe = await recipesRepository.update(req.params.id, req.body || {});
+  try {
+    const recipe = await recipesRepository.update(req.params.id, req.body || {});
 
-  if (!recipe) {
-    return res.status(404).json({ error: "Ricetta non trovata" });
+    if (!recipe) {
+      return res.status(404).json({ error: "Ricetta non trovata" });
+    }
+
+    res.json(recipe);
+  } catch (err) {
+    if (err.validationErrors) {
+      return res.status(400).json({ error: err.message, validationErrors: err.validationErrors });
+    }
+    throw err;
   }
-
-  res.json(recipe);
 };
 
 // DELETE /api/recipes/:id

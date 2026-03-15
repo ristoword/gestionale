@@ -53,8 +53,12 @@ async function apiSetStatus(id, status) {
     body: JSON.stringify({ status }),
   });
   if (!res.ok) {
-    const txt = await res.text();
-    throw new Error("Errore cambio stato: " + txt);
+    let msg = "Errore cambio stato";
+    try {
+      const data = await res.json();
+      if (data && data.error) msg = data.error;
+    } catch (_) {}
+    throw new Error(msg);
   }
   return await res.json();
 }

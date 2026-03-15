@@ -639,3 +639,63 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Ricette – ingredient rows */
+.ingredient-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.ingredient-row .ing-name {
+  flex: 2;
+  min-width: 120px;
+}
+.ingredient-row .ing-qty {
+  width: 70px;
+}
+.ingredient-row .ing-unit {
+  width: 60px;
+}
+.ingredient-row .ing-stock {
+  flex: 1;
+  font-size: 12px;
+  min-width: 80px;
+}
+.ingredient-row .ing-remove {
+  flex-shrink: 0;
+}
+
+.food-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px 16px;
+  font-size: 14px;
+}
+.food-cost-grid .fc-label {
+  color: var(--text-soft);
+  margin-right: 4px;
+}
+.btn-sm { font-size: 12px; padding: 4px 10px; }
+.muted { color: var(--text-muted); }
+
+/* Ricezione merce vocale */
+.voice-hint {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin: 0 0 14px 0;
+}
+
+.receive-preview-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+}
+
+.receive-preview-grid {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}

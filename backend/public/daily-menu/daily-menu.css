@@ -91,6 +91,12 @@
   margin-top: 2px;
 }
 
+.daily-dish-no-recipe-warn {
+  font-size: 11px;
+  color: var(--accent-warning);
+  margin-top: 4px;
+}
+
 .daily-dish-price {
   font-weight: 700;
   font-size: 16px;

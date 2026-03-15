@@ -23,6 +23,11 @@ function getAllOrders() {
   return safeReadFile();
 }
 
+function getOrderById(id) {
+  const orders = safeReadFile();
+  return orders.find((o) => String(o.id) === String(id)) || null;
+}
+
 function saveAllOrders(orders) {
   writeFile(orders);
 }
@@ -37,4 +42,5 @@ module.exports = {
   getAllOrders,
   saveAllOrders,
   getNextId,
+  getOrderById,
 };

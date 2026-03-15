@@ -37,6 +37,24 @@ async function createOrder(req, res, next) {
   try {
     const order = await ordersService.createOrder(req.body || {});
     await broadcastOrderUpdates();
+
+    // Auto-route print jobs by department
+    try {
+      const printService = require("../service/print.service");
+      const printResults = await printService.submitOrderTickets(order);
+      if (printResults.length > 0) {
+        order._printJobs = printResults.map((r) => ({
+          department: r.department,
+          jobId: r.job.id,
+          routed: r.routed,
+          device: r.device,
+          warning: r.warning,
+        }));
+      }
+    } catch (printErr) {
+      logger.warn("Print job creation failed (order still saved)", { orderId: order.id, message: printErr.message });
+    }
+
     res.status(201).json(order);
   } catch (err) {
     next(err);
@@ -50,18 +68,39 @@ async function setStatus(req, res, next) {
     if (!status) {
       return res.status(400).json({ error: "Campo 'status' obbligatorio" });
     }
+
+    const isFinalState = ["servito", "chiuso"].includes(String(status || "").toLowerCase());
+
+    // Validate kitchen stock BEFORE changing status when closing/serving
+    if (isFinalState) {
+      const order = await ordersService.getOrderById(id);
+      if (order && Array.isArray(order.items) && order.items.length > 0) {
+        const validation = await inventoryService.validateOrderConsumption(order);
+        if (!validation.valid) {
+          return res.status(400).json({
+            error: validation.error || "Stock cucina insufficiente per completare l'ordine",
+            blocked: true,
+            failures: validation.failures || [],
+          });
+        }
+      }
+    }
+
     const updated = await ordersService.setStatus(id, status);
 
     await broadcastOrderUpdates();
 
-    const isFinalState = ["servito", "chiuso"].includes(String(updated?.status || "").toLowerCase());
     if (updated && isFinalState) {
       const shouldDeduct = ordersService.tryMarkOrderInventoryProcessed(updated.id);
       if (shouldDeduct) {
         logger.info("Order final state (inventory sync)", { orderId: updated.id, status: updated.status, table: updated.table });
-        inventoryService.onOrderFinalized(updated).catch((err) => {
-          logger.error("Inventory deduction on order finalized", { orderId: updated.id, message: err.message });
-        });
+        const result = await inventoryService.onOrderFinalized(updated);
+        if (result && result.blocked) {
+          logger.error("Inventory deduction blocked after status save (race?)", {
+            orderId: updated.id,
+            error: result.error,
+          });
+        }
       }
       broadcastSupervisorSyncFromData();
     }

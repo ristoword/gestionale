@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["ok", "answer", "intent", "confidence", "data", "sources", "nextActions"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "answer": { "type": "string" },
+    "intent": {
+      "type": "string",
+      "enum": ["sales_summary", "low_stock", "recipe_cost", "active_orders", "transfer_advice", "generic"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "data": {
+      "type": "object",
+      "required": ["summary", "items", "totals", "warnings"],
+      "properties": {
+        "summary": { "type": "string" },
+        "items": { "type": "array", "items": {} },
+        "totals": { "type": "object" },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sources": { "type": "array", "items": { "type": "string" } },
+    "nextActions": { "type": "array", "items": { "type": "string" } }
+  }
+}

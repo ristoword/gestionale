@@ -5,6 +5,9 @@ const aiController = require("../controllers/ai.controller");
 // GET /api/ai
 router.get("/", asyncHandler(aiController.getGeneralSuggestion));
 
+// POST /api/ai/query – production OpenAI (structured JSON)
+router.post("/query", asyncHandler(aiController.postQuery));
+
 // GET /api/ai/status – AI Supervisor operational status
 router.get("/status", asyncHandler(aiController.getOperationalStatus));
 

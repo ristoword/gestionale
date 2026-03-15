@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "answer": "Oggi ci sono 5 ordini attivi (3 in attesa, 2 pronti). Scorte basse per: farina, olio. Suggerimento: riordina farina e olio; consegna i 2 ordini pronti.",
+  "intent": "active_orders",
+  "confidence": "high",
+  "data": {
+    "summary": "5 ordini aperti, 2 prodotti sotto soglia",
+    "items": [
+      { "name": "farina", "quantity": 2, "threshold": 5 },
+      { "name": "olio", "quantity": 1, "threshold": 3 }
+    ],
+    "totals": {
+      "activeOrders": 5,
+      "pendingOrders": 3,
+      "readyOrders": 2,
+      "lowStockCount": 2
+    },
+    "warnings": ["farina sotto soglia", "olio sotto soglia"]
+  },
+  "sources": ["orders", "inventory"],
+  "nextActions": [
+    "Riordina farina e olio",
+    "Consegna i 2 ordini pronti"
+  ]
+}

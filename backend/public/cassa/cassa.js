@@ -750,7 +750,14 @@ async function patchOrderStatus(orderId, status) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
   });
-  if (!res.ok) throw new Error("Errore aggiornamento ordine");
+  if (!res.ok) {
+    let msg = "Errore aggiornamento ordine";
+    try {
+      const data = await res.json();
+      if (data && data.error) msg = data.error;
+    } catch (_) {}
+    throw new Error(msg);
+  }
   return await res.json().catch(() => null);
 }
 

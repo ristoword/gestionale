@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>RISTOWORD – QR Tavoli</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/cucina/cucina.css" />
+  <link rel="stylesheet" href="qr-tables.css" />
+  <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@gh-pages/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1>RISTOWORD – QR Tavoli</h1>
+        <p class="subtitle">Genera e stampa QR per ordinazione al tavolo</p>
+      </div>
+      <div class="topbar-right">
+        <button class="btn primary" id="btn-print-all">Stampa tutti i QR</button>
+        <button class="btn ghost" id="btn-refresh">Aggiorna</button>
+        <a href="/" class="btn ghost">← Dashboard</a>
+      </div>
+    </header>
+
+    <main class="main">
+      <article class="card">
+        <header class="card-header">
+          <h2>Tavoli</h2>
+          <p>Ogni QR punta alla pagina ordini già associata al tavolo. Scansiona per ordinare.</p>
+        </header>
+        <div class="card-body">
+          <div id="tables-loading" class="loading-msg">Caricamento...</div>
+          <div id="tables-grid" class="tables-grid"></div>
+        </div>
+      </article>
+    </main>
+
+  </div>
+
+  <script src="/shared/auth-guard.js" data-allowed-roles="owner,sala,cucina,cassa,supervisor"></script>
+  <script src="qr-tables.js"></script>
+</body>
+</html>

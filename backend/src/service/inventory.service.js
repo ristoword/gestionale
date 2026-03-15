@@ -49,40 +49,176 @@ function calculateRecipeIngredientCost(recipe, servedQty) {
 }
 
 /**
- * Deduct recipe ingredients from inventory. Returns { warnings }.
- * Uses type "recipe_consumption" for stock movements.
- * Adds explicit warning when stock would go negative (insufficient stock).
+ * Check if recipe ingredient unit matches inventory product unit when both exist.
  */
-function deductRecipeIngredients(order, itemName, recipe, servedQty) {
+function unitsMatch(recipeUnit, invUnit) {
+  const ru = String(recipeUnit || "").trim().toLowerCase();
+  const iu = String(invUnit || "").trim().toLowerCase();
+  if (!ru || !iu) return true;
+  return ru === iu;
+}
+
+/**
+ * Validate recipe consumption without deducting (pre-check).
+ * Returns { valid, failures } - valid is false if any ingredient fails.
+ */
+function validateRecipeConsumption(recipe, servedQty) {
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
-  const warnings = [];
+  const department = recipe.department || recipe.area || "cucina";
+  const failures = [];
 
   for (const ing of ingredients) {
-    const name = ing.name || "";
+    const name = ing.name || ing.ingredientName || "";
     const needQty = (Number(ing.quantity) ?? Number(ing.qty) ?? 0) * (Number(servedQty) || 1);
     if (!name || needQty <= 0) continue;
 
     const invItem = inventoryRepository.findInventoryItemByName(name);
     if (!invItem) {
-      warnings.push({ type: "missing_inventory", ingredient: name });
+      failures.push({
+        type: "missing_inventory",
+        ingredient: name,
+        message: `Prodotto non trovato in magazzino: ${name}`,
+      });
       continue;
     }
 
-    const before = inventoryRepository.getStock(invItem);
-    if (before < needQty) {
-      warnings.push({
+    const invUnit = invItem.unit || "";
+    const ingUnit = ing.unit || "";
+    if (invUnit && ingUnit && !unitsMatch(ingUnit, invUnit)) {
+      failures.push({
+        type: "unit_mismatch",
+        ingredient: name,
+        message: `Unità ricetta (${ingUnit}) non corrisponde a magazzino (${invUnit}) per: ${name}`,
+      });
+      continue;
+    }
+
+    const deptStock = inventoryRepository.getDepartmentStock(invItem, department);
+    if (deptStock < needQty) {
+      failures.push({
         type: "insufficient_stock",
         ingredient: name,
         requested: needQty,
-        available: before,
-        message: `${name}: richiesti ${needQty}, disponibili ${before}`,
+        available: deptStock,
+        message: `${name}: richiesti ${needQty}, disponibili in cucina ${deptStock}`,
       });
     }
+  }
 
-    const result = inventoryRepository.deductInventoryItem(name, needQty);
-    if (!result.success) {
-      warnings.push({ type: "deduct_failed", ingredient: name });
+  return { valid: failures.length === 0, failures };
+}
+
+/**
+ * Validate entire order consumption (all recipe items) without deducting.
+ * Use before setStatus to block servito/chiuso when kitchen stock is insufficient.
+ */
+async function validateOrderConsumption(order) {
+  if (!order || !order.id) return { valid: false, error: "Ordine non valido", failures: [] };
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  const allFailures = [];
+
+  for (const item of items) {
+    const itemName = String(item.name || "").trim();
+    const servedQty = Number(item.qty) || 1;
+    const recipe = await recipesRepository.findRecipeByMenuItemName(itemName);
+    if (!recipe) continue;
+
+    const { valid, failures } = validateRecipeConsumption(recipe, servedQty);
+    if (!valid && failures.length > 0) {
+      allFailures.push({ item: itemName, failures });
+    }
+  }
+
+  if (allFailures.length === 0) {
+    return { valid: true, error: null, failures: [] };
+  }
+
+  const first = allFailures[0].failures[0];
+  return {
+    valid: false,
+    error: first?.message || "Stock cucina insufficiente",
+    failures: allFailures.flatMap((a) => a.failures),
+  };
+}
+
+/**
+ * Deduct recipe ingredients from department warehouse (cucina).
+ * Uses getDepartmentStock to check availability before deducting.
+ * If ANY ingredient has insufficient kitchen stock, BLOCKS entire consumption and returns error.
+ * Uses deductFromDepartment instead of central deduction.
+ */
+function deductRecipeIngredients(order, itemName, recipe, servedQty) {
+  const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+  const department = recipe.department || recipe.area || "cucina";
+  const warnings = [];
+  const preCheckFailures = [];
+
+  for (const ing of ingredients) {
+    const name = ing.name || ing.ingredientName || "";
+    const needQty = (Number(ing.quantity) ?? Number(ing.qty) ?? 0) * (Number(servedQty) || 1);
+    if (!name || needQty <= 0) continue;
+
+    const invItem = inventoryRepository.findInventoryItemByName(name);
+    if (!invItem) {
+      preCheckFailures.push({
+        type: "missing_inventory",
+        ingredient: name,
+        message: `Prodotto non trovato in magazzino: ${name}`,
+      });
       continue;
+    }
+
+    const invUnit = invItem.unit || "";
+    const ingUnit = ing.unit || "";
+    if (invUnit && ingUnit && !unitsMatch(ingUnit, invUnit)) {
+      preCheckFailures.push({
+        type: "unit_mismatch",
+        ingredient: name,
+        message: `Unità ricetta (${ingUnit}) non corrisponde a magazzino (${invUnit}) per: ${name}`,
+      });
+      continue;
+    }
+
+    const deptStock = inventoryRepository.getDepartmentStock(invItem, department);
+    if (deptStock < needQty) {
+      preCheckFailures.push({
+        type: "insufficient_stock",
+        ingredient: name,
+        requested: needQty,
+        available: deptStock,
+        message: `${name}: richiesti ${needQty}, disponibili in cucina ${deptStock}`,
+      });
+    }
+  }
+
+  if (preCheckFailures.length > 0) {
+    return {
+      blocked: true,
+      error: preCheckFailures[0].message,
+      failures: preCheckFailures,
+      warnings: [],
+    };
+  }
+
+  for (const ing of ingredients) {
+    const name = ing.name || ing.ingredientName || "";
+    const needQty = (Number(ing.quantity) ?? Number(ing.qty) ?? 0) * (Number(servedQty) || 1);
+    if (!name || needQty <= 0) continue;
+
+    const invItem = inventoryRepository.findInventoryItemByName(name);
+    const before = inventoryRepository.getDepartmentStock(invItem, department);
+    const result = inventoryRepository.deductFromDepartment(name, needQty, department);
+
+    if (!result.success) {
+      return {
+        blocked: true,
+        error: result.reason === "insufficient_stock"
+          ? `${name}: richiesti ${result.requested}, disponibili ${result.available}`
+          : `Errore scarico ${name}: ${result.reason}`,
+        failures: [{ type: "deduct_failed", ingredient: name }],
+        warnings: [],
+      };
     }
 
     if (result.belowMin) {
@@ -104,11 +240,18 @@ function deductRecipeIngredients(order, itemName, recipe, servedQty) {
       unit: ing.unit || invItem.unit || "",
       before,
       after: result.newStock,
+      fromWarehouse: department,
+      toWarehouse: null,
+      productId: invItem.id,
+      productName: invItem.name,
+      recipeId: recipe.id || null,
+      sourceModule: "orders",
+      reason: "Consumo ingredienti da ricetta (ordine servito/chiuso)",
       note: "Consumo ingredienti da ricetta (ordine servito/chiuso)",
     });
   }
 
-  return { warnings };
+  return { blocked: false, warnings };
 }
 
 /**
@@ -151,6 +294,22 @@ async function onOrderFinalized(order) {
   const allWarnings = [];
   let totalFoodCost = 0;
 
+  // Validate ALL recipe items first to avoid partial deduction
+  const validation = await validateOrderConsumption(order);
+  if (!validation.valid) {
+    return {
+      ok: false,
+      blocked: true,
+      message: "Scarico bloccato: stock cucina insufficiente",
+      error: validation.error,
+      failures: validation.failures || [],
+      orderId: order.id,
+      itemFoodCosts: [],
+      totalFoodCost: 0,
+      warnings: [],
+    };
+  }
+
   for (const item of items) {
     const itemName = String(item.name || "").trim();
     const servedQty = Number(item.qty) || 1;
@@ -166,8 +325,21 @@ async function onOrderFinalized(order) {
     totalFoodCost += foodCost;
     itemFoodCosts.push({ itemName, qty: servedQty, foodCost });
 
-    const { warnings } = deductRecipeIngredients(order, itemName, recipe, servedQty);
-    allWarnings.push(...warnings);
+    const deductResult = deductRecipeIngredients(order, itemName, recipe, servedQty);
+    if (deductResult.blocked) {
+      return {
+        ok: false,
+        blocked: true,
+        message: "Scarico bloccato: stock cucina insufficiente",
+        error: deductResult.error,
+        failures: deductResult.failures || [],
+        orderId: order.id,
+        itemFoodCosts: [],
+        totalFoodCost: 0,
+        warnings: [...allWarnings, { type: "deduction_blocked", error: deductResult.error }],
+      };
+    }
+    allWarnings.push(...(deductResult.warnings || []));
   }
 
   processedClosedOrders.add(processKey);
@@ -224,6 +396,7 @@ function getLowStockCount() {
 module.exports = {
   onOrderFinalized,
   onOrderClosed,
+  validateOrderConsumption,
   calculateRecipeIngredientCost,
   getLowStockCount,
 };

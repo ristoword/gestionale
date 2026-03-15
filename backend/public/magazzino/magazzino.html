@@ -36,6 +36,7 @@
     <!-- TAB NAVIGAZIONE -->
     <nav class="mag-tabs">
       <button class="mag-tab active" data-tab="centrale">Magazzino Centrale</button>
+      <button class="mag-tab" data-tab="ricezione">Ricezione merce</button>
       <button class="mag-tab" data-tab="cucina">Scorta Cucina</button>
       <button class="mag-tab" data-tab="sala">Scorta Sala</button>
       <button class="mag-tab" data-tab="bar">Scorta Bar</button>
@@ -92,6 +93,85 @@
           <div class="form-actions full">
             <button class="btn primary" id="btn-add-product">Aggiungi prodotto</button>
           </div>
+        </div>
+      </section>
+
+      <!-- RICEZIONE MERCE (barcode + voce) -->
+      <section class="card card-tab" id="tab-ricezione">
+        <header class="card-header">
+          <h2>Ricezione merce – Barcode</h2>
+          <button type="button" class="btn-voice" id="btn-voice-receive" title="Inserimento vocale">🎤</button>
+        </header>
+        <div class="card-body">
+          <p class="receive-hint">Scansiona il barcode o inseriscilo manualmente. La merce può essere caricata direttamente in centrale o nei reparti.</p>
+          <div class="form-grid receive-form">
+            <label class="receive-barcode-row full">
+              Barcode
+              <div class="barcode-input-wrap">
+                <input type="text" id="receive-barcode" placeholder="Scansiona o digita barcode" class="barcode-input" autocomplete="off" />
+                <button type="button" class="btn small" id="btn-barcode-lookup">Cerca</button>
+              </div>
+            </label>
+            <label>
+              Prodotto
+              <input type="text" id="receive-product-name" placeholder="Nome prodotto (se barcode sconosciuto)" />
+            </label>
+            <label>
+              Quantità
+              <input type="number" id="receive-quantity" step="0.01" min="0.01" placeholder="Es. 5" />
+            </label>
+            <label>
+              Unità
+              <select id="receive-unit">
+                <option value="kg">kg</option>
+                <option value="lt">lt</option>
+                <option value="g">g</option>
+                <option value="ml">ml</option>
+                <option value="unità">unità</option>
+                <option value="pezzi">pezzi</option>
+                <option value="casse">casse</option>
+                <option value="scatole">scatole</option>
+              </select>
+            </label>
+            <label>
+              Destinazione
+              <select id="receive-destination">
+                <option value="central">Magazzino centrale</option>
+                <option value="cucina">Cucina</option>
+                <option value="bar">Bar</option>
+                <option value="sala">Sala</option>
+                <option value="proprieta">Proprietà</option>
+              </select>
+            </label>
+            <label>
+              Ricevuto da
+              <input type="text" id="receive-operator" placeholder="Operatore" />
+            </label>
+            <label>
+              Lotto (opz.)
+              <input type="text" id="receive-lot" placeholder="Lotto provenienza" />
+            </label>
+            <label>
+              Costo unitario € (opz.)
+              <input type="number" id="receive-cost" step="0.01" min="0" placeholder="0.00" />
+            </label>
+            <label>
+              Fornitore (opz.)
+              <input type="text" id="receive-supplier" placeholder="Fornitore" />
+            </label>
+            <label class="full">
+              Note (opz.)
+              <input type="text" id="receive-notes" placeholder="Note ricevuta" />
+            </label>
+            <label class="receive-create full">
+              <input type="checkbox" id="receive-create-if-unknown" />
+              Crea prodotto se barcode sconosciuto
+            </label>
+            <div class="form-actions full">
+              <button class="btn primary" id="btn-receive">Registra ricevuta</button>
+            </div>
+          </div>
+          <div id="receive-status" class="receive-status"></div>
         </div>
       </section>
 
@@ -208,10 +288,13 @@
       </header>
       <div class="modal-body">
         <p class="modal-product" id="transfer-product-name">—</p>
+        <p class="modal-hint" style="font-size:12px;color:var(--text-soft);margin-bottom:8px;">
+          Da: <strong>Magazzino Centrale</strong> → A: <strong id="transfer-to-label">Cucina (kitchen)</strong>
+        </p>
         <label>
           Reparto destinazione
           <select id="transfer-dept">
-            <option value="cucina">Cucina</option>
+            <option value="cucina">Cucina (kitchen)</option>
             <option value="sala">Sala</option>
             <option value="bar">Bar</option>
             <option value="proprieta">Proprietà</option>
@@ -238,7 +321,7 @@
     </div>
   </div>
 
-  <script src="/shared/auth-guard.js" data-allowed-roles="owner,sala,cucina,cassa"></script>
+  <script src="/shared/auth-guard.js" data-allowed-roles="owner,sala,cucina,cassa,magazzino"></script>
   <script src="magazzino.js"></script>
 </body>
 </html>

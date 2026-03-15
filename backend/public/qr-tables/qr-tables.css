@@ -1,0 +1,123 @@
+/* qr-tables.css – QR Tavoli management */
+
+.main {
+  flex: 1;
+  overflow: auto;
+}
+
+.card {
+  background: var(--bg-alt);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.card-header p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+.card-body {
+  padding: 24px;
+}
+
+.loading-msg {
+  color: var(--text-soft);
+  padding: 24px;
+  text-align: center;
+}
+
+.tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.table-card {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.table-card h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.table-card .qr-preview {
+  width: 140px;
+  height: 140px;
+  padding: 10px;
+  background: #fff;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-card .qr-preview canvas,
+.table-card .qr-preview img {
+  display: block;
+}
+
+.table-card .qr-url {
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+  max-width: 100%;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.table-card .actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.table-card .btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.table-card .btn.primary {
+  background: var(--accent-info);
+  color: #fff;
+}
+
+.table-card .btn.ghost {
+  background: transparent;
+  color: var(--text-soft);
+  border: 1px solid var(--border-soft);
+}
+
+.table-card .btn:hover {
+  opacity: 0.9;
+}
+
+.table-card .btn.ghost:hover {
+  background: var(--border-soft);
+}

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>RISTOWORD – Hardware e stampa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/cucina/cucina.css" />
+  <link rel="stylesheet" href="hardware.css" />
+</head>
+<body>
+  <div class="layout">
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1>RISTOWORD – Hardware e stampa</h1>
+        <p class="subtitle">Dispositivi, routing automatico e coda stampa</p>
+      </div>
+      <div class="topbar-right">
+        <button class="btn ghost" id="btn-refresh">Aggiorna</button>
+        <a href="/" class="btn ghost">← Dashboard</a>
+      </div>
+    </header>
+
+    <nav class="hw-nav">
+      <button class="nav-btn active" data-tab="devices">Dispositivi</button>
+      <button class="nav-btn" data-tab="routes">Print routes</button>
+      <button class="nav-btn" data-tab="jobs">Coda stampa</button>
+    </nav>
+
+    <main class="main">
+
+      <!-- TAB DEVICES -->
+      <section id="tab-devices" class="tab-panel active">
+        <div class="two-cols">
+          <article class="card">
+            <header class="card-header">
+              <h2><span id="device-form-title">Nuovo dispositivo</span></h2>
+              <p>Stampanti, scanner, cassetti portamonete</p>
+            </header>
+            <div class="card-body form-grid">
+              <input type="hidden" id="device-id" />
+              <label class="full">
+                Nome
+                <input type="text" id="device-name" placeholder="Es. Stampante Cucina 1" />
+              </label>
+              <label>
+                Tipo
+                <select id="device-type">
+                  <option value="thermal_printer">Termica</option>
+                  <option value="kitchen_printer">Cucina</option>
+                  <option value="bar_printer">Bar</option>
+                  <option value="pizzeria_printer">Pizzeria</option>
+                  <option value="cashier_printer">Cassa</option>
+                  <option value="label_printer">Etichette</option>
+                  <option value="barcode_scanner">Barcode</option>
+                  <option value="cash_drawer">Cassetto</option>
+                </select>
+              </label>
+              <label>
+                Reparto
+                <select id="device-department">
+                  <option value="sala">Sala</option>
+                  <option value="cucina">Cucina</option>
+                  <option value="bar">Bar</option>
+                  <option value="pizzeria">Pizzeria</option>
+                  <option value="cassa">Cassa</option>
+                  <option value="magazzino">Magazzino</option>
+                </select>
+              </label>
+              <label>
+                Connessione
+                <select id="device-connection">
+                  <option value="usb">USB</option>
+                  <option value="network">Rete</option>
+                  <option value="bluetooth">Bluetooth</option>
+                </select>
+              </label>
+              <label>IP (se rete)<input type="text" id="device-ip" placeholder="192.168.1.10" /></label>
+              <label>Porta<input type="number" id="device-port" placeholder="9100" /></label>
+              <label class="full">
+                <label class="inline-check"><input type="checkbox" id="device-default" /> Default per reparto</label>
+              </label>
+              <label class="full">
+                <label class="inline-check"><input type="checkbox" id="device-active" checked /> Attivo</label>
+              </label>
+              <label class="full">Note<input type="text" id="device-notes" placeholder="Opzionale" /></label>
+              <div class="form-actions full">
+                <button class="btn ghost" id="btn-device-clear">Annulla</button>
+                <button class="btn primary" id="btn-device-save">Salva</button>
+              </div>
+            </div>
+          </article>
+          <article class="card">
+            <header class="card-header">
+              <h2>Dispositivi</h2>
+              <p>Lista dispositivi configurati</p>
+            </header>
+            <div class="card-body list" id="devices-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- TAB ROUTES -->
+      <section id="tab-routes" class="tab-panel">
+        <div class="two-cols">
+          <article class="card">
+            <header class="card-header">
+              <h2>Nuova route</h2>
+              <p>Associa tipo evento → dispositivo</p>
+            </header>
+            <div class="card-body form-grid">
+              <label>
+                Tipo evento
+                <select id="route-event">
+                  <option value="order_ticket_bar">Comanda Bar</option>
+                  <option value="order_ticket_kitchen">Comanda Cucina</option>
+                  <option value="order_ticket_pizzeria">Comanda Pizzeria</option>
+                  <option value="receipt_prebill">Preconto</option>
+                  <option value="receipt_final">Scontrino</option>
+                  <option value="inventory_label">Etichetta magazzino</option>
+                  <option value="inventory_report">Report magazzino</option>
+                  <option value="catering_proposal_print">Proposta catering</option>
+                  <option value="daily_menu_print">Menu del giorno</option>
+                  <option value="kitchen_production_print">Produzione cucina</option>
+                  <option value="shopping_list_print">Lista spesa</option>
+                  <option value="closure_report_print">Chiusura giornata</option>
+                </select>
+              </label>
+              <label>
+                Reparto
+                <select id="route-department">
+                  <option value="sala">Sala</option>
+                  <option value="cucina">Cucina</option>
+                  <option value="bar">Bar</option>
+                  <option value="pizzeria">Pizzeria</option>
+                  <option value="cassa">Cassa</option>
+                  <option value="magazzino">Magazzino</option>
+                </select>
+              </label>
+              <label>
+                Dispositivo
+                <select id="route-device">
+                  <option value="">— Seleziona —</option>
+                </select>
+              </label>
+              <div class="form-actions full">
+                <button class="btn primary" id="btn-route-add">Aggiungi route</button>
+              </div>
+            </div>
+          </article>
+          <article class="card">
+            <header class="card-header">
+              <h2>Print routes</h2>
+              <p>Mappatura evento → dispositivo</p>
+            </header>
+            <div class="card-body list" id="routes-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- TAB JOBS -->
+      <section id="tab-jobs" class="tab-panel">
+        <article class="card">
+          <header class="card-header">
+            <h2>Coda stampa</h2>
+            <p>Ultimi job: inviati, falliti, in coda</p>
+          </header>
+          <div class="card-body">
+            <div class="job-filters">
+              <select id="job-filter-status">
+                <option value="">Tutti</option>
+                <option value="queued">In coda</option>
+                <option value="sent">Inviato</option>
+                <option value="printed">Stampato</option>
+                <option value="failed">Fallito</option>
+              </select>
+            </div>
+            <div id="jobs-list" class="jobs-list"></div>
+          </div>
+        </article>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/shared/auth-guard.js" data-allowed-roles="owner,sala,cucina,cassa,supervisor"></script>
+  <script src="hardware.js"></script>
+</body>
+</html>

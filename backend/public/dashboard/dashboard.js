@@ -61,6 +61,17 @@ function formatMoney(v){
   return "€ " + n.toFixed(2)
 }
 
+function escapeHtml(str) {
+  if (str == null) return "";
+  const s = String(str);
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // =============================
 // API
 // =============================
@@ -252,15 +263,19 @@ logout.addEventListener("click",async ()=>{
 async function askAI(question) {
   const q = String(question || "").trim();
 
-  const url = q
-    ? "/api/ai?q=" + encodeURIComponent(q)
-    : "/api/ai";
-
-  const res = await fetch(url, { credentials: "same-origin" });
-  if (!res.ok) {
-    throw new Error("Errore risposta AI");
+  if (q) {
+    const res = await fetch("/api/ai/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ question: q }),
+    });
+    if (!res.ok) throw new Error("Errore risposta AI");
+    return await res.json();
   }
 
+  const res = await fetch("/api/ai", { credentials: "same-origin" });
+  if (!res.ok) throw new Error("Errore risposta AI");
   return await res.json();
 }
 
@@ -303,17 +318,31 @@ function setupAI() {
       const data = await askAI(q);
 
       const message =
-        data?.message ||
         data?.answer ||
+        data?.message ||
         data?.text ||
         JSON.stringify(data);
+      const warnings = Array.isArray(data?.data?.warnings)
+        ? data.data.warnings.filter(Boolean)
+        : [];
+      const nextActions = Array.isArray(data?.nextActions)
+        ? data.nextActions.filter(Boolean)
+        : [];
 
-      responseBox.innerHTML = `
+      let html = `
         <div class="last-order-main">
           <div class="last-order-title">AI Assist</div>
         </div>
-        <div class="last-order-line">${message}</div>
+        <div class="last-order-line">${escapeHtml(message)}</div>
       `;
+      if (warnings.length > 0) {
+        html += `<div class="last-order-line" style="color:#c0392b;font-size:0.9em">⚠ ${escapeHtml(warnings.join("; "))}</div>`;
+      }
+      if (nextActions.length > 0) {
+        html += `<div class="last-order-line" style="color:#27ae60;font-size:0.9em">→ ${escapeHtml(nextActions.join(" • "))}</div>`;
+      }
+
+      responseBox.innerHTML = html;
     } catch (err) {
       responseBox.innerHTML = `
         <div class="last-order-main">

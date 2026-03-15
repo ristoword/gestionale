@@ -61,7 +61,8 @@ async function runSetup(req, res) {
 
   const TENANT_FILES = [
     "orders.json", "inventory.json", "inventory-transfers.json", "payments.json", "bookings.json",
-    "menu.json", "closures.json", "catering-events.json", "haccp-checks.json",
+    "menu.json", "closures.json", "catering-events.json", "catering-presets.json", "haccp-checks.json",
+    "devices.json", "print-routes.json", "print-jobs.json",
   ];
   for (const f of TENANT_FILES) {
     const p = path.join(defaultDir, f);

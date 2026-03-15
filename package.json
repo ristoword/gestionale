@@ -5,6 +5,7 @@
     "start": "cd backend && npm start"
   },
   "dependencies": {
-    "bcrypt": "^6.0.0"
+    "bcrypt": "^6.0.0",
+    "openai": "^6.29.0"
   }
 }

@@ -9,6 +9,9 @@ const router = express.Router();
 
 router.get("/", asyncHandler(inventoryController.listInventory));
 router.get("/transfers", asyncHandler(inventoryController.listTransfers));
+router.get("/barcode/:code", asyncHandler(inventoryController.getByBarcode));
+router.post("/receive/voice-preview", asyncHandler(inventoryController.voicePreview));
+router.post("/receive", asyncHandler(inventoryController.receive));
 router.post("/", asyncHandler(inventoryController.createInventory));
 router.post("/transfer", asyncHandler(inventoryController.transferInventory));
 router.post("/return", asyncHandler(inventoryController.returnToCentral));

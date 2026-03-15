@@ -17,7 +17,11 @@ const env = {
 
   AI_ENABLED: process.env.AI_ENABLED === "true",
 
-  AI_PROVIDER: process.env.AI_PROVIDER || "local"
+  AI_PROVIDER: process.env.AI_PROVIDER || "local",
+
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || null,
+
+  OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-4o-mini",
 };
 
 module.exports = env;

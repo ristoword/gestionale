@@ -5,6 +5,9 @@ const recipesController = require("../controllers/recipes.controller");
 // GET /api/recipes
 router.get("/", asyncHandler(recipesController.listRecipes));
 
+// GET /api/recipes/:id/food-cost (before :id to avoid "food-cost" as id)
+router.get("/:id/food-cost", asyncHandler(recipesController.getRecipeFoodCost));
+
 // GET /api/recipes/:id
 router.get("/:id", asyncHandler(recipesController.getRecipeById));
 

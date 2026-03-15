@@ -76,7 +76,26 @@
     return data;
   }
 
-  function renderDishes(dishes) {
+  async function loadRecipes() {
+    try {
+      const res = await fetch("/api/recipes", { credentials: "same-origin" });
+      if (!res.ok) return [];
+      const list = await res.json();
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function hasLinkedRecipe(dishName, recipes) {
+    if (!dishName || !Array.isArray(recipes) || recipes.length === 0) return false;
+    const n = String(dishName).trim().toLowerCase();
+    return recipes.some(
+      (r) => String(r.menuItemName || r.menu_item_name || r.name || "").trim().toLowerCase() === n
+    );
+  }
+
+  function renderDishes(dishes, recipes = []) {
     const container = document.getElementById("dishes-by-category");
     const loading = document.getElementById("dishes-loading");
     loading.style.display = "none";
@@ -96,12 +115,14 @@
       html += `<div class="daily-category-block"><div class="daily-category-title">${escapeHtml(label)}</div><div class="daily-dish-list">`;
       list.forEach((dish) => {
         const inactive = dish.active === false ? " inactive" : "";
+        const noRecipe = !hasLinkedRecipe(dish.name, recipes);
         html += `
           <div class="daily-dish-card${inactive}" data-id="${dish.id}" data-category="${escapeHtml(dish.category || "extra")}">
             <div class="daily-dish-info">
               <div class="daily-dish-name">${escapeHtml(dish.name)}</div>
               ${dish.description ? `<div class="daily-dish-desc">${escapeHtml(dish.description)}</div>` : ""}
               ${dish.allergens ? `<div class="daily-dish-allergens">⚠ ${escapeHtml(dish.allergens)}</div>` : ""}
+              ${noRecipe ? `<div class="daily-dish-no-recipe-warn" title="Aggiungi una ricetta con lo stesso nome in Ricette per scaricare dal magazzino">⚠ Nessuna ricetta collegata, non verrà scaricato dal magazzino</div>` : ""}
             </div>
             <span class="daily-dish-price">${formatPrice(dish.price)}</span>
             <div class="daily-dish-actions">
@@ -146,9 +167,9 @@
     const loading = document.getElementById("dishes-loading");
     loading.style.display = "block";
     try {
-      const data = await loadData();
+      const [data, recipes] = await Promise.all([loadData(), loadRecipes()]);
       updateStatusUI(data.menuActive);
-      renderDishes(data.dishes || []);
+      renderDishes(data.dishes || [], recipes);
     } catch (err) {
       loading.textContent = "Errore: " + (err.message || "Caricamento fallito");
       console.error(err);

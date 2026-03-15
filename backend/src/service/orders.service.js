@@ -7,6 +7,10 @@ async function listOrders() {
   return ordersRepository.getAllOrders();
 }
 
+async function getOrderById(id) {
+  return ordersRepository.getOrderById(id);
+}
+
 function getOrderDateStr(order) {
   const d = order.updatedAt || order.createdAt || order.date;
   if (!d) return null;
@@ -102,6 +106,7 @@ function tryMarkOrderInventoryProcessed(id) {
 
 module.exports = {
   listOrders,
+  getOrderById,
   listActiveOrders,
   listOrdersByDate,
   createOrder,

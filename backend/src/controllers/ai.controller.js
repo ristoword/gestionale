@@ -1,4 +1,28 @@
 const aiAssistantService = require("../service/ai-assistant.service");
+const aiOpenaiService = require("../service/ai-openai.service");
+
+// POST /api/ai/query – production OpenAI backend (structured JSON)
+exports.postQuery = async (req, res) => {
+  const question = String((req.body && req.body.question) || "").trim();
+  if (!question) {
+    return res.status(400).json({
+      ok: false,
+      answer: "Parametro 'question' obbligatorio.",
+      intent: "generic",
+      confidence: "low",
+      data: { summary: "", items: [], totals: {}, warnings: [] },
+      sources: [],
+      nextActions: [],
+    });
+  }
+  try {
+    const result = await aiOpenaiService.queryWithOpenAI(question);
+    return res.json(result);
+  } catch (err) {
+    console.error("[AI] query error:", err.message);
+    return res.status(500).json(aiOpenaiService.FALLBACK_RESPONSE);
+  }
+};
 
 // GET /api/ai/status – operational AI Supervisor status
 exports.getOperationalStatus = async (req, res) => {

@@ -17,22 +17,16 @@
         <p class="subtitle">Costo ingredienti, produzione e margini per ricetta</p>
       </div>
       <div class="topbar-right">
+        <select id="recipe-select" class="recipe-select" title="Scegli ricetta">
+          <option value="">-- Scegli ricetta --</option>
+          <option value="__new">+ Nuovo calcolo / nuova ricetta</option>
+        </select>
         <button type="button" class="btn ghost" onclick="window.location.href='/cucina/cucina.html'">← Cucina</button>
       </div>
     </header>
 
     <main class="food-cost-main">
-      <section class="card">
-        <header class="card-header">
-          <h2>Seleziona ricetta</h2>
-          <select id="recipe-select" class="recipe-select">
-            <option value="">-- Scegli ricetta --</option>
-            <option value="__new">+ Nuovo calcolo / nuova ricetta</option>
-          </select>
-        </header>
-      </section>
-
-      <section id="recipe-panel" class="card" style="display:none;">
+      <section id="recipe-panel" class="card">
         <header class="card-header">
           <h2 id="recipe-name">–</h2>
           <div class="card-actions">
@@ -85,12 +79,6 @@
             <div class="summary-card"><span class="label">Margine lordo</span><span class="value" id="sum-margin">€ 0,00</span></div>
             <div class="summary-card"><span class="label">Prezzo consigliato</span><span class="value" id="sum-suggested">€ 0,00</span></div>
           </div>
-        </div>
-      </section>
-
-      <section id="empty-state" class="card">
-        <div class="card-body empty-state">
-          <p>Seleziona una ricetta per vedere e modificare il food cost.</p>
         </div>
       </section>
     </main>

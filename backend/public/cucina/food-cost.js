@@ -7,11 +7,22 @@
 
   const selectEl = document.getElementById("recipe-select");
   const panelEl = document.getElementById("recipe-panel");
-  const emptyEl = document.getElementById("empty-state");
 
-  function showPanel(show) {
-    panelEl.style.display = show ? "block" : "none";
-    emptyEl.style.display = show ? "none" : "block";
+  function buildNewDraftRecipe(name = "Nuovo calcolo") {
+    return {
+      id: null,
+      name,
+      ingredients: [],
+      yieldPortions: 1,
+      sellingPrice: 0,
+      targetFoodCost: 0,
+      ivaPercent: 0,
+      overheadPercent: 0,
+      packagingCost: 0,
+      laborCost: 0,
+      energyCost: 0,
+      extraCost: 0,
+    };
   }
 
   function formatEuro(n) {
@@ -22,7 +33,7 @@
     const res = await fetch("/api/recipes", { credentials: "same-origin" });
     if (!res.ok) throw new Error("Errore caricamento ricette");
     recipes = await res.json();
-    selectEl.innerHTML = '<option value="">-- Scegli ricetta --</option>';
+    selectEl.innerHTML = '<option value="">-- Scegli ricetta --</option><option value="__new">+ Nuovo calcolo / nuova ricetta</option>';
     recipes.forEach((r) => {
       const opt = document.createElement("option");
       opt.value = r.id;
@@ -151,11 +162,8 @@
   }
 
   function renderRecipe() {
-    if (!currentRecipe) {
-      showPanel(false);
-      return;
-    }
-    showPanel(true);
+    if (!currentRecipe) currentRecipe = buildNewDraftRecipe();
+    if (panelEl) panelEl.style.display = "block";
     document.getElementById("recipe-name").textContent = currentRecipe.name || currentRecipe.menuItemName || "Ricetta";
 
     document.getElementById("input-yield").value = currentRecipe.yieldPortions ?? currentRecipe.yield_portions ?? 1;
@@ -195,29 +203,19 @@
   async function onSelectRecipe() {
     const id = selectEl.value;
     if (!id) {
-      currentRecipe = null;
-      showPanel(false);
+      currentRecipe = buildNewDraftRecipe();
+      renderRecipe();
       return;
     }
     if (id === "__new") {
-      currentRecipe = {
-        id: null,
-        name: "Nuovo calcolo",
-        ingredients: [],
-        yieldPortions: 1,
-        sellingPrice: 0,
-        targetFoodCost: 0,
-        ivaPercent: 0,
-        overheadPercent: 0,
-        packagingCost: 0,
-        laborCost: 0,
-      };
+      currentRecipe = buildNewDraftRecipe("Nuovo calcolo");
       renderRecipe();
       return;
     }
     currentRecipe = recipes.find((r) => r.id === id) || null;
     if (!currentRecipe) {
-      showPanel(false);
+      currentRecipe = buildNewDraftRecipe();
+      renderRecipe();
       return;
     }
     await loadFoodCostAndRender();
@@ -345,9 +343,9 @@
           renderRecipe();
         }
       } else {
-        currentRecipe = null;
-        showPanel(false);
+        currentRecipe = buildNewDraftRecipe();
         selectEl.value = "";
+        renderRecipe();
       }
     });
   }
@@ -367,12 +365,12 @@
     if (el) el.addEventListener("input", updateTotals);
   });
 
-  loadRecipes().then(() => {
-    if (recipes.length === 0) {
-      emptyEl.querySelector("p").textContent = "Nessuna ricetta presente. Crea ricette dalla sezione Ricette in Cucina.";
-    }
-  }).catch((e) => {
+  // Bootstrap: show full calculator immediately as an empty draft.
+  currentRecipe = buildNewDraftRecipe();
+  renderRecipe();
+
+  loadRecipes().catch((e) => {
     console.error(e);
-    emptyEl.querySelector("p").textContent = "Errore nel caricamento delle ricette.";
+    // Calculator remains usable even if recipes list fails.
   });
 })();

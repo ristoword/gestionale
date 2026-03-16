@@ -144,7 +144,7 @@ async function updateOrderStatus(id, status) {
 //   RENDER KDS (COMANDE)
 // =======================================
 
-function renderKpi(orders) {
+async function renderKpi(orders) {
   const prep = orders.filter((o) => o.status === "in_preparazione").length;
   const ready = orders.filter((o) => o.status === "pronto").length;
   const late = orders.filter((o) => {
@@ -159,6 +159,21 @@ function renderKpi(orders) {
   if (p) p.textContent = prep;
   if (r) r.textContent = ready;
   if (l) l.textContent = late;
+
+  const invEl = document.getElementById("kpi-inventory-value");
+  if (invEl) {
+    try {
+      const res = await fetch("/api/inventory/value", { credentials: "same-origin" });
+      if (res.ok) {
+        const data = await res.json();
+        invEl.textContent = data.formatted || "€ 0,00";
+      } else {
+        invEl.textContent = "–";
+      }
+    } catch {
+      invEl.textContent = "–";
+    }
+  }
 }
 
 function createOrderCard(order) {
@@ -996,188 +1011,69 @@ function initShifts() {
 }
 
 // =======================================
-//   KITCHEN AI ASSISTANT (Comandi vocali)
+//   AI CUCINA
 // =======================================
 
-const KITCHEN_WAKE_REGEX = /^ehi\s+risto[,\s]*/i;
-
-function renderKitchenMenu(summary, menu) {
-  const escapeHtml = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const formatDish = (d) => {
-    if (!d) return "";
-    const name = escapeHtml(d.dishName || "-");
-    const desc = escapeHtml(d.description || "");
-    const ings = Array.isArray(d.mainIngredients) && d.mainIngredients.length > 0
-      ? d.mainIngredients.map(escapeHtml).join(", ")
-      : "disponibili in magazzino";
-    const why = escapeHtml(d.whySuggested || "");
-    return `<div class="menu-dish"><strong class="menu-dish-name">${name}</strong><br><span class="menu-dish-desc">${desc}</span><br><span class="menu-dish-ingredients">Ingredienti: ${ings}</span><br><span class="menu-dish-why">${why}</span></div>`;
-  };
-  const parts = [
-    summary ? `<p class="kitchen-menu-summary">${escapeHtml(summary)}</p>` : "",
-    '<div class="kitchen-menu-courses">',
-    menu.starter ? `<div class="menu-course"><span class="menu-course-label">Antipasto</span>${formatDish(menu.starter)}</div>` : "",
-    menu.first ? `<div class="menu-course"><span class="menu-course-label">Primo</span>${formatDish(menu.first)}</div>` : "",
-    menu.main ? `<div class="menu-course"><span class="menu-course-label">Secondo</span>${formatDish(menu.main)}</div>` : "",
-    menu.dessert ? `<div class="menu-course"><span class="menu-course-label">Dolce</span>${formatDish(menu.dessert)}</div>` : "",
-    "</div>"
-  ];
-  return parts.join("");
-}
-
-function parseKitchenCommand(raw) {
-  const text = String(raw || "").trim();
-  if (!KITCHEN_WAKE_REGEX.test(text)) {
-    return { hasWakeWord: false, command: "" };
-  }
-  const command = text.replace(KITCHEN_WAKE_REGEX, "").trim();
-  return { hasWakeWord: true, command };
-}
-
-let kitchenRecognition = null;
-let kitchenRecognizing = false;
-
-function initKitchenSpeechRecognition() {
-  const SpeechRec =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRec) return null;
-
-  const rec = new SpeechRec();
-  rec.lang = "it-IT";
-  rec.interimResults = true;
-  rec.continuous = false;
-
-  return rec;
+function escapeAiHtml(s) {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function initKitchenAssistant() {
   const input = document.getElementById("kitchen-command-input");
-  const micBtn = document.getElementById("kitchen-command-mic");
   const sendBtn = document.getElementById("kitchen-command-send");
   const statusEl = document.getElementById("kitchen-command-status");
   const responseEl = document.getElementById("kitchen-ai-response");
+  const sentEl = document.getElementById("kitchen-command-sent");
 
   if (!input || !sendBtn || !responseEl) return;
 
-  kitchenRecognition = initKitchenSpeechRecognition();
-
-  if (micBtn && kitchenRecognition) {
-    micBtn.addEventListener("click", () => {
-      if (kitchenRecognizing) {
-        kitchenRecognition.stop();
-        return;
-      }
-      kitchenRecognition.onstart = () => {
-        kitchenRecognizing = true;
-        if (statusEl) statusEl.textContent = "Ascolto...";
-        micBtn?.classList.add("listening");
-      };
-      kitchenRecognition.onend = () => {
-        kitchenRecognizing = false;
-        if (statusEl) statusEl.textContent = "";
-        micBtn?.classList.remove("listening");
-      };
-      kitchenRecognition.onerror = () => {
-        kitchenRecognizing = false;
-        if (statusEl) statusEl.textContent = "Errore riconoscimento vocale.";
-        micBtn?.classList.remove("listening");
-      };
-      kitchenRecognition.onresult = (event) => {
-        let transcript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const res = event.results[i];
-          transcript += res[0].transcript;
-        }
-        if (transcript.trim()) {
-          const current = input.value.trim();
-          input.value = current ? current + " " + transcript.trim() : transcript.trim();
-        }
-      };
-      kitchenRecognition.start();
-    });
-  } else if (micBtn) {
-    micBtn.disabled = true;
-    micBtn.title = "Riconoscimento vocale non supportato";
-  }
-
-  const sentEl = document.getElementById("kitchen-command-sent");
-
   async function sendKitchenCommand() {
-    const raw = input.value.trim();
-    if (!raw) {
+    const question = input.value.trim();
+    if (!question) {
       if (sentEl) sentEl.textContent = "";
-      if (responseEl) {
-        responseEl.innerHTML =
-          '<span class="kitchen-ai-placeholder">Inserisci un comando. Es: "Ehi Risto, aggiungi 5 kg di entrecôte alla lista ordine carne."</span>';
-      }
+      responseEl.innerHTML = '<span class="kitchen-ai-placeholder">Scrivi una domanda (ordini, scorte, preparazioni, suggerimenti).</span>';
       return;
     }
 
-    const { hasWakeWord, command } = parseKitchenCommand(raw);
-    if (!hasWakeWord) {
-      if (sentEl) sentEl.textContent = "";
-      if (responseEl) {
-        responseEl.innerHTML =
-          '<span style="color:var(--accent-warning);">Devi iniziare il comando con \'Ehi Risto\'.</span>';
-      }
-      return;
-    }
-
-    if (!command) {
-      if (sentEl) sentEl.textContent = "";
-      if (responseEl) {
-        responseEl.innerHTML =
-          '<span class="kitchen-ai-placeholder">Dopo "Ehi Risto" aggiungi il comando (es. aggiungi 5 kg di entrecôte alla lista ordine).</span>';
-      }
-      return;
-    }
-
-    if (statusEl) statusEl.textContent = "Invio comando...";
-    if (sentEl) sentEl.textContent = "Comando inviato: «" + command + "»";
+    if (statusEl) statusEl.textContent = "Invio...";
+    if (sentEl) sentEl.textContent = "Domanda: «" + question + "»";
     responseEl.innerHTML = '<span class="kitchen-ai-placeholder">Caricamento...</span>';
 
     try {
-      const res = await fetch("/api/ai/kitchen", {
+      const res = await fetch("/api/ai/query", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command })
+        body: JSON.stringify({ question })
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const errMsg = (typeof data?.error === "string" ? data.error : null) || data?.message || "Errore server. Riprova.";
+        const errMsg = (data?.message || data?.error) || "Errore server. Riprova.";
         throw new Error(errMsg);
       }
 
-      if (data?.success === false && data?.error) {
-        throw new Error(typeof data.error === "string" ? data.error : String(data.error));
-      }
+      const answer = data?.answer || data?.message || "Nessuna risposta.";
+      const warnings = Array.isArray(data?.data?.warnings) ? data.data.warnings.filter(Boolean) : [];
+      const actions = Array.isArray(data?.nextActions) ? data.nextActions.filter(Boolean) : [];
 
-      if (data?.type === "menu" && data?.menu) {
-        responseEl.innerHTML = renderKitchenMenu(data.message || data.response, data.menu);
-      } else {
-        const message =
-          data?.response || data?.message || data?.answer || data?.text ||
-          (typeof data === "string" ? data : JSON.stringify(data));
-        responseEl.innerHTML = String(message || "Nessuna risposta.").replace(/\n/g, "<br>");
-      }
+      let html = "<div class=\"ai-answer-text\">" + escapeAiHtml(answer).replace(/\n/g, "<br>") + "</div>";
+      if (warnings.length) html += "<div class=\"ai-warnings\" style=\"color:var(--accent-warning);margin-top:8px;\">⚠ " + escapeAiHtml(warnings.join(" • ")) + "</div>";
+      if (actions.length) html += "<div class=\"ai-actions\" style=\"color:var(--accent-ready);margin-top:6px;\">→ " + escapeAiHtml(actions.join(" • ")) + "</div>";
+
+      responseEl.innerHTML = html;
       if (statusEl) statusEl.textContent = "";
       input.value = "";
     } catch (err) {
       console.error(err);
       const errText = err.message || "Errore di connessione. Riprova.";
-      responseEl.innerHTML =
-        '<span style="color:var(--accent-danger);" role="alert">' +
-        (errText.replace(/</g, "&lt;").replace(/>/g, "&gt;")) +
-        "</span>";
+      responseEl.innerHTML = '<span style="color:var(--accent-danger);" role="alert">' + escapeAiHtml(errText) + "</span>";
       if (statusEl) statusEl.textContent = "Errore";
     }
   }
 
   sendBtn.addEventListener("click", sendKitchenCommand);
-
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();

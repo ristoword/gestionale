@@ -3,7 +3,8 @@ const paths = require("../config/paths");
 const tenantContext = require("../context/tenantContext");
 const { safeReadJson, atomicWriteJson } = require("../utils/safeFileIO");
 
-const VALID_UNITS = ["g", "kg", "ml", "cl", "l", "pcs"];
+const VALID_UNITS = ["g", "gr", "kg", "ml", "cl", "l", "lt", "pcs", "pz"];
+const UNIT_ALIASES = { gr: "g", lt: "l", pz: "pcs" };
 
 let recipes = [];
 let lastRecipePath = null;
@@ -12,23 +13,31 @@ function getDataPath() {
   return paths.tenant(tenantContext.getRestaurantId(), "recipes.json");
 }
 
+function normalizeUnit(unit) {
+  const u = String(unit || "").trim().toLowerCase();
+  if (UNIT_ALIASES[u]) return UNIT_ALIASES[u];
+  return VALID_UNITS.includes(u) ? u : (u || "g");
+}
+
 function normalizeIngredient(i) {
   const name = String(i.name || i.ingredientName || "").trim();
   const qty = Number(i.quantity) ?? Number(i.qty) ?? 0;
-  const unit = String(i.unit || "").trim().toLowerCase();
-  const unitNorm = VALID_UNITS.includes(unit) ? unit : (unit || "g");
+  const unit = normalizeUnit(i.unit);
   const wastagePercent = Number(i.wastagePercent) ?? Number(i.wastage_percent) ?? 0;
   const costPerUnit = Number(i.costPerUnit) ?? Number(i.cost_per_unit) ?? Number(i.unitCost) ?? 0;
   const totalCost = Number(i.totalCost) ?? Number(i.total_cost) ?? (qty * costPerUnit);
+  const notes = String(i.notes || i.note || "").trim();
   return {
     ingredientId: i.ingredientId || i.ingredient_id || null,
     ingredientName: name || (i.name || i.ingredientName || ""),
     name: name || (i.name || i.ingredientName || ""),
     quantity: qty,
-    unit: unitNorm,
-    wastagePercent: Math.max(0, Math.min(100, wastagePercent)),
+    unit,
+    unitCost: costPerUnit,
     costPerUnit,
     totalCost,
+    wastagePercent: Math.max(0, Math.min(100, wastagePercent)),
+    notes,
   };
 }
 
@@ -47,6 +56,11 @@ function normalizeRecipeFromFile(r) {
   const ingredients = Array.isArray(r.ingredients)
     ? r.ingredients.map((i) => normalizeIngredient(i))
     : [];
+  const linkedDishId = r.linkedDishId ?? r.linked_dish_id ?? null;
+  const ivaPercent = Number(r.ivaPercent ?? r.iva_percent) ?? 0;
+  const overheadPercent = Number(r.overheadPercent ?? r.overhead_percent) ?? 0;
+  const packagingCost = Number(r.packagingCost ?? r.packaging_cost) ?? 0;
+  const laborCost = Number(r.laborCost ?? r.labor_cost) ?? 0;
   return {
     id: r.id || uuid(),
     name,
@@ -62,9 +76,21 @@ function normalizeRecipeFromFile(r) {
     selling_price: Number(r.sellingPrice) ?? Number(r.selling_price) ?? 0,
     targetFoodCost: Number(r.targetFoodCost) ?? Number(r.target_food_cost) ?? 0,
     target_food_cost: Number(r.targetFoodCost) ?? Number(r.target_food_cost) ?? 0,
+    ivaPercent,
+    iva_percent: ivaPercent,
+    overheadPercent,
+    overhead_percent: overheadPercent,
+    packagingCost,
+    packaging_cost: packagingCost,
+    laborCost,
+    labor_cost: laborCost,
+    linkedDishId: linkedDishId || null,
+    linked_dish_id: linkedDishId || null,
     notes: String(r.notes || r.note || "").trim(),
     note: String(r.notes || r.note || "").trim(),
     ingredients,
+    createdAt: r.createdAt ?? null,
+    updatedAt: r.updatedAt ?? null,
   };
 }
 
@@ -137,6 +163,7 @@ async function create(data) {
     err.validationErrors = errs;
     throw err;
   }
+  const now = new Date().toISOString();
   const recipe = normalizeRecipeFromFile({
     id: data.id || uuid(),
     name,
@@ -147,8 +174,15 @@ async function create(data) {
     yieldPortions: data.yieldPortions ?? data.yield_portions ?? data.servings ?? 1,
     sellingPrice: data.sellingPrice ?? data.selling_price ?? 0,
     targetFoodCost: data.targetFoodCost ?? data.target_food_cost ?? 0,
+    ivaPercent: data.ivaPercent ?? data.iva_percent ?? 0,
+    overheadPercent: data.overheadPercent ?? data.overhead_percent ?? 0,
+    packagingCost: data.packagingCost ?? data.packaging_cost ?? 0,
+    laborCost: data.laborCost ?? data.labor_cost ?? 0,
+    linkedDishId: data.linkedDishId ?? data.linked_dish_id ?? null,
     notes: data.notes || data.note || "",
     ingredients,
+    createdAt: now,
+    updatedAt: now,
   });
   recipes.push(recipe);
   writeRecipes(recipes);
@@ -193,9 +227,25 @@ async function update(id, data) {
   if (data.notes !== undefined) recipe.notes = String(data.notes).trim();
   if (data.note !== undefined) recipe.notes = String(data.note).trim();
   recipe.note = recipe.notes;
+  if (data.linkedDishId !== undefined) recipe.linkedDishId = data.linkedDishId || null;
+  if (data.linked_dish_id !== undefined) recipe.linkedDishId = data.linked_dish_id || null;
+  recipe.linked_dish_id = recipe.linkedDishId;
+  if (data.ivaPercent !== undefined) recipe.ivaPercent = Number(data.ivaPercent) ?? 0;
+  if (data.iva_percent !== undefined) recipe.ivaPercent = Number(data.iva_percent) ?? 0;
+  recipe.iva_percent = recipe.ivaPercent;
+  if (data.overheadPercent !== undefined) recipe.overheadPercent = Number(data.overheadPercent) ?? 0;
+  if (data.overhead_percent !== undefined) recipe.overheadPercent = Number(data.overhead_percent) ?? 0;
+  recipe.overhead_percent = recipe.overheadPercent;
+  if (data.packagingCost !== undefined) recipe.packagingCost = Number(data.packagingCost) ?? 0;
+  if (data.packaging_cost !== undefined) recipe.packagingCost = Number(data.packaging_cost) ?? 0;
+  recipe.packaging_cost = recipe.packagingCost;
+  if (data.laborCost !== undefined) recipe.laborCost = Number(data.laborCost) ?? 0;
+  if (data.labor_cost !== undefined) recipe.laborCost = Number(data.labor_cost) ?? 0;
+  recipe.labor_cost = recipe.laborCost;
   if (Array.isArray(data.ingredients)) {
     recipe.ingredients = data.ingredients.map((i) => normalizeIngredient(i));
   }
+  recipe.updatedAt = new Date().toISOString();
 
   writeRecipes(recipes);
   return recipe;
@@ -213,31 +263,52 @@ async function remove(id) {
 }
 
 /**
- * Compute food cost for a recipe. Uses ingredient totalCost or falls back to inventory lookup.
+ * Compute food cost for a recipe. Uses ingredient totalCost (with wastage) or falls back to inventory lookup.
+ * Includes iva, overhead, packaging, labor for finalProductionCost.
  */
 async function getFoodCost(id, inventoryRepository) {
   ensureLoaded();
   const recipe = recipes.find((r) => r.id === id) || null;
   if (!recipe) return null;
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
-  let recipeTotalCost = 0;
+  let rawIngredientCost = 0;
+  const ingredientRows = [];
   for (const ing of ingredients) {
-    let cost = Number(ing.totalCost) || 0;
-    if (cost <= 0) {
-      const cpu = Number(ing.costPerUnit) || Number(ing.unitCost) || 0;
+    let lineTotal = Number(ing.totalCost) || 0;
+    if (lineTotal <= 0) {
+      const cpu = Number(ing.costPerUnit) ?? Number(ing.unitCost) ?? 0;
       const qty = Number(ing.quantity) ?? Number(ing.qty) ?? 0;
       if (cpu > 0 && qty > 0) {
-        cost = qty * cpu;
+        lineTotal = qty * cpu;
       } else if (inventoryRepository) {
         const invItem = inventoryRepository.findInventoryItemByName(ing.name || ing.ingredientName);
         const cpuInv = invItem ? inventoryRepository.getCostPerUnit(invItem) : 0;
-        cost = qty * cpuInv;
+        lineTotal = qty * cpuInv;
       }
     }
-    recipeTotalCost += cost;
+    const wastage = Number(ing.wastagePercent) ?? 0;
+    const afterWastage = wastage > 0 ? lineTotal * (1 + wastage / 100) : lineTotal;
+    rawIngredientCost += afterWastage;
+    ingredientRows.push({
+      name: ing.name || ing.ingredientName,
+      quantity: ing.quantity,
+      unit: ing.unit,
+      unitCost: ing.costPerUnit ?? ing.unitCost,
+      totalCost: lineTotal,
+      wastagePercent: wastage,
+      costAfterWastage: afterWastage,
+      notes: ing.notes || "",
+    });
   }
+  const ivaPercent = Number(recipe.ivaPercent ?? recipe.iva_percent) ?? 0;
+  const overheadPercent = Number(recipe.overheadPercent ?? recipe.overhead_percent) ?? 0;
+  const packagingCost = Number(recipe.packagingCost ?? recipe.packaging_cost) ?? 0;
+  const laborCost = Number(recipe.laborCost ?? recipe.labor_cost) ?? 0;
+  const ivaAmount = rawIngredientCost * (ivaPercent / 100);
+  const overheadAmount = rawIngredientCost * (overheadPercent / 100);
+  const finalProductionCost = rawIngredientCost + ivaAmount + overheadAmount + packagingCost + laborCost;
   const yieldPortions = Number(recipe.yieldPortions) ?? Number(recipe.yield_portions) ?? 1;
-  const costPerPortion = yieldPortions > 0 ? recipeTotalCost / yieldPortions : 0;
+  const costPerPortion = yieldPortions > 0 ? finalProductionCost / yieldPortions : 0;
   const sellingPrice = Number(recipe.sellingPrice) ?? Number(recipe.selling_price) ?? 0;
   const targetFoodCost = Number(recipe.targetFoodCost) ?? Number(recipe.target_food_cost) ?? 0;
   let foodCostPercent = null;
@@ -248,19 +319,32 @@ async function getFoodCost(id, inventoryRepository) {
   if (targetFoodCost > 0 && costPerPortion > 0) {
     suggestedPrice = costPerPortion / (targetFoodCost / 100);
   }
+  const grossMargin = sellingPrice > 0 ? sellingPrice - costPerPortion : 0;
   return {
-    recipeTotalCost,
-    costPerPortion,
-    foodCostPercent,
-    suggestedPrice,
+    rawIngredientCost: Math.round(rawIngredientCost * 100) / 100,
+    ivaAmount: Math.round(ivaAmount * 100) / 100,
+    overheadAmount: Math.round(overheadAmount * 100) / 100,
+    packagingCost,
+    laborCost,
+    finalProductionCost: Math.round(finalProductionCost * 100) / 100,
+    costPerPortion: Math.round(costPerPortion * 100) / 100,
+    sellingPrice,
+    foodCostPercent: foodCostPercent != null ? Math.round(foodCostPercent * 100) / 100 : null,
+    grossMargin: Math.round(grossMargin * 100) / 100,
+    suggestedPrice: suggestedPrice != null ? Math.round(suggestedPrice * 100) / 100 : null,
+    targetFoodCostPercent: targetFoodCost,
+    yieldPortions,
+    ingredientRows,
   };
 }
 
 module.exports = {
   VALID_UNITS,
+  UNIT_ALIASES,
   getAll,
   getById,
   getByMenuItemName,
+  getByDishId,
   findRecipeByMenuItemName,
   create,
   update,

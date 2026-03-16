@@ -8,6 +8,9 @@ router.get("/daily/summary", asyncHandler(reportsController.getDailySummary));
 router.get("/daily-summary", asyncHandler(reportsController.getDailySummary));
 router.get("/dashboard-summary", asyncHandler(reportsController.getDashboardSummary));
 router.get("/accountant", asyncHandler(reportsController.getAccountantReport));
+router.get("/top-dishes", asyncHandler(reportsController.getTopDishes));
+router.get("/dish-margins", asyncHandler(reportsController.getDishMargins));
+router.get("/foodcost-alerts", asyncHandler(reportsController.getFoodCostAlerts));
 // GET /api/reports/:id
 router.get("/:id", asyncHandler(reportsController.getReportById));
 

@@ -8,6 +8,7 @@ const inventoryController = require("../controllers/inventory.controller");
 const router = express.Router();
 
 router.get("/", asyncHandler(inventoryController.listInventory));
+router.get("/value", asyncHandler(inventoryController.getInventoryValue));
 router.get("/transfers", asyncHandler(inventoryController.listTransfers));
 router.get("/barcode/:code", asyncHandler(inventoryController.getByBarcode));
 router.post("/receive/voice-preview", asyncHandler(inventoryController.voicePreview));

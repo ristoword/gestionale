@@ -3,6 +3,12 @@ const inventoryTransfersRepository = require("../repositories/inventory-transfer
 const stockMovementsRepository = require("../repositories/stock-movements.repository");
 const tenantContext = require("../context/tenantContext");
 
+// GET /api/inventory/value – total warehouse value (central stock × unit cost)
+exports.getInventoryValue = async (req, res) => {
+  const value = inventoryRepository.getTotalValue();
+  res.json({ value, formatted: "€ " + value.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) });
+};
+
 // GET /api/inventory (query: ?location=central|cucina|sala|bar|proprieta)
 exports.listInventory = async (req, res) => {
   const location = (req.query.location || "").toLowerCase();

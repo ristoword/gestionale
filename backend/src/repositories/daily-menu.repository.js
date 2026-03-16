@@ -61,6 +61,7 @@ function addDish(dish) {
     active: dish.active !== false,
     allergens: String(dish.allergens || "").trim() || "",
     order: dishes.length,
+    recipeId: dish.recipeId || dish.recipe_id || null,
   };
   dishes.push(newDish);
   writeData({ ...data, dishes });
@@ -80,6 +81,8 @@ function updateDish(id, updates) {
   if (updates.price !== undefined) patch.price = Number(updates.price) || 0;
   if (updates.active !== undefined) patch.active = !!updates.active;
   if (updates.allergens !== undefined) patch.allergens = String(updates.allergens).trim();
+  if (updates.recipeId !== undefined) patch.recipeId = updates.recipeId || null;
+  if (updates.recipe_id !== undefined) patch.recipeId = updates.recipe_id || null;
   dishes[idx] = { ...dishes[idx], ...patch };
   writeData({ ...data, dishes });
   return dishes[idx];

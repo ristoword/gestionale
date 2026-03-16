@@ -2064,9 +2064,45 @@ function setupSplitModal() {
 // =============================
 
 function setupTools() {
-  document.getElementById("btn-ai")?.addEventListener("click", () => {
-    alert("Pulsante AI pronto. Qui collegheremo suggerimenti (food cost, upsell, warning scorte, ecc.).");
+  document.getElementById("btn-ai")?.addEventListener("click", async () => {
+    const modal = document.getElementById("modal-ai");
+    const loading = document.getElementById("ai-cassa-loading");
+    const content = document.getElementById("ai-cassa-content");
+    const answerEl = document.getElementById("ai-cassa-answer");
+    const warningsEl = document.getElementById("ai-cassa-warnings");
+    const actionsEl = document.getElementById("ai-cassa-actions");
+    if (!modal || !loading || !content) return;
+    openModal("modal-ai");
+    loading.style.display = "block";
+    content.style.display = "none";
+    answerEl.textContent = "";
+    warningsEl.textContent = "";
+    actionsEl.textContent = "";
+    try {
+      const res = await fetch("/api/ai/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          question: "Riepilogo vendite e incassi di oggi, suggerimenti per la cassa, eventuali warning su scorte o food cost.",
+        }),
+      });
+      if (!res.ok) throw new Error("Risposta non valida");
+      const data = await res.json();
+      loading.style.display = "none";
+      content.style.display = "block";
+      answerEl.textContent = data.answer || "Nessuna risposta.";
+      const warnings = Array.isArray(data.data?.warnings) ? data.data.warnings.filter(Boolean) : [];
+      const actions = Array.isArray(data.nextActions) ? data.nextActions.filter(Boolean) : [];
+      warningsEl.textContent = warnings.length ? "⚠ " + warnings.join(" • ") : "";
+      actionsEl.textContent = actions.length ? "→ " + actions.join(" • ") : "";
+    } catch (e) {
+      loading.textContent = "Errore: " + (e.message || "Connessione AI non disponibile.");
+      loading.style.display = "block";
+      content.style.display = "none";
+    }
   });
+  document.getElementById("btn-ai-close")?.addEventListener("click", () => closeModal("modal-ai"));
 
   document.getElementById("btn-void-item")?.addEventListener("click", () => {
     if (!selectedTable) {

@@ -94,10 +94,10 @@ app.use(requirePageAuth);
 app.use(express.static(path.join(__dirname, "../public")));
 
 // =======================
-//  API (ROUTES) – se esistono i file
+//  API (ROUTES) – orders, menu, reports, ai, recipes + others
 // =======================
 
-// ORDERS (Sala → Cucina)
+// ORDERS – /api/orders
 try {
   const ordersRouter = require("./routes/orders.routes");
   const OrdersController = require("./controllers/orders.controller");
@@ -105,7 +105,7 @@ try {
   app.post("/api/qr/orders", asyncHandler(OrdersController.createOrder));
   app.use("/api/orders", requireAuth, requireRole(ROLES_ORDERS), ordersRouter);
 } catch (e) {
-  console.warn("orders.routes non trovato (ok se non ancora creato)");
+  console.warn("orders.routes non trovato:", e.message);
 }
 
 // QR TABLES (admin – protected; supervisor included for QR management)
@@ -117,14 +117,14 @@ try {
   console.warn("qr.routes non trovato:", e.message);
 }
 
-// MENU (public GET for QR ordering)
+// MENU – /api/menu (public GET /api/menu/active for QR)
 try {
   const menuRouter = require("./routes/menu.routes");
   const MenuController = require("./controllers/menu.controller");
   app.get("/api/menu/active", (req, res, next) => MenuController.listActiveMenu(req, res).catch(next));
   app.use("/api/menu", requireAuth, requireRole(ROLES_MENU), menuRouter);
 } catch (e) {
-  console.warn("menu.routes non trovato (ok se non ancora creato)");
+  console.warn("menu.routes non trovato:", e.message);
 }
 
 // LICENSE (no auth – for activation flow)
@@ -192,12 +192,12 @@ try {
   console.warn("catering.routes non trovato (ok se non ancora creato)");
 }
 
-// REPORT / ANALYTICS
+// REPORTS – /api/reports
 try {
   const reportsRouter = require("./routes/reports.routes");
   app.use("/api/reports", requireAuth, requireRole(ROLES_REPORTS), reportsRouter);
 } catch (e) {
-  console.warn("reports.routes non trovato (ok se non ancora creato)");
+  console.warn("reports.routes non trovato:", e.message);
 }
 
 // PAYMENTS (Cassa)
@@ -216,12 +216,12 @@ try {
   console.warn("closures.routes non trovato (ok se non ancora creato)");
 }
 
-// AI ASSISTANT
+// AI – /api/ai
 try {
   const aiRouter = require("./routes/ai.routes");
   app.use("/api/ai", requireAuth, requireRole(ROLES_ALL), aiRouter);
 } catch (e) {
-  console.warn("ai.routes non trovato (ok se non ancora creato):", e.message);
+  console.warn("ai.routes non trovato:", e.message);
 }
 
 // AUTH (no auth middleware – login/logout)
@@ -240,12 +240,12 @@ try {
   console.warn("sessions.routes non trovato (ok se non ancora creato)");
 }
 
-// RECIPES
+// RECIPES – /api/recipes
 try {
   const recipesRouter = require("./routes/recipes.routes");
   app.use("/api/recipes", requireAuth, requireRole(ROLES_ALL), recipesRouter);
 } catch (e) {
-  console.warn("recipes.routes non trovato (ok se non ancora creato)");
+  console.warn("recipes.routes non trovato:", e.message);
 }
 
 // STOCK MOVEMENTS

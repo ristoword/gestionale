@@ -58,3 +58,25 @@ exports.getAccountantReport = async (req, res) => {
   const report = await reportsService.buildAccountantReport(from, to);
   res.json(report);
 };
+
+// GET /api/reports/top-dishes?date=&limit=
+exports.getTopDishes = async (req, res) => {
+  const date = req.query.date ? new Date(req.query.date) : new Date();
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+  const data = await reportsService.getTopDishes(date, limit);
+  res.json(data);
+};
+
+// GET /api/reports/dish-margins?date=
+exports.getDishMargins = async (req, res) => {
+  const date = req.query.date ? new Date(req.query.date) : new Date();
+  const data = await reportsService.getDishMargins(date);
+  res.json(data);
+};
+
+// GET /api/reports/foodcost-alerts?threshold=
+exports.getFoodCostAlerts = async (req, res) => {
+  const threshold = Math.min(100, Math.max(0, parseFloat(req.query.threshold) || 35));
+  const data = await reportsService.getFoodCostAlerts(threshold);
+  res.json(data);
+};

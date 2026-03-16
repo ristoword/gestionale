@@ -701,6 +701,24 @@
     </div>
   </div>
 
+  <!-- MODAL: AI Cassa -->
+  <div class="modal-backdrop" id="modal-ai">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">AI – Suggerimenti cassa</div>
+        <button class="btn-xs danger" type="button" id="btn-ai-close">Chiudi</button>
+      </div>
+      <div class="modal-body">
+        <div id="ai-cassa-loading" class="label-soft">Caricamento...</div>
+        <div id="ai-cassa-content" style="display:none;">
+          <div id="ai-cassa-answer" class="ai-answer"></div>
+          <div id="ai-cassa-warnings" class="ai-warnings" style="color:#c0392b;font-size:0.9em;margin-top:8px;"></div>
+          <div id="ai-cassa-actions" class="ai-actions" style="color:#27ae60;font-size:0.9em;margin-top:6px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: EMAIL -->
   <div class="modal-backdrop" id="modal-email">
     <div class="modal">

@@ -1,4 +1,5 @@
 // backend/src/server.js
+// Route registration is in ./app.js (orders, menu, reports, ai, recipes, etc.)
 require("dotenv").config();
 
 const http = require("http");

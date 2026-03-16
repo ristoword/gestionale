@@ -26,6 +26,10 @@
           <button type="button" class="rw-btn" id="rw-btn-manager-logout" style="display:none">Logout</button>
         </div>
         <div class="chip">
+          <span class="chip-label">Valore Magazzino</span>
+          <span class="chip-value" id="kpi-inventory-value">–</span>
+        </div>
+        <div class="chip">
           <span class="chip-label">In preparazione</span>
           <span class="chip-value" id="kpi-prep">–</span>
         </div>
@@ -53,6 +57,11 @@
       </button>
       <button class="nav-btn"
               type="button"
+              onclick="window.location.href='/cucina/food-cost.html'">
+        Food Cost
+      </button>
+      <button class="nav-btn"
+              type="button"
               onclick="window.location.href='/daily-menu/daily-menu.html'">
         Menu del Giorno
       </button>
@@ -73,7 +82,7 @@
       <button class="nav-btn" data-view="spesa">Lista spesa</button>
       <button class="nav-btn" data-view="haccp">HACCP</button>
       <button class="nav-btn" data-view="turni">Turni cucina</button>
-      <button class="nav-btn" data-view="vocale">Comandi vocali</button>
+      <button class="nav-btn" data-view="vocale">AI</button>
     </nav>
 
     <!-- CONTENUTO PRINCIPALE -->
@@ -376,23 +385,20 @@
         </article>
       </section>
 
-      <!-- VIEW 6: COMANDI VOCALI – Kitchen AI Assistant -->
+      <!-- VIEW: AI Cucina -->
       <section id="view-vocale" class="view">
         <article class="card">
           <header class="card-header">
-            <h2>Assistente cucina Risto</h2>
-            <p>Digita o detta comandi. Usa "Ehi Risto" per attivare.</p>
+            <h2>AI Cucina</h2>
+            <p>Chiedi ordini, scorte, preparazioni, suggerimenti operativi.</p>
           </header>
           <div class="card-body">
             <div class="kitchen-command-row">
               <input type="text"
                      id="kitchen-command-input"
                      class="kitchen-command-input"
-                     placeholder='Es. Ehi Risto, aggiungi 5 kg di entrecôte alla lista ordine...'
+                     placeholder="Es. Quanti ordini in attesa? Cosa manca in magazzino? Suggerimenti per la cucina..."
                      autocomplete="off" />
-              <button type="button" class="btn primary kitchen-command-mic" id="kitchen-command-mic" title="Microfono">
-                🎤
-              </button>
               <button type="button" class="btn primary" id="kitchen-command-send">
                 Invia
               </button>
@@ -400,7 +406,7 @@
             <div class="kitchen-command-status" id="kitchen-command-status"></div>
             <div class="kitchen-command-sent" id="kitchen-command-sent" aria-live="polite"></div>
             <div class="kitchen-ai-response" id="kitchen-ai-response">
-              <span class="kitchen-ai-placeholder">La risposta dell'assistente apparirà qui.</span>
+              <span class="kitchen-ai-placeholder">La risposta AI apparirà qui.</span>
             </div>
           </div>
         </article>

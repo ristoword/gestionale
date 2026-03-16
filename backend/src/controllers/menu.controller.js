@@ -52,14 +52,27 @@ exports.create = (req, res, next) => {
 };
 
 // PATCH /api/menu/:id
-exports.update = (req, res, next) => {
+exports.update = async (req, res, next) => {
   try {
-    const updated = menuService.update(req.params.id, req.body);
+    const updated = await menuService.update(req.params.id, req.body);
     res.json(updated);
   } catch (err) {
     const e = err instanceof Error ? err : new Error(String(err));
     e.status = err.message === "Piatto non trovato" ? 404 : 400;
     next(e);
+  }
+};
+
+// POST /api/menu/from-recipe – create dish from recipe and link both
+exports.createFromRecipe = async (req, res, next) => {
+  try {
+    const { recipeId } = req.body || {};
+    if (!recipeId) return res.status(400).json({ error: "recipeId obbligatorio" });
+    const dish = await menuService.createDishFromRecipe(recipeId);
+    res.status(201).json(dish);
+  } catch (err) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    res.status(400).json({ error: e.message });
   }
 };
 

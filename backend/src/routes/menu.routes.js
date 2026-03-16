@@ -15,6 +15,8 @@ router.get("/:id", MenuController.getOne);
 
 // creazione piatto
 router.post("/", MenuController.create);
+// crea piatto da ricetta (e collega ricetta ↔ piatto)
+router.post("/from-recipe", MenuController.createFromRecipe);
 
 // aggiorna piatto
 router.patch("/:id", MenuController.update);

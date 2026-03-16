@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Food Cost – Ristoword Cucina</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="cucina.css" />
+  <link rel="stylesheet" href="food-cost.css" />
+  <link rel="stylesheet" href="/shared/staff-access.css" />
+</head>
+<body>
+  <div class="layout">
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1>Food Cost</h1>
+        <p class="subtitle">Costo ingredienti, produzione e margini per ricetta</p>
+      </div>
+      <div class="topbar-right">
+        <button type="button" class="btn ghost" onclick="window.location.href='/cucina/cucina.html'">← Cucina</button>
+      </div>
+    </header>
+
+    <main class="food-cost-main">
+      <section class="card">
+        <header class="card-header">
+          <h2>Seleziona ricetta</h2>
+          <select id="recipe-select" class="recipe-select">
+            <option value="">-- Scegli ricetta --</option>
+          </select>
+        </header>
+      </section>
+
+      <section id="recipe-panel" class="card" style="display:none;">
+        <header class="card-header">
+          <h2 id="recipe-name">–</h2>
+          <div class="card-actions">
+            <button type="button" class="btn primary" id="btn-save">Salva modifiche</button>
+          </div>
+        </header>
+        <div class="card-body">
+          <div class="recipe-meta">
+            <label>Porzioni <input type="number" id="input-yield" min="1" step="1" /></label>
+            <label>Prezzo vendita € <input type="number" id="input-price" min="0" step="0.01" /></label>
+            <label>Target food cost % <input type="number" id="input-target-fc" min="0" max="100" step="0.5" /></label>
+            <label>IVA % <input type="number" id="input-iva" min="0" max="100" step="0.5" /></label>
+            <label>Spese generali % <input type="number" id="input-overhead" min="0" max="100" step="0.5" /></label>
+            <label>Packaging € <input type="number" id="input-packaging" min="0" step="0.01" /></label>
+            <label>Mano d'opera € <input type="number" id="input-labor" min="0" step="0.01" /></label>
+          </div>
+
+          <h3 class="section-title">Ingredienti</h3>
+          <div class="table-wrap">
+            <table class="ingredient-table">
+              <thead>
+                <tr>
+                  <th>Ingrediente</th>
+                  <th>Quantità</th>
+                  <th>Unità</th>
+                  <th>Costo unità €</th>
+                  <th>Totale €</th>
+                  <th>Spreco %</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="ingredient-tbody">
+              </tbody>
+            </table>
+          </div>
+          <button type="button" class="btn ghost" id="btn-add-ingredient">+ Aggiungi ingrediente</button>
+
+          <h3 class="section-title">Riepilogo</h3>
+          <div class="summary-cards" id="summary-cards">
+            <div class="summary-card"><span class="label">Costo ingredienti</span><span class="value" id="sum-raw">€ 0,00</span></div>
+            <div class="summary-card"><span class="label">Costo produzione</span><span class="value" id="sum-production">€ 0,00</span></div>
+            <div class="summary-card"><span class="label">Costo porzione</span><span class="value" id="sum-portion">€ 0,00</span></div>
+            <div class="summary-card"><span class="label">Prezzo vendita</span><span class="value" id="sum-selling">€ 0,00</span></div>
+            <div class="summary-card"><span class="label">Food cost %</span><span class="value" id="sum-fc">–</span></div>
+            <div class="summary-card"><span class="label">Margine lordo</span><span class="value" id="sum-margin">€ 0,00</span></div>
+            <div class="summary-card"><span class="label">Prezzo consigliato</span><span class="value" id="sum-suggested">€ 0,00</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="empty-state" class="card">
+        <div class="card-body empty-state">
+          <p>Seleziona una ricetta per vedere e modificare il food cost.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="food-cost.js"></script>
+</body>
+</html>

@@ -121,7 +121,10 @@ async function validateOrderConsumption(order) {
   for (const item of items) {
     const itemName = String(item.name || "").trim();
     const servedQty = Number(item.qty) || 1;
-    const recipe = await recipesRepository.findRecipeByMenuItemName(itemName);
+    const recipeId = item.recipeId || item.recipe_id || null;
+    const recipe = recipeId
+      ? await recipesRepository.getById(recipeId)
+      : await recipesRepository.findRecipeByMenuItemName(itemName);
     if (!recipe) continue;
 
     const { valid, failures } = validateRecipeConsumption(recipe, servedQty);
@@ -313,8 +316,11 @@ async function onOrderFinalized(order) {
   for (const item of items) {
     const itemName = String(item.name || "").trim();
     const servedQty = Number(item.qty) || 1;
+    const recipeId = item.recipeId || item.recipe_id || null;
 
-    const recipe = await recipesRepository.findRecipeByMenuItemName(itemName);
+    const recipe = recipeId
+      ? await recipesRepository.getById(recipeId)
+      : await recipesRepository.findRecipeByMenuItemName(itemName);
 
     if (!recipe) {
       allWarnings.push({ type: "no_recipe", item: itemName });

@@ -449,8 +449,23 @@ function returnToCentral(productId, fromDepartment, quantity, note, operator) {
   };
 }
 
+/**
+ * Total inventory value: sum of (central quantity × cost per unit) for all products.
+ */
+function getTotalValue() {
+  const items = readInventory();
+  let total = 0;
+  for (const item of items) {
+    const qty = Number(item.central ?? item.quantity) || 0;
+    const cpu = getCostPerUnit(item);
+    total += qty * cpu;
+  }
+  return Math.round(total * 100) / 100;
+}
+
 module.exports = {
   DEPARTMENTS,
+  getTotalValue,
   getAll,
   getById,
   getByLocation,

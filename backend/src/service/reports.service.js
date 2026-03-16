@@ -382,10 +382,124 @@ async function buildAccountantReport(dateFrom, dateTo) {
   };
 }
 
+/**
+ * Top dishes by quantity sold (and revenue). Uses real order data for the date.
+ */
+async function getTopDishes(targetDate = new Date(), limit = 10) {
+  const date = normalizeDate(targetDate) || new Date();
+  const dateStr = date.toISOString().slice(0, 10);
+  const allOrders = ordersRepository.getAllOrders();
+  const dailyOrders = allOrders.filter((o) =>
+    isSameDay(o.updatedAt || o.createdAt, date)
+  );
+  const closedOrServed = dailyOrders.filter((o) => {
+    const s = String(o.status || "").toLowerCase();
+    return s === "chiuso" || s === "servito";
+  });
+  const itemMap = new Map();
+  for (const order of closedOrServed) {
+    for (const item of order.items || []) {
+      const name = String(item.name || "Senza nome").trim();
+      const qty = toNumber(item.qty, 1);
+      const revenue = toNumber(item.price, 0) * qty;
+      if (!itemMap.has(name)) {
+        itemMap.set(name, { name, qty: 0, revenue: 0 });
+      }
+      const row = itemMap.get(name);
+      row.qty += qty;
+      row.revenue += revenue;
+    }
+  }
+  const list = [...itemMap.values()].sort((a, b) => b.qty - a.qty).slice(0, limit);
+  return { date: dateStr, topDishes: list };
+}
+
+/**
+ * Per-dish margins: revenue, cost of goods sold, gross margin, food cost %.
+ * Uses recipe + inventory cost for COGS.
+ */
+async function getDishMargins(targetDate = new Date()) {
+  const date = normalizeDate(targetDate) || new Date();
+  const dateStr = date.toISOString().slice(0, 10);
+  const allOrders = ordersRepository.getAllOrders();
+  const dailyOrders = allOrders.filter((o) =>
+    isSameDay(o.updatedAt || o.createdAt, date)
+  );
+  const closedOrServed = dailyOrders.filter((o) => {
+    const s = String(o.status || "").toLowerCase();
+    return s === "chiuso" || s === "servito";
+  });
+  const dishMap = new Map();
+  for (const order of closedOrServed) {
+    for (const item of order.items || []) {
+      const name = String(item.name || "Senza nome").trim();
+      const qty = toNumber(item.qty, 1);
+      const revenue = toNumber(item.price, 0) * qty;
+      const recipe = await recipesRepository.findRecipeByMenuItemName(name);
+      const cogs = recipe ? inventoryService.calculateRecipeIngredientCost(recipe, qty) : 0;
+      const margin = revenue - cogs;
+      const foodCostPercent = revenue > 0 && cogs > 0 ? (cogs / revenue) * 100 : null;
+      if (!dishMap.has(name)) {
+        dishMap.set(name, { name, revenue: 0, costOfGoodsSold: 0, grossMargin: 0, qty: 0 });
+      }
+      const row = dishMap.get(name);
+      row.revenue += revenue;
+      row.costOfGoodsSold += cogs;
+      row.grossMargin += margin;
+      row.qty += qty;
+    }
+  }
+  const list = [...dishMap.values()].map((r) => ({
+    ...r,
+    foodCostPercent:
+      r.revenue > 0 && r.costOfGoodsSold > 0
+        ? Math.round((r.costOfGoodsSold / r.revenue) * 10000) / 100
+        : null,
+  }));
+  const totalRevenue = list.reduce((s, r) => s + r.revenue, 0);
+  const totalCogs = list.reduce((s, r) => s + r.costOfGoodsSold, 0);
+  const averageMarginPercent =
+    totalRevenue > 0 ? Math.round(((totalRevenue - totalCogs) / totalRevenue) * 10000) / 100 : 0;
+  return {
+    date: dateStr,
+    dishes: list.sort((a, b) => b.grossMargin - a.grossMargin),
+    summary: { totalRevenue, totalCogs, averageMarginPercent },
+  };
+}
+
+/**
+ * Food cost alerts: recipes where actual food cost % exceeds target or is above threshold.
+ */
+async function getFoodCostAlerts(thresholdPercent = 35) {
+  const recipes = await recipesRepository.getAll();
+  const inventoryRepository = require("../repositories/inventory.repository");
+  const alerts = [];
+  for (const recipe of recipes) {
+    const fc = await recipesRepository.getFoodCost(recipe.id, inventoryRepository);
+    if (!fc || fc.foodCostPercent == null) continue;
+    const target = Number(recipe.targetFoodCost ?? recipe.target_food_cost) || 30;
+    if (fc.foodCostPercent > thresholdPercent || fc.foodCostPercent > target) {
+      alerts.push({
+        recipeId: recipe.id,
+        recipeName: recipe.name || recipe.menuItemName,
+        foodCostPercent: fc.foodCostPercent,
+        targetFoodCostPercent: target,
+        costPerPortion: fc.costPerPortion,
+        sellingPrice: recipe.sellingPrice ?? recipe.selling_price,
+        suggestedPrice: fc.suggestedPrice,
+      });
+    }
+  }
+  return { alerts: alerts.sort((a, b) => (b.foodCostPercent || 0) - (a.foodCostPercent || 0)) };
+}
+
 module.exports = {
   buildDailyReport,
   buildDashboardSummary,
   buildAccountantReport,
   summarizeOrders,
   summarizePayments,
+  getTopDishes,
+  getDishMargins,
+  getFoodCostAlerts,
 };

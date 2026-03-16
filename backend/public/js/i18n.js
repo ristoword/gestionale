@@ -7,7 +7,7 @@
   "use strict";
 
   const STORAGE_KEY = "rw_lang";
-  const SUPPORTED = ["it", "en", "nl"];
+  const SUPPORTED = ["it", "en", "de", "fr", "es", "nl"];
   const DEFAULT_LANG = "it";
 
   let translations = {};
@@ -99,14 +99,22 @@
   function initLangSelector() {
     const container = document.getElementById("lang-selector");
     if (!container) return;
-    ["it", "en", "nl"].forEach(function (code) {
+    const LABELS = {
+      it: "Italiano",
+      en: "English",
+      de: "Deutsch",
+      fr: "Français",
+      es: "Español",
+      nl: "Nederlands",
+    };
+    ["it", "en", "de", "fr", "es", "nl"].forEach(function (code) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "lang-option" + (code === currentLang ? " active" : "");
       btn.setAttribute("data-lang", code);
       btn.setAttribute("aria-pressed", code === currentLang ? "true" : "false");
-      btn.setAttribute("aria-label", "Language: " + code.toUpperCase());
-      btn.textContent = code.toUpperCase();
+      btn.setAttribute("aria-label", LABELS[code] || code.toUpperCase());
+      btn.textContent = LABELS[code] || code.toUpperCase();
       btn.addEventListener("click", function () {
         switchLanguage(code);
       });

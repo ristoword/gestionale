@@ -1156,14 +1156,25 @@ function initVoiceNotes() {
 // =======================================
 
 function initStaffAccess() {
-  if (!window.RW_StaffAccess) return;
+  const btnLogin = document.getElementById("rw-btn-manager-login");
+  const btnLogout = document.getElementById("rw-btn-manager-logout");
+
+  if (!window.RW_StaffAccess) {
+    // Fallback: se il modulo staff access non è caricato, usa il login standard
+    if (btnLogin) {
+      btnLogin.addEventListener("click", () => {
+        const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = "/login/login.html?return=" + returnTo;
+      });
+    }
+    return;
+  }
+
   RW_StaffAccess.init({ module: "cucina", department: "cucina" });
 
   function refreshStaffUI() {
     const sess = RW_StaffAccess.getCurrentSession();
     const mgrVal = document.getElementById("rw-manager-value");
-    const btnLogin = document.getElementById("rw-btn-manager-login");
-    const btnLogout = document.getElementById("rw-btn-manager-logout");
     if (mgrVal) mgrVal.textContent = sess ? sess.name : "—";
     if (btnLogin) btnLogin.style.display = sess ? "none" : "";
     if (btnLogout) btnLogout.style.display = sess ? "" : "none";
@@ -1173,10 +1184,18 @@ function initStaffAccess() {
     RW_StaffAccess.renderActiveStaff("rw-cucina-active-staff", "cucina");
   }
 
-  document.getElementById("rw-btn-manager-login")?.addEventListener("click", () => {
-    RW_StaffAccess.showManagerLoginModal(refreshStaffUI, "kitchen_manager");
-  });
-  document.getElementById("rw-btn-manager-logout")?.addEventListener("click", async () => {
+  if (btnLogin) {
+    btnLogin.addEventListener("click", () => {
+      try {
+        RW_StaffAccess.showManagerLoginModal(refreshStaffUI, "kitchen_manager");
+      } catch (e) {
+        const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = "/login/login.html?return=" + returnTo;
+      }
+    });
+  }
+
+  if (btnLogout) btnLogout.addEventListener("click", async () => {
     const s = RW_StaffAccess.getCurrentSession();
     if (!s) return;
     try {

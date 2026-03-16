@@ -773,7 +773,18 @@ async function createPaymentRecord(payload) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Ordini già pagati. Impossibile registrare un secondo pagamento.");
   }
-  if (!res.ok) throw new Error("Errore salvataggio pagamento");
+  if (!res.ok) {
+    let msg = "Errore salvataggio pagamento";
+    try {
+      const data = await res.json();
+      if (data && (data.message || data.error)) {
+        msg = data.message || data.error;
+      }
+    } catch (_) {
+      // ignore JSON parse errors, keep generic message
+    }
+    throw new Error(msg);
+  }
   return await res.json();
 }
 

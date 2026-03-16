@@ -1,3 +1,8 @@
+// NOTE: This middleware is kept ONLY for legacy reference and is not
+// wired into the current Express app. The active license mechanism is
+// implemented in `requireLicense.middleware.js` and `config/license.js`.
+// Do not (re)use this gate in new code; prefer `requireLicense`.
+
 const fs = require("fs");
 const path = require("path");
 

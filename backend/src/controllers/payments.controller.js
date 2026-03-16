@@ -60,6 +60,51 @@ function validateCreatePayload(body = {}) {
   };
 }
 
+function approxEqual(a, b, eps = 0.01) {
+  return Math.abs((Number(a) || 0) - (Number(b) || 0)) <= eps;
+}
+
+/**
+ * Mirror the most important frontend validation rules from cassa.js
+ * to ensure backend never accepts obviously inconsistent payments.
+ */
+function validateBusinessRules(body = {}) {
+  const errors = [];
+  const total = toNumber(body.total, 0);
+  const method = normalizeString(body.paymentMethod, "").toLowerCase();
+  const amountReceived = toNumber(body.amountReceived, 0);
+
+  if (!Number.isFinite(total) || total < 0) {
+    errors.push("total non valido");
+  }
+
+  if (method === "cash") {
+    if (amountReceived < total) {
+      errors.push("importo contanti insufficiente rispetto al totale");
+    }
+  } else if (["ticket", "voucher", "mixed"].includes(method)) {
+    if (!approxEqual(amountReceived, total)) {
+      errors.push("il totale registrato del pagamento deve coincidere con il totale finale");
+    }
+  }
+
+  const split = body.split;
+  if (split && Array.isArray(split.shares) && split.shares.length > 0) {
+    const sharesTotal = split.shares.reduce(
+      (acc, v) => acc + toNumber(v, 0),
+      0
+    );
+    if (!approxEqual(sharesTotal, total)) {
+      errors.push("la somma delle quote split deve coincidere con il totale finale");
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
 // =============================
 // CONTROLLERS
 // =============================
@@ -101,6 +146,14 @@ async function createPayment(req, res) {
     return res.status(400).json({
       error: "Payload pagamento non valido",
       details: validation.errors
+    });
+  }
+
+  const businessValidation = validateBusinessRules(payload);
+  if (!businessValidation.isValid) {
+    return res.status(400).json({
+      error: "Regole pagamento non rispettate",
+      details: businessValidation.errors,
     });
   }
 

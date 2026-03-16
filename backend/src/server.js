@@ -2,6 +2,20 @@
 // Route registration is in ./app.js (orders, menu, reports, ai, recipes, etc.)
 require("dotenv").config();
 
+// Centralized configuration validation (env, secrets, optional integrations).
+// This runs before loading the main app/session modules so that configuration
+// errors are reported clearly and early.
+try {
+  const { validateConfig } = require("./config/validateConfig");
+  validateConfig();
+} catch (err) {
+  // Fail fast with a clear, human‑readable message.
+  // Never log secret values.
+  // eslint-disable-next-line no-console
+  console.error(err && err.message ? err.message : err);
+  throw err;
+}
+
 const http = require("http");
 const app = require("./app");
 const sessionMiddleware = require("./config/session");

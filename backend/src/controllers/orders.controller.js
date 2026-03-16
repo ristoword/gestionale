@@ -1,12 +1,51 @@
 // backend/src/controllers/orders.controller.js
 const ordersService = require("../service/orders.service");
-const inventoryService = require("../service/inventory.service");
-const { broadcastOrders, broadcastSupervisorSyncFromData } = require("../service/websocket.service");
 const logger = require("../utils/logger");
+
+// IMPORTANT CORE PROTECTION
+// This controller serves /api/orders for Sala, Cucina, Pizzeria, Cassa, Supervisor.
+// It MUST stay resilient even if optional modules (inventory, recipes, food cost,
+// reports, AI) are broken or temporarily unavailable.
+//
+// Therefore:
+// - We lazy-require optional services only inside the endpoints that need them.
+// - /api/orders list endpoints must never import or depend on optional modules.
+
+function getInventoryServiceSafe() {
+  try {
+    // Optional: used only for stock validation and deduction on status changes.
+    // If this fails, we log and behave as if inventory integration is disabled.
+    // This MUST NOT break order listing.
+    // eslint-disable-next-line global-require
+    return require("../service/inventory.service");
+  } catch (err) {
+    logger.error("Inventory service load failed (orders flow continues without it)", {
+      message: err.message,
+    });
+    return null;
+  }
+}
+
+function getWebsocketServiceSafe() {
+  try {
+    // Optional: real-time sync only; UI can fall back to polling.
+    // eslint-disable-next-line global-require
+    return require("../service/websocket.service");
+  } catch (err) {
+    logger.error("WebSocket service load failed (orders flow continues without it)", {
+      message: err.message,
+    });
+    return {
+      broadcastOrders: () => {},
+      broadcastSupervisorSyncFromData: () => {},
+    };
+  }
+}
 
 async function broadcastOrderUpdates() {
   try {
     const orders = await ordersService.listActiveOrders();
+    const { broadcastOrders } = getWebsocketServiceSafe();
     broadcastOrders(orders);
   } catch (err) {
     logger.error("WebSocket broadcast error", { message: err.message });
@@ -16,7 +55,22 @@ async function broadcastOrderUpdates() {
 async function listOrders(req, res, next) {
   try {
     const active = String(req.query.active || "").toLowerCase() === "true";
-    const orders = active ? await ordersService.listActiveOrders() : await ordersService.listOrders();
+    let orders = [];
+
+    // CORE: listing must never throw – we guard around service calls and normalise to an array.
+    try {
+      orders = active ? await ordersService.listActiveOrders() : await ordersService.listOrders();
+    } catch (err) {
+      logger.error("Order listing failed – returning empty array for resilience", {
+        message: err.message,
+      });
+      orders = [];
+    }
+
+    if (!Array.isArray(orders)) {
+      orders = [];
+    }
+
     res.json(orders);
   } catch (err) {
     next(err);
@@ -26,7 +80,20 @@ async function listOrders(req, res, next) {
 async function listOrdersHistory(req, res, next) {
   try {
     const dateStr = req.query.date || "";
-    const orders = await ordersService.listOrdersByDate(dateStr);
+    let orders = [];
+    try {
+      orders = await ordersService.listOrdersByDate(dateStr);
+    } catch (err) {
+      logger.error("Order history listing failed – returning empty array for resilience", {
+        message: err.message,
+      });
+      orders = [];
+    }
+
+    if (!Array.isArray(orders)) {
+      orders = [];
+    }
+
     res.json(orders);
   } catch (err) {
     next(err);
@@ -40,6 +107,8 @@ async function createOrder(req, res, next) {
 
     // Auto-route print jobs by department
     try {
+      // Optional, do not break core order creation if print routing fails to load or execute.
+      // eslint-disable-next-line global-require
       const printService = require("../service/print.service");
       const printResults = await printService.submitOrderTickets(order);
       if (printResults.length > 0) {
@@ -73,15 +142,19 @@ async function setStatus(req, res, next) {
 
     // Validate kitchen stock BEFORE changing status when closing/serving
     if (isFinalState) {
-      const order = await ordersService.getOrderById(id);
-      if (order && Array.isArray(order.items) && order.items.length > 0) {
-        const validation = await inventoryService.validateOrderConsumption(order);
-        if (!validation.valid) {
-          return res.status(400).json({
-            error: validation.error || "Stock cucina insufficiente per completare l'ordine",
-            blocked: true,
-            failures: validation.failures || [],
-          });
+      const inventoryService = getInventoryServiceSafe();
+      // If inventory integration is unavailable, we skip stock validation but still allow status change.
+      if (inventoryService) {
+        const order = await ordersService.getOrderById(id);
+        if (order && Array.isArray(order.items) && order.items.length > 0) {
+          const validation = await inventoryService.validateOrderConsumption(order);
+          if (!validation.valid) {
+            return res.status(400).json({
+              error: validation.error || "Stock cucina insufficiente per completare l'ordine",
+              blocked: true,
+              failures: validation.failures || [],
+            });
+          }
         }
       }
     }
@@ -91,17 +164,26 @@ async function setStatus(req, res, next) {
     await broadcastOrderUpdates();
 
     if (updated && isFinalState) {
-      const shouldDeduct = ordersService.tryMarkOrderInventoryProcessed(updated.id);
-      if (shouldDeduct) {
-        logger.info("Order final state (inventory sync)", { orderId: updated.id, status: updated.status, table: updated.table });
-        const result = await inventoryService.onOrderFinalized(updated);
-        if (result && result.blocked) {
-          logger.error("Inventory deduction blocked after status save (race?)", {
+      const inventoryService = getInventoryServiceSafe();
+      if (inventoryService) {
+        const shouldDeduct = ordersService.tryMarkOrderInventoryProcessed(updated.id);
+        if (shouldDeduct) {
+          logger.info("Order final state (inventory sync)", {
             orderId: updated.id,
-            error: result.error,
+            status: updated.status,
+            table: updated.table,
           });
+          const result = await inventoryService.onOrderFinalized(updated);
+          if (result && result.blocked) {
+            logger.error("Inventory deduction blocked after status save (race?)", {
+              orderId: updated.id,
+              error: result.error,
+            });
+          }
         }
       }
+
+      const { broadcastSupervisorSyncFromData } = getWebsocketServiceSafe();
       broadcastSupervisorSyncFromData();
     }
     res.json(updated);

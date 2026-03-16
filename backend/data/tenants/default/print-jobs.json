@@ -1,0 +1,20 @@
+{
+  "jobs": [
+    {
+      "id": "34bf836b-7531-457a-b2ba-1ae64cb74d48",
+      "restaurantId": "default",
+      "eventType": "order_ticket_kitchen",
+      "department": "cucina",
+      "deviceId": null,
+      "documentTitle": "Comanda Tavolo 1 (cucina)",
+      "content": "=== COMANDA TAVOLO 1 ===\nReparto: cucina\nCameriere: wex\nCoperti: 2\n1x bistecca\n\n--- 23:22:09 ---",
+      "sourceModule": "sala",
+      "status": "failed",
+      "errorMessage": "Nessun dispositivo configurato per order_ticket_kitchen / cucina. Usa stampa manuale.",
+      "relatedOrderId": 19,
+      "relatedTable": "1",
+      "createdAt": "2026-03-16T06:22:10.008Z",
+      "updatedAt": "2026-03-16T06:22:10.008Z"
+    }
+  ]
+}

@@ -4,7 +4,13 @@
 const ordersRepository = require("../repositories/orders.repository");
 
 async function listOrders() {
-  return ordersRepository.getAllOrders();
+  try {
+    const orders = ordersRepository.getAllOrders();
+    return Array.isArray(orders) ? orders : [];
+  } catch (err) {
+    // CORE PROTECTION: order listing must never crash because of IO/parsing issues.
+    return [];
+  }
 }
 
 async function getOrderById(id) {
@@ -26,9 +32,18 @@ function getOrderDateStr(order) {
  * Returns only operationally active orders.
  * EXCLUDES: chiuso, annullato, closed, cancelled, archived, pagato (final states).
  * Used by Sala, Cassa, Supervisor active view. Closed/cancelled never appear in active.
+ *
+ * HARD RULE: this function must NEVER throw. Optional business intelligence
+ * (recipes, food cost, inventory, reports, AI) must not be required here.
  */
 async function listActiveOrders() {
-  const all = ordersRepository.getAllOrders();
+  let all = [];
+  try {
+    all = ordersRepository.getAllOrders();
+  } catch (err) {
+    // If anything goes wrong reading orders, return an empty list instead of breaking UI.
+    all = [];
+  }
   const excludeStatuses = ["chiuso", "annullato", "closed", "cancelled", "archived", "pagato", "paid"];
   return all.filter((o) => {
     const status = String(o.status || "").toLowerCase().trim();

@@ -436,8 +436,29 @@
         "note": null
       }
     ],
-    "status": "in_attesa",
+    "status": "pronto",
     "createdAt": "2026-03-12T10:05:19.435Z",
-    "updatedAt": "2026-03-12T10:05:19.435Z"
+    "updatedAt": "2026-03-16T06:21:14.463Z"
+  },
+  {
+    "id": 19,
+    "table": 1,
+    "covers": 2,
+    "area": "cucina",
+    "waiter": "wex",
+    "notes": "",
+    "items": [
+      {
+        "name": "bistecca",
+        "qty": 1,
+        "category": "ristorante",
+        "area": "cucina",
+        "price": 25,
+        "note": null
+      }
+    ],
+    "status": "in_attesa",
+    "createdAt": "2026-03-16T06:22:09.853Z",
+    "updatedAt": "2026-03-16T06:22:09.853Z"
   }
 ]

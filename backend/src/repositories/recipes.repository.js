@@ -149,6 +149,19 @@ async function findRecipeByMenuItemName(name) {
   return getByMenuItemName(name);
 }
 
+// GET BY LINKED DISH ID (menu item id)
+async function getByDishId(dishId) {
+  ensureLoaded();
+  if (!dishId) return null;
+  const targetId = String(dishId);
+  return (
+    recipes.find(
+      (r) =>
+        String(r.linkedDishId || r.linked_dish_id || "") === targetId
+    ) || null
+  );
+}
+
 // CREATE
 async function create(data) {
   ensureLoaded();

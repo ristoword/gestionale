@@ -40,6 +40,8 @@
       overheadPercent: parseFloat(document.getElementById("input-overhead").value) || 0,
       packagingCost: parseFloat(document.getElementById("input-packaging").value) || 0,
       laborCost: parseFloat(document.getElementById("input-labor").value) || 0,
+      energyCost: parseFloat(document.getElementById("input-energy")?.value) || 0,
+      extraCost: parseFloat(document.getElementById("input-extra")?.value) || 0,
     };
   }
 
@@ -120,7 +122,14 @@
     const meta = getMetaValues();
     const iva = raw * (meta.ivaPercent / 100);
     const overhead = raw * (meta.overheadPercent / 100);
-    const production = raw + iva + overhead + (meta.packagingCost || 0) + (meta.laborCost || 0);
+    const production =
+      raw +
+      iva +
+      overhead +
+      (meta.packagingCost || 0) +
+      (meta.laborCost || 0) +
+      (meta.energyCost || 0) +
+      (meta.extraCost || 0);
     const portion = meta.yieldPortions > 0 ? production / meta.yieldPortions : 0;
     const selling = meta.sellingPrice || 0;
     const fcPercent = selling > 0 && portion > 0 ? (portion / selling) * 100 : null;
@@ -156,6 +165,10 @@
     document.getElementById("input-overhead").value = currentRecipe.overheadPercent ?? currentRecipe.overhead_percent ?? 0;
     document.getElementById("input-packaging").value = currentRecipe.packagingCost ?? currentRecipe.packaging_cost ?? 0;
     document.getElementById("input-labor").value = currentRecipe.laborCost ?? currentRecipe.labor_cost ?? 0;
+    const energyEl = document.getElementById("input-energy");
+    const extraEl = document.getElementById("input-extra");
+    if (energyEl) energyEl.value = currentRecipe.energyCost ?? currentRecipe.energy_cost ?? 0;
+    if (extraEl) extraEl.value = currentRecipe.extraCost ?? currentRecipe.extra_cost ?? 0;
 
     buildIngredientRows();
     updateTotals();
@@ -186,6 +199,22 @@
       showPanel(false);
       return;
     }
+    if (id === "__new") {
+      currentRecipe = {
+        id: null,
+        name: "Nuovo calcolo",
+        ingredients: [],
+        yieldPortions: 1,
+        sellingPrice: 0,
+        targetFoodCost: 0,
+        ivaPercent: 0,
+        overheadPercent: 0,
+        packagingCost: 0,
+        laborCost: 0,
+      };
+      renderRecipe();
+      return;
+    }
     currentRecipe = recipes.find((r) => r.id === id) || null;
     if (!currentRecipe) {
       showPanel(false);
@@ -195,9 +224,13 @@
   }
 
   async function saveRecipe() {
-    if (!currentRecipe || !currentRecipe.id) return;
+    if (!currentRecipe) return;
     const meta = getMetaValues();
     const ingredients = readIngredientRows();
+    if (!ingredients.length) {
+      alert("Aggiungi almeno un ingrediente.");
+      return;
+    }
     const payload = {
       yieldPortions: meta.yieldPortions,
       sellingPrice: meta.sellingPrice,
@@ -206,13 +239,26 @@
       overheadPercent: meta.overheadPercent,
       packagingCost: meta.packagingCost,
       laborCost: meta.laborCost,
+      energyCost: meta.energyCost,
+      extraCost: meta.extraCost,
       ingredients,
     };
-    const res = await fetch("/api/recipes/" + currentRecipe.id, {
-      method: "PATCH",
+    const isNew = !currentRecipe.id;
+    const url = isNew ? "/api/recipes" : "/api/recipes/" + currentRecipe.id;
+    const method = isNew ? "POST" : "PATCH";
+    const res = await fetch(url, {
+      method,
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        name: currentRecipe.name || currentRecipe.menuItemName || "Nuova ricetta",
+        menuItemName: currentRecipe.menuItemName || currentRecipe.name || "Nuova ricetta",
+        category: currentRecipe.category || "",
+        department: currentRecipe.department || currentRecipe.area || "cucina",
+        description: currentRecipe.description || "",
+        notes: currentRecipe.notes || "",
+      }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -220,9 +266,18 @@
       return;
     }
     currentRecipe = await res.json();
-    const idx = recipes.findIndex((r) => r.id === currentRecipe.id);
-    if (idx >= 0) recipes[idx] = currentRecipe;
-    alert("Ricetta aggiornata.");
+    if (isNew) {
+      recipes.push(currentRecipe);
+      const opt = document.createElement("option");
+      opt.value = currentRecipe.id;
+      opt.textContent = currentRecipe.name || currentRecipe.menuItemName || currentRecipe.id;
+      selectEl.appendChild(opt);
+      selectEl.value = currentRecipe.id;
+    } else {
+      const idx = recipes.findIndex((r) => r.id === currentRecipe.id);
+      if (idx >= 0) recipes[idx] = currentRecipe;
+    }
+    alert(isNew ? "Ricetta creata." : "Ricetta aggiornata.");
   }
 
   document.getElementById("btn-add-ingredient").addEventListener("click", () => {
@@ -245,7 +300,69 @@
   selectEl.addEventListener("change", onSelectRecipe);
   document.getElementById("btn-save").addEventListener("click", saveRecipe);
 
-  ["input-yield", "input-price", "input-target-fc", "input-iva", "input-overhead", "input-packaging", "input-labor"].forEach((id) => {
+  const btnUseAsDish = document.getElementById("btn-use-as-dish");
+  if (btnUseAsDish) {
+    btnUseAsDish.addEventListener("click", () => {
+      if (!currentRecipe || !currentRecipe.id) {
+        alert("Salva prima la ricetta per poterla usare come piatto.");
+        return;
+      }
+      const meta = getMetaValues();
+      const params = new URLSearchParams({
+        fromRecipe: currentRecipe.id,
+        name: currentRecipe.name || currentRecipe.menuItemName || "",
+        category: currentRecipe.category || "",
+        department: currentRecipe.department || currentRecipe.area || "cucina",
+        portions: String(meta.yieldPortions || ""),
+        targetFc: String(meta.targetFoodCost || ""),
+        price: String(meta.sellingPrice || ""),
+      });
+      window.location.href = `/menu-admin/menu-admin.html?${params.toString()}`;
+    });
+  }
+
+  const btnDuplicate = document.getElementById("btn-duplicate");
+  if (btnDuplicate) {
+    btnDuplicate.addEventListener("click", () => {
+      if (!currentRecipe) return;
+      currentRecipe = {
+        ...currentRecipe,
+        id: null,
+        name: (currentRecipe.name || currentRecipe.menuItemName || "Ricetta") + " (copia)",
+      };
+      renderRecipe();
+    });
+  }
+
+  const btnReset = document.getElementById("btn-reset");
+  if (btnReset) {
+    btnReset.addEventListener("click", () => {
+      if (!currentRecipe) return;
+      if (currentRecipe.id) {
+        const original = recipes.find((r) => r.id === currentRecipe.id);
+        if (original) {
+          currentRecipe = original;
+          renderRecipe();
+        }
+      } else {
+        currentRecipe = null;
+        showPanel(false);
+        selectEl.value = "";
+      }
+    });
+  }
+
+  [
+    "input-yield",
+    "input-price",
+    "input-target-fc",
+    "input-iva",
+    "input-overhead",
+    "input-packaging",
+    "input-labor",
+    "input-energy",
+    "input-extra",
+  ].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener("input", updateTotals);
   });

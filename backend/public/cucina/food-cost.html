@@ -27,6 +27,7 @@
           <h2>Seleziona ricetta</h2>
           <select id="recipe-select" class="recipe-select">
             <option value="">-- Scegli ricetta --</option>
+            <option value="__new">+ Nuovo calcolo / nuova ricetta</option>
           </select>
         </header>
       </section>
@@ -35,7 +36,10 @@
         <header class="card-header">
           <h2 id="recipe-name">–</h2>
           <div class="card-actions">
-            <button type="button" class="btn primary" id="btn-save">Salva modifiche</button>
+            <button type="button" class="btn primary" id="btn-save">Salva in ricetta</button>
+            <button type="button" class="btn ghost" id="btn-use-as-dish">Usa come piatto</button>
+            <button type="button" class="btn ghost" id="btn-duplicate">Duplica calcolo</button>
+            <button type="button" class="btn ghost" id="btn-reset">Reset</button>
           </div>
         </header>
         <div class="card-body">
@@ -47,6 +51,8 @@
             <label>Spese generali % <input type="number" id="input-overhead" min="0" max="100" step="0.5" /></label>
             <label>Packaging € <input type="number" id="input-packaging" min="0" step="0.01" /></label>
             <label>Mano d'opera € <input type="number" id="input-labor" min="0" step="0.01" /></label>
+            <label>Energia / gas € <input type="number" id="input-energy" min="0" step="0.01" /></label>
+            <label>Altro costo € <input type="number" id="input-extra" min="0" step="0.01" /></label>
           </div>
 
           <h3 class="section-title">Ingredienti</h3>

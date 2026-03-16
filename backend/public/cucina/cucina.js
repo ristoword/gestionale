@@ -726,7 +726,8 @@ function initSpeechRecognition() {
 }
 
 function loadShoppingFromStorage() {
-  shoppingItems = safeJSONParse(localStorage.getItem(LS_SHOPPING_KEY), []);
+  const parsed = safeJSONParse(localStorage.getItem(LS_SHOPPING_KEY), []);
+  shoppingItems = Array.isArray(parsed) ? parsed : [];
 }
 
 function saveShoppingToStorage() {
@@ -739,13 +740,14 @@ function renderShoppingList() {
 
   container.innerHTML = "";
 
-  if (!shoppingItems.length) {
+  const items = Array.isArray(shoppingItems) ? shoppingItems : [];
+  if (!items.length) {
     container.innerHTML =
       '<div class="shopping-item">Lista vuota.</div>';
     return;
   }
 
-  shoppingItems.forEach((txt, idx) => {
+  items.forEach((txt, idx) => {
     const div = document.createElement("div");
     div.className = "shopping-item";
     div.innerHTML = `
@@ -760,6 +762,9 @@ function renderShoppingList() {
   container.querySelectorAll("button.btn-xs.danger").forEach((btn) => {
     btn.addEventListener("click", () => {
       const idx = Number(btn.dataset.index);
+      if (!Array.isArray(shoppingItems)) {
+        shoppingItems = [];
+      }
       shoppingItems.splice(idx, 1);
       saveShoppingToStorage();
       renderShoppingList();

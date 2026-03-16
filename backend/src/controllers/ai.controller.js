@@ -1,5 +1,6 @@
 const aiAssistantService = require("../service/ai-assistant.service");
 const aiOpenaiService = require("../service/ai-openai.service");
+const { runDepartmentQuery } = require("../modules/ai/ai.orchestrator");
 
 // POST /api/ai/query – production OpenAI backend (structured JSON)
 exports.postQuery = async (req, res) => {
@@ -21,6 +22,38 @@ exports.postQuery = async (req, res) => {
   } catch (err) {
     console.error("[AI] query error:", err.message);
     return res.status(500).json(aiOpenaiService.FALLBACK_RESPONSE);
+  }
+};
+
+// POST /api/ai/:department/query – new structured AI Operating System entrypoint
+exports.postDepartmentQuery = async (req, res) => {
+  const department = String(req.params.department || "").toLowerCase();
+  const body = req.body || {};
+  const mode = body.mode || "read";
+  const question = String(body.question || "").trim();
+  const quickIntent = body.quickIntent || null;
+
+  try {
+    const result = await runDepartmentQuery({
+      department,
+      mode,
+      question,
+      quickIntent,
+    });
+    return res.json(result);
+  } catch (err) {
+    console.error("[AI] department query error:", err.message);
+    return res.status(500).json({
+      mode: "read",
+      department,
+      title: "Errore AI",
+      summary: "Si è verificato un errore durante l'elaborazione AI.",
+      insights: [],
+      actions: [],
+      warnings: [err.message || "Errore interno AI"],
+      dataPoints: {},
+      notes: [],
+    });
   }
 };
 

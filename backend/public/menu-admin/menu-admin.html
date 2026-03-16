@@ -79,6 +79,13 @@
                 <input type="text" id="field-category" placeholder="Antipasto / Primo / Secondo / Dessert / Bevanda" />
               </label>
 
+              <label class="full">
+                Ricetta collegata
+                <select id="field-linked-recipe">
+                  <option value="">Nessuna ricetta</option>
+                </select>
+              </label>
+
               <label>
                 Reparto
                 <select id="field-area">
@@ -111,9 +118,129 @@
                 <textarea id="field-notes" rows="3" placeholder="Ingredienti, allergeni, note per la sala..."></textarea>
               </label>
 
+              <input type="hidden" id="field-recipe-id" />
+
               <div class="form-actions full">
                 <button class="btn primary" id="btn-add-item">Aggiungi al menu</button>
                 <button class="btn ghost" id="btn-clear-form">Svuota campi</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <header class="card-header">
+              <h2>Food Cost Avanzato</h2>
+              <p>Calcolo professionale in tempo reale per questo piatto</p>
+            </header>
+            <div class="card-body fc-advanced">
+              <div class="fc-grid">
+                <div>
+                  <table class="fc-ingredients-table">
+                    <thead>
+                      <tr>
+                        <th>Ingrediente</th>
+                        <th>Qtà</th>
+                        <th>Unità</th>
+                        <th>€/unità</th>
+                        <th>Scarto %</th>
+                        <th>Costo reale</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="fc-ingredients-body">
+                    </tbody>
+                  </table>
+                  <div class="fc-ingredients-actions">
+                    <button class="btn ghost btn-sm" type="button" id="btn-fc-add-row">+ Aggiungi ingrediente</button>
+                    <small class="text-muted">Unità supportate: gr, kg, ml, cl, lt, pz</small>
+                  </div>
+                </div>
+                <div>
+                  <div class="fc-options-grid">
+                    <label>
+                      IVA %
+                      <input type="number" id="fc-iva" step="0.1" min="0" max="100" />
+                    </label>
+                    <label>
+                      Spese generali %
+                      <input type="number" id="fc-overhead" step="0.1" min="0" max="100" />
+                    </label>
+                    <label>
+                      Packaging €
+                      <input type="number" id="fc-packaging" step="0.01" min="0" />
+                    </label>
+                    <label>
+                      Manodopera €
+                      <input type="number" id="fc-labor" step="0.01" min="0" />
+                    </label>
+                    <label>
+                      Energia / gas €
+                      <input type="number" id="fc-energy" step="0.01" min="0" />
+                    </label>
+                    <label>
+                      Altro costo €
+                      <input type="number" id="fc-extra" step="0.01" min="0" />
+                    </label>
+                    <label>
+                      Porzioni rese
+                      <input type="number" id="fc-yield" min="1" />
+                    </label>
+                    <label>
+                      Prezzo vendita €
+                      <input type="number" id="fc-price" step="0.01" min="0" />
+                    </label>
+                    <label>
+                      Food cost target %
+                      <input type="number" id="fc-target" step="0.1" min="0" max="100" />
+                    </label>
+                    <label>
+                      Margine target %
+                      <input type="number" id="fc-margin-target" step="0.1" min="0" max="100" />
+                    </label>
+                  </div>
+
+                  <div class="fc-flags">
+                    <label>
+                      <input type="checkbox" id="fc-save-as-recipe" />
+                      Salva anche come ricetta
+                    </label>
+                    <label>
+                      <input type="checkbox" id="fc-update-linked-recipe" />
+                      Aggiorna anche ricetta collegata
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="fc-summary">
+                <div class="fc-summary-row">
+                  <span>Costo totale ingredienti</span>
+                  <span id="fc-sum-ingredients">€ 0,00</span>
+                </div>
+                <div class="fc-summary-row">
+                  <span>Costo totale produzione</span>
+                  <span id="fc-sum-production">€ 0,00</span>
+                </div>
+                <div class="fc-summary-row">
+                  <span>Costo per porzione</span>
+                  <span id="fc-cost-portion">€ 0,00</span>
+                </div>
+                <div class="fc-summary-row">
+                  <span>Food cost %</span>
+                  <span id="fc-percent-live">—</span>
+                </div>
+                <div class="fc-summary-row">
+                  <span>Margine lordo €</span>
+                  <span id="fc-margin-value">—</span>
+                </div>
+                <div class="fc-summary-row">
+                  <span>Margine lordo %</span>
+                  <span id="fc-margin-percent">—</span>
+                </div>
+                <div class="fc-summary-row fc-summary-highlight">
+                  <span>Prezzo consigliato (target)</span>
+                  <span id="fc-suggested-price">—</span>
+                </div>
               </div>
             </div>
           </article>

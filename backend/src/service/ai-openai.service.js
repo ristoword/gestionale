@@ -115,7 +115,7 @@ function writeDebugOutput(data) {
  * Call OpenAI and return structured JSON response.
  * Uses real context from Ristoword repositories.
  */
-async function queryWithOpenAI(question) {
+async function queryWithOpenAI(question, overrideSystemPrompt) {
   const apiKey = env.OPENAI_API_KEY;
   const model = env.OPENAI_MODEL;
 
@@ -158,7 +158,7 @@ Rispondi con un unico oggetto JSON valido, senza testo aggiuntivo prima o dopo.`
     const completion = await client.chat.completions.create({
       model,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: overrideSystemPrompt || SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },

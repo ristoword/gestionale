@@ -574,6 +574,7 @@ function initRecipes() {
   const btnClear = document.getElementById("btn-recipe-clear");
   const btnAddIng = document.getElementById("btn-add-ingredient");
   const ingredientsList = document.getElementById("recipe-ingredients-list");
+  const btnUseAsDish = document.getElementById("btn-recipe-use-as-dish");
 
   if (btnAddIng && ingredientsList) {
     btnAddIng.addEventListener("click", () => addIngredientRow(ingredientsList));
@@ -623,6 +624,10 @@ function initRecipes() {
           alert(data.error || "Errore salvataggio");
           return;
         }
+        // Aggiorna l'id nascosto con l'ID definitivo restituito dal backend
+        if (data && data.id) {
+          document.getElementById("recipe-id").value = data.id;
+        }
         clearRecipeForm();
         await loadRecipesAndRender();
       } catch (e) {
@@ -634,6 +639,33 @@ function initRecipes() {
   document.querySelector(".nav-btn[data-view='ricette']")?.addEventListener("click", () => {
     loadRecipesAndRender();
   });
+
+  if (btnUseAsDish) {
+    btnUseAsDish.addEventListener("click", () => {
+      const id = document.getElementById("recipe-id").value;
+      if (!id) {
+        alert("Prima salva la ricetta per poterla usare come piatto.");
+        return;
+      }
+      const name = document.getElementById("recipe-name").value.trim();
+      const category = document.getElementById("recipe-category").value.trim();
+      const department = document.getElementById("recipe-department").value;
+      const yieldVal = document.getElementById("recipe-yield").value;
+      const targetFcVal = document.getElementById("recipe-target-fc").value;
+      const priceVal = document.getElementById("recipe-selling-price").value;
+
+      const params = new URLSearchParams({
+        fromRecipe: id,
+        name,
+        category,
+        department,
+        portions: String(yieldVal || ""),
+        targetFc: String(targetFcVal || ""),
+        price: String(priceVal || ""),
+      });
+      window.location.href = `/menu-admin/menu-admin.html?${params.toString()}`;
+    });
+  }
   loadRecipesAndRender();
 }
 

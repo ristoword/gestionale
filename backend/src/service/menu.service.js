@@ -2,6 +2,7 @@
 
 const menuRepository = require("../repositories/menu.repository");
 const recipesRepository = require("../repositories/recipes.repository");
+const { computeAdvancedFoodCost } = require("./foodcost.service");
 
 function listAll() {
   return menuRepository.getAll();
@@ -15,7 +16,45 @@ function create(data) {
   if (!data.name) {
     throw new Error("Nome piatto obbligatorio");
   }
-  return menuRepository.add(data);
+  let enriched = { ...data };
+
+  // Se arrivano ingredienti / parametri di food cost, calcola i valori derivati centralmente.
+  if (Array.isArray(data.ingredients) && data.ingredients.length > 0) {
+    const fc = computeAdvancedFoodCost({
+      ingredients: data.ingredients,
+      ivaPercent: data.ivaPercent ?? data.iva_percent,
+      overheadPercent: data.overheadPercent ?? data.overhead_percent,
+      packagingCost: data.packagingCost ?? data.packaging_cost,
+      laborCost: data.laborCost ?? data.labor_cost,
+      energyCost: data.energyCost ?? data.energy_cost,
+      extraCost: data.extraCost ?? data.extra_cost,
+      yieldPortions: data.yield ?? data.yieldPortions ?? data.yield_portions,
+      sellingPrice: data.sellingPrice ?? data.price,
+      foodCostTarget: data.foodCostTarget ?? data.targetFoodCost ?? data.target_food_cost,
+      marginTarget: data.marginTarget ?? data.margin_target,
+    });
+
+    enriched = {
+      ...enriched,
+      ivaPercent: fc.ivaPercent ?? data.ivaPercent,
+      overheadPercent: fc.overheadPercent ?? data.overheadPercent,
+      packagingCost: fc.packagingCost,
+      laborCost: fc.laborCost,
+      energyCost: fc.energyCost,
+      extraCost: fc.extraCost,
+      yield: fc.yieldPortions,
+      foodCostTarget: fc.foodCostTarget ?? data.foodCostTarget,
+      marginTarget: fc.marginTarget ?? data.marginTarget,
+      computedFoodCost: fc.foodCostPercent,
+      computedCostPerPortion: fc.costPerPortion,
+      computedProductionCost: fc.finalProductionCost,
+      computedMarginValue: fc.marginValue,
+      computedMarginPercent: fc.marginPercent,
+      suggestedPrice: fc.suggestedPrice,
+    };
+  }
+
+  return menuRepository.add(enriched);
 }
 
 function getOne(id) {
@@ -27,7 +66,44 @@ function getOne(id) {
 }
 
 async function update(id, data) {
-  const item = menuRepository.update(id, data);
+  let patch = { ...data };
+
+  if (Array.isArray(data.ingredients) && data.ingredients.length > 0) {
+    const fc = computeAdvancedFoodCost({
+      ingredients: data.ingredients,
+      ivaPercent: data.ivaPercent ?? data.iva_percent,
+      overheadPercent: data.overheadPercent ?? data.overhead_percent,
+      packagingCost: data.packagingCost ?? data.packaging_cost,
+      laborCost: data.laborCost ?? data.labor_cost,
+      energyCost: data.energyCost ?? data.energy_cost,
+      extraCost: data.extraCost ?? data.extra_cost,
+      yieldPortions: data.yield ?? data.yieldPortions ?? data.yield_portions,
+      sellingPrice: data.sellingPrice ?? data.price,
+      foodCostTarget: data.foodCostTarget ?? data.targetFoodCost ?? data.target_food_cost,
+      marginTarget: data.marginTarget ?? data.margin_target,
+    });
+
+    patch = {
+      ...patch,
+      ivaPercent: fc.ivaPercent ?? data.ivaPercent,
+      overheadPercent: fc.overheadPercent ?? data.overheadPercent,
+      packagingCost: fc.packagingCost,
+      laborCost: fc.laborCost,
+      energyCost: fc.energyCost,
+      extraCost: fc.extraCost,
+      yield: fc.yieldPortions,
+      foodCostTarget: fc.foodCostTarget ?? data.foodCostTarget,
+      marginTarget: fc.marginTarget ?? data.marginTarget,
+      computedFoodCost: fc.foodCostPercent,
+      computedCostPerPortion: fc.costPerPortion,
+      computedProductionCost: fc.finalProductionCost,
+      computedMarginValue: fc.marginValue,
+      computedMarginPercent: fc.marginPercent,
+      suggestedPrice: fc.suggestedPrice,
+    };
+  }
+
+  const item = menuRepository.update(id, patch);
   if (!item) throw new Error("Piatto non trovato");
   if (data.recipeId != null || data.recipe_id != null) {
     const recipeId = data.recipeId || data.recipe_id;

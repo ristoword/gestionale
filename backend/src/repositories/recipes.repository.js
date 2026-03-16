@@ -127,6 +127,11 @@ async function getAll() {
   return recipes;
 }
 
+// Alias esplicito per chiarezza nelle chiamate di alto livello.
+async function getAllRecipes() {
+  return getAll();
+}
+
 // GET BY ID
 async function getById(id) {
   ensureLoaded();
@@ -355,6 +360,7 @@ module.exports = {
   VALID_UNITS,
   UNIT_ALIASES,
   getAll,
+  getAllRecipes,
   getById,
   getByMenuItemName,
   getByDishId,

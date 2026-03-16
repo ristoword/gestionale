@@ -202,6 +202,128 @@ a.side-nav-item {
   gap: 8px;
 }
 
+/* FOOD COST AVANZATO */
+
+.fc-advanced {
+  margin-top: 10px;
+  border-top: 1px solid #272c3c;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fc-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.fc-ingredients-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.fc-ingredients-table thead {
+  background: #181b24;
+}
+
+.fc-ingredients-table th,
+.fc-ingredients-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #272c3c;
+  text-align: left;
+}
+
+.fc-ingredients-table th {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.fc-ingredients-table input,
+.fc-ingredients-table select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #343848;
+  background: #151822;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.fc-ingredients-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.fc-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.fc-summary-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.fc-summary-row span:first-child {
+  color: var(--text-muted);
+}
+
+.fc-summary-row span:last-child {
+  font-weight: 600;
+}
+
+.fc-summary-highlight {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  padding: 6px 8px;
+  background: rgba(245, 184, 0, 0.08);
+}
+
+.fc-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  font-size: 12px;
+}
+
+.fc-options-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fc-options-grid input {
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #343848;
+  background: #151822;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.fc-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.fc-flags label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-soft);
+}
+
 /* FILTRI */
 
 .filters-grid {

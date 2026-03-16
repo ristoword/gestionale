@@ -175,6 +175,9 @@ function populateMenuSelect() {
     opt.dataset.name = item.name;
     opt.dataset.category = item.category || item.type || "";
     opt.dataset.price = item.price != null ? String(item.price) : "";
+    if (item.recipeId || item.recipe_id) {
+      opt.dataset.recipeId = item.recipeId || item.recipe_id;
+    }
     select.appendChild(opt);
   });
 }
@@ -248,6 +251,7 @@ function setupAddFromMenu() {
     const priceStr = selectedOption.dataset.price;
     const price = priceStr ? Number(priceStr) : null;
     const area = inferAreaFromCategory(cat);
+    const recipeId = selectedOption.dataset.recipeId || null;
 
     selectedItems.push({
       source: "menu",
@@ -257,6 +261,8 @@ function setupAddFromMenu() {
       category: cat,
       area,
       price,
+       // collega direttamente la riga ordine alla ricetta per scarico magazzino / food cost
+      recipeId,
       note: "", // niente note extra qui
     });
 

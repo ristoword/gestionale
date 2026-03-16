@@ -114,6 +114,7 @@ function writeDebugOutput(data) {
 /**
  * Call OpenAI and return structured JSON response.
  * Uses real context from Ristoword repositories.
+ * NEVER hangs: guarded by a hard timeout and robust fallbacks.
  */
 async function queryWithOpenAI(question, overrideSystemPrompt) {
   const apiKey = env.OPENAI_API_KEY;
@@ -126,11 +127,15 @@ async function queryWithOpenAI(question, overrideSystemPrompt) {
     };
   }
 
+  console.log("[AI OPENAI] Starting queryWithOpenAI");
+
   let context;
   try {
+    console.log("[AI CONTEXT] buildContextForQuery start");
     context = await aiContextService.buildContextForQuery();
+    console.log("[AI CONTEXT] buildContextForQuery done");
   } catch (err) {
-    console.error("[AI] Context build error:", err.message);
+    console.error("[AI ERROR] Context build error:", err.message);
     return {
       ...FALLBACK_RESPONSE,
       answer: "Errore nel caricamento dei dati operativi.",
@@ -150,21 +155,34 @@ Rispondi con un unico oggetto JSON valido, senza testo aggiuntivo prima o dopo.`
   try {
     client = new OpenAI({ apiKey: apiKey.trim() });
   } catch (err) {
-    console.error("[AI] OpenAI client init error:", err.message);
+    console.error("[AI ERROR] OpenAI client init error:", err.message);
     return { ...FALLBACK_RESPONSE, answer: "Errore inizializzazione OpenAI." };
   }
 
   try {
-    const completion = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: "system", content: overrideSystemPrompt || SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-      max_tokens: 1024,
-    });
+    console.log("[AI OPENAI] Calling chat.completions.create");
+
+    const timeoutMs = 20000;
+    const completion = await Promise.race([
+      client.chat.completions.create({
+        model,
+        messages: [
+          { role: "system", content: overrideSystemPrompt || SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+        max_tokens: 1024,
+      }),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("AI_TIMEOUT: OpenAI response exceeded 20s")),
+          timeoutMs
+        )
+      ),
+    ]);
+
+    console.log("[AI OPENAI] chat.completions.create completed");
 
     const content =
       completion?.choices?.[0]?.message?.content ||
@@ -173,6 +191,7 @@ Rispondi con un unico oggetto JSON valido, senza testo aggiuntivo prima o dopo.`
     const validated = parseAndValidate(content);
 
     if (validated) {
+      console.log("[AI RESPONSE] Valid AI output parsed");
       writeDebugOutput(validated);
       return validated;
     }
@@ -184,12 +203,12 @@ Rispondi con un unico oggetto JSON valido, senza testo aggiuntivo prima o dopo.`
       };
     }
 
-    console.warn("[AI] Invalid or unparseable output:", content?.slice(0, 200));
+    console.warn("[AI ERROR] Invalid or unparseable output:", content?.slice(0, 200));
     writeDebugOutput({ raw: content, validated: false });
     return FALLBACK_RESPONSE;
   } catch (err) {
     const msg = err?.message || String(err);
-    console.error("[AI] OpenAI API error:", msg);
+    console.error("[AI ERROR] OpenAI API error:", msg);
     if (msg.includes("401") || msg.includes("Incorrect API key")) {
       return {
         ...FALLBACK_RESPONSE,

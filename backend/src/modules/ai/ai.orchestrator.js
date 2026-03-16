@@ -50,7 +50,11 @@ ISTRUZIONI RISPOSTA:
 }
 
 async function buildDepartmentContext(department) {
-  const base = await aiContextService.buildContextForQuery().catch(() => ({}));
+  console.log("[AI CONTEXT] buildDepartmentContext start", { department });
+  const base = await aiContextService.buildContextForQuery().catch((err) => {
+    console.error("[AI ERROR] buildContextForQuery failed in orchestrator:", err?.message);
+    return {};
+  });
 
   switch (department) {
     case "kitchen": {
@@ -108,6 +112,7 @@ async function buildDepartmentContext(department) {
       };
     }
     default:
+      console.log("[AI CONTEXT] buildDepartmentContext done", { department });
       return base;
   }
 }
@@ -115,6 +120,12 @@ async function buildDepartmentContext(department) {
 async function runDepartmentQuery({ department, mode, question, quickIntent }) {
   const dep = normalizeDepartment(department);
   const m = normalizeMode(mode);
+
+  console.log("[AI ORCHESTRATOR] runDepartmentQuery start", {
+    department: dep,
+    mode: m,
+    quickIntent: quickIntent || null,
+  });
 
   const baseResp = buildBaseResponse({ mode: m, department: dep });
 
@@ -137,16 +148,23 @@ async function runDepartmentQuery({ department, mode, question, quickIntent }) {
   });
 
   // Usa il servizio OpenAI esistente che restituisce già JSON valido, poi lo mappiamo sullo schema richiesto.
-  const raw = await aiOpenaiService
-    .queryWithOpenAI(userPrompt, systemPrompt)
-    .catch((err) => {
-      baseResp.warnings.push(
-        `Errore AI: ${err?.message || "servizio AI non disponibile"}`
-      );
-      return null;
-    });
+  let raw = null;
+  try {
+    console.log("[AI ORCHESTRATOR] calling aiOpenaiService.queryWithOpenAI");
+    raw = await aiOpenaiService.queryWithOpenAI(userPrompt, systemPrompt);
+    console.log("[AI ORCHESTRATOR] aiOpenaiService.queryWithOpenAI completed");
+  } catch (err) {
+    console.error(
+      "[AI ERROR] queryWithOpenAI failed in orchestrator:",
+      err?.message
+    );
+    baseResp.warnings.push(
+      `Errore AI: ${err?.message || "servizio AI non disponibile"}`
+    );
+  }
 
   if (!raw || typeof raw !== "object") {
+    console.log("[AI RESPONSE] returning fallback baseResp for department", dep);
     return {
       ...baseResp,
       title: "AI non disponibile",
@@ -155,7 +173,7 @@ async function runDepartmentQuery({ department, mode, question, quickIntent }) {
   }
 
   // Prova a mappare i campi se il modello ha già seguito lo schema richiesto.
-  return {
+  const response = {
     ...baseResp,
     mode: normalizeMode(raw.mode || m),
     department: normalizeDepartment(raw.department || dep),
@@ -172,6 +190,14 @@ async function runDepartmentQuery({ department, mode, question, quickIntent }) {
         : baseResp.dataPoints,
     notes: Array.isArray(raw.notes) ? raw.notes : baseResp.notes,
   };
+
+  console.log("[AI RESPONSE] orchestrator normalized response", {
+    department: response.department,
+    mode: response.mode,
+    title: response.title,
+  });
+
+  return response;
 }
 
 module.exports = {

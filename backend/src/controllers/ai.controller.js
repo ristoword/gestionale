@@ -27,33 +27,76 @@ exports.postQuery = async (req, res) => {
 
 // POST /api/ai/:department/query – new structured AI Operating System entrypoint
 exports.postDepartmentQuery = async (req, res) => {
+  console.log("[AI ROUTE] POST /api/ai/:department/query hit");
   const department = String(req.params.department || "").toLowerCase();
   const body = req.body || {};
   const mode = body.mode || "read";
   const question = String(body.question || "").trim();
   const quickIntent = body.quickIntent || null;
 
+  let responded = false;
+  const timeoutMs = 5000;
+  const timeoutId = setTimeout(() => {
+    if (responded) return;
+    responded = true;
+    console.error("[AI ERROR] Department query timeout, sending fallback response", {
+      department,
+    });
+    res.json({
+      ok: false,
+      answer: "AI temporaneamente non disponibile.",
+      intent: department || "generic",
+      confidence: "low",
+      data: {
+        summary: "",
+        items: [],
+        totals: {},
+        warnings: ["AI temporaneamente non disponibile"],
+      },
+      sources: [],
+    });
+  }, timeoutMs);
+
   try {
+    console.log("[AI CONTROLLER] postDepartmentQuery start", {
+      department,
+      mode,
+      hasQuestion: !!question,
+      quickIntent,
+    });
     const result = await runDepartmentQuery({
       department,
       mode,
       question,
       quickIntent,
     });
-    return res.json(result);
+    if (!responded) {
+      responded = true;
+      clearTimeout(timeoutId);
+      console.log("[AI CONTROLLER] postDepartmentQuery success", {
+        department,
+        mode,
+        title: result?.title,
+      });
+      return res.json(result);
+    }
   } catch (err) {
-    console.error("[AI] department query error:", err.message);
-    return res.status(500).json({
-      mode: "read",
-      department,
-      title: "Errore AI",
-      summary: "Si è verificato un errore durante l'elaborazione AI.",
-      insights: [],
-      actions: [],
-      warnings: [err.message || "Errore interno AI"],
-      dataPoints: {},
-      notes: [],
-    });
+    console.error("[AI ERROR] department query error:", err.message);
+    if (!responded) {
+      responded = true;
+      clearTimeout(timeoutId);
+      return res.status(500).json({
+        mode: "read",
+        department,
+        title: "Errore AI",
+        summary: "Si è verificato un errore durante l'elaborazione AI.",
+        insights: [],
+        actions: [],
+        warnings: [err.message || "Errore interno AI"],
+        dataPoints: {},
+        notes: [],
+      });
+    }
   }
 };
 

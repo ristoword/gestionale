@@ -29,6 +29,7 @@ const DEPARTMENTS = ["cucina", "sala", "bar", "proprieta"];
  * Returns a compact summary (not raw DB dumps) to keep prompt efficient.
  */
 async function buildContextForQuery() {
+  console.log("[AI CONTEXT] buildContextForQuery global start");
   const today = new Date();
   const dateFrom = new Date(today);
   dateFrom.setHours(0, 0, 0, 0);
@@ -177,7 +178,7 @@ async function buildContextForQuery() {
       expiresAt: item.expiresAt || item.expiryDate || item.expires,
     }));
 
-  return {
+  const ctx = {
     activeOrders: {
       total: activeOrders.length,
       pending: pendingCount,
@@ -209,6 +210,9 @@ async function buildContextForQuery() {
     bookingsToday,
     expiringItems: expiringItems.slice(0, 10),
   };
+
+  console.log("[AI CONTEXT] buildContextForQuery global done");
+  return ctx;
 }
 
 module.exports = {

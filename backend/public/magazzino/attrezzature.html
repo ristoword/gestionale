@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>RISTOWORD – Attrezzature</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="magazzino.css" />
+</head>
+<body>
+  <div class="layout">
+
+    <header class="topbar">
+      <div>
+        <h1>RISTOWORD – Attrezzature</h1>
+        <p class="subtitle">
+          Modulo attrezzature separato dal magazzino ingredienti
+        </p>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi">
+          <span class="kpi-label">Articoli censiti</span>
+          <span class="kpi-value" id="kpi-eq-count">0</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Pezzi totali</span>
+          <span class="kpi-value" id="kpi-eq-qty">0</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Valore totale</span>
+          <span class="kpi-value" id="kpi-eq-value">€ 0.00</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Articoli rotti</span>
+          <span class="kpi-value" id="kpi-eq-broken">0</span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="mag-tabs">
+      <button class="mag-tab active" type="button">Attrezzature</button>
+      <button class="btn ghost" type="button"
+              onclick="window.location.href='/magazzino/magazzino.html'">
+        ← Torna al Magazzino
+      </button>
+    </nav>
+
+    <main class="main">
+
+      <!-- FILTRI -->
+      <section class="card">
+        <header class="card-header">
+          <h2>Filtri</h2>
+        </header>
+        <div class="card-body form-grid">
+          <label>
+            Categoria
+            <select id="filter-category">
+              <option value="">Tutte le categorie</option>
+            </select>
+          </label>
+          <label class="full">
+            Ricerca
+            <input type="text" id="filter-search" placeholder="Cerca per nome, sottocategoria o posizione..." />
+          </label>
+        </div>
+      </section>
+
+      <!-- FORM ATTREZZATURE -->
+      <section class="card card-form">
+        <header class="card-header">
+          <h2 id="form-title">Nuova attrezzatura</h2>
+        </header>
+        <div class="card-body form-grid">
+          <label>
+            Nome
+            <input type="text" id="eq-name" placeholder="Es. Piatti piani 28cm" />
+          </label>
+
+          <label>
+            Categoria
+            <select id="eq-category">
+              <!-- popolato da JS -->
+            </select>
+          </label>
+
+          <label>
+            Sottocategoria
+            <input type="text" id="eq-subcategory" placeholder="Es. piatti piani, bicchieri acqua..." />
+          </label>
+
+          <label>
+            Quantità
+            <input type="number" id="eq-quantity" min="0" step="1" />
+          </label>
+
+          <label>
+            Unità
+            <select id="eq-unit">
+              <option value="pezzi">pezzi</option>
+              <option value="set">set</option>
+              <option value="unità">unità</option>
+              <option value="coppie">coppie</option>
+              <option value="casse">casse</option>
+            </select>
+          </label>
+
+          <label>
+            Stato
+            <select id="eq-status">
+              <option value="attivo">attivo</option>
+              <option value="rotto">rotto</option>
+              <option value="riparazione">riparazione</option>
+              <option value="dismesso">dismesso</option>
+            </select>
+          </label>
+
+          <label>
+            Posizione
+            <select id="eq-location">
+              <option value="cucina">cucina</option>
+              <option value="sala">sala</option>
+              <option value="bar">bar</option>
+              <option value="pizzeria">pizzeria</option>
+              <option value="magazzino">magazzino</option>
+              <option value="dehors">dehors</option>
+              <option value="ufficio">ufficio</option>
+              <option value="altro">altro</option>
+            </select>
+          </label>
+
+          <label>
+            Valore unitario (€)
+            <input type="number" id="eq-unit-value" min="0" step="0.01" />
+          </label>
+
+          <label class="full">
+            Note
+            <input type="text" id="eq-notes" placeholder="Es. marca, modello, condizioni, ecc." />
+          </label>
+
+          <div class="form-actions full">
+            <button class="btn primary" id="eq-save">Salva</button>
+            <button class="btn ghost" id="eq-cancel" type="button">Annulla modifica</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- LISTA ATTREZZATURE -->
+      <section class="card">
+        <header class="card-header">
+          <h2>Elenco attrezzature</h2>
+        </header>
+        <div class="card-body list" id="eq-list">
+          <p class="muted">Nessuna attrezzatura censita. Aggiungila dal form sopra.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/shared/auth-guard.js" data-allowed-roles="owner,sala,cucina,cassa,magazzino"></script>
+  <script src="attrezzature.js"></script>
+</body>
+</html>
+

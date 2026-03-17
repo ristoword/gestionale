@@ -1,0 +1,34 @@
+{
+  "restaurantName": "Ristoword Demo",
+  "departments": {
+    "sala": true,
+    "cucina": true,
+    "cassa": true,
+    "magazzino": true,
+    "prenotazioni": true
+  },
+  "tables": [
+    { "id": 1, "number": 1, "name": "Tavolo 1" },
+    { "id": 2, "number": 2, "name": "Tavolo 2" },
+    { "id": 3, "number": 3, "name": "Tavolo 3" },
+    { "id": 4, "number": 4, "name": "Tavolo 4" },
+    { "id": 5, "number": 5, "name": "Tavolo 5" },
+    { "id": 6, "number": 6, "name": "Tavolo 6" },
+    { "id": 7, "number": 7, "name": "Tavolo 7" },
+    { "id": 8, "number": 8, "name": "Tavolo 8" },
+    { "id": 9, "number": 9, "name": "Tavolo 9" },
+    { "id": 10, "number": 10, "name": "Tavolo 10" },
+    { "id": 11, "number": 11, "name": "Tavolo 11" },
+    { "id": 12, "number": 12, "name": "Tavolo 12" },
+    { "id": 13, "number": 13, "name": "Tavolo 13" },
+    { "id": 14, "number": 14, "name": "Tavolo 14" },
+    { "id": 15, "number": 15, "name": "Tavolo 15" },
+    { "id": 16, "number": 16, "name": "Tavolo 16" },
+    { "id": 17, "number": 17, "name": "Tavolo 17" },
+    { "id": 18, "number": 18, "name": "Tavolo 18" },
+    { "id": 19, "number": 19, "name": "Tavolo 19" },
+    { "id": 20, "number": 20, "name": "Tavolo 20" }
+  ],
+  "language": "it",
+  "currency": "EUR"
+}

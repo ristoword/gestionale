@@ -2,6 +2,84 @@ const aiAssistantService = require("../service/ai-assistant.service");
 const aiOpenaiService = require("../service/ai-openai.service");
 const { runDepartmentQuery } = require("../modules/ai/ai.orchestrator");
 
+// ================================
+//   AI USAGE TRACKING (lightweight)
+// ================================
+
+function getTodayISODate() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function detectSourceFromRequest(req) {
+  try {
+    const hdr = (req.headers && (req.headers["x-rw-source"] || req.headers["x-rw-module"])) || "";
+    if (typeof hdr === "string" && hdr.trim()) {
+      const h = hdr.toLowerCase();
+      if (h.includes("cassa")) return "cassa";
+      if (h.includes("cucina") || h.includes("kitchen")) return "cucina";
+    }
+    const ref = (req.headers && req.headers.referer) || "";
+    if (typeof ref === "string" && ref) {
+      const r = ref.toLowerCase();
+      if (r.includes("/cassa/") || r.includes("cassa")) return "cassa";
+      if (r.includes("/cucina/") || r.includes("kitchen")) return "cucina";
+    }
+  } catch (_) {
+    // ignore detection errors
+  }
+  return "other";
+}
+
+function getUsageState() {
+  if (!global.__rw_aiUsage) {
+    global.__rw_aiUsage = {
+      date: getTodayISODate(),
+      total: 0,
+      bySource: {
+        cassa: 0,
+        cucina: 0,
+        other: 0,
+      },
+    };
+  }
+  const today = getTodayISODate();
+  if (global.__rw_aiUsage.date !== today) {
+    global.__rw_aiUsage = {
+      date: today,
+      total: 0,
+      bySource: {
+        cassa: 0,
+        cucina: 0,
+        other: 0,
+      },
+    };
+  }
+  return global.__rw_aiUsage;
+}
+
+function trackAiUsage(req) {
+  const state = getUsageState();
+  const source = detectSourceFromRequest(req);
+  state.total += 1;
+  if (!state.bySource[source]) {
+    state.bySource[source] = 0;
+  }
+  state.bySource[source] += 1;
+
+  // Soft console log for ops visibility
+  // Example: [AI USAGE] 2026-03-17 → total: 124 (cassa: 80, cucina: 40, other: 4)
+  // eslint-disable-next-line no-console
+  console.log(
+    `[AI USAGE] ${state.date} → total: ${state.total} (cassa: ${state.bySource.cassa || 0}, cucina: ${
+      state.bySource.cucina || 0
+    }, other: ${state.bySource.other || 0})`
+  );
+}
+
 // POST /api/ai/query – production OpenAI backend (structured JSON)
 exports.postQuery = async (req, res) => {
   const question = String((req.body && req.body.question) || "").trim();
@@ -17,6 +95,7 @@ exports.postQuery = async (req, res) => {
     });
   }
   try {
+    trackAiUsage(req);
     const result = await aiOpenaiService.queryWithOpenAI(question);
     return res.json(result);
   } catch (err) {
@@ -58,6 +137,7 @@ exports.postDepartmentQuery = async (req, res) => {
   }, timeoutMs);
 
   try {
+    trackAiUsage(req);
     console.log("[AI CONTROLLER] postDepartmentQuery start", {
       department,
       mode,
@@ -145,6 +225,20 @@ exports.getGeneralSuggestion = async (req, res) => {
   const question = String(req.query.q || "").trim();
   const result = await aiAssistantService.getResponseForQuestion(question);
   res.json(result);
+};
+
+// GET /api/ai/usage – debug-only daily usage counters (no auth)
+exports.getUsage = async (req, res) => {
+  const state = getUsageState();
+  res.json({
+    date: state.date,
+    total: state.total,
+    bySource: {
+      cassa: state.bySource.cassa || 0,
+      cucina: state.bySource.cucina || 0,
+      other: state.bySource.other || 0,
+    },
+  });
 };
 
 async function getResponseWithContext(type, body = {}) {

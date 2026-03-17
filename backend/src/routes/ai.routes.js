@@ -50,4 +50,7 @@ router.post("/production", asyncHandler(aiController.getProductionSuggestion));
 // POST /api/ai/inventory – Magazzino multi-livello
 router.post("/inventory", asyncHandler(aiController.getInventorySuggestion));
 
+// GET /api/ai/usage – debug-only usage stats (no auth)
+router.get("/usage", asyncHandler(aiController.getUsage));
+
 module.exports = router;

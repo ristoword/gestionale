@@ -1,3 +1,27 @@
 {
+  "restaurants": [
+    {
+      "id": "risto1",
+      "slug": "risto1",
+      "restaurantName": "Ristoword Demo",
+      "companyName": "Ristoword Demo",
+      "vatNumber": "",
+      "address": "",
+      "city": "",
+      "postalCode": "",
+      "country": "IT",
+      "adminEmail": "",
+      "phone": "",
+      "contactName": "",
+      "plan": "pro",
+      "language": "it",
+      "currency": "EUR",
+      "status": "active",
+      "tablesCount": 20,
+      "createdAt": "2026-03-16T00:00:00.000Z"
+    }
+  ]
+}
+{
   "restaurants": []
 }

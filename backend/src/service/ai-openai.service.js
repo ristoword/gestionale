@@ -5,6 +5,7 @@ const OpenAI = require("openai");
 const path = require("path");
 const env = require("../config/env");
 const aiContextService = require("./ai-context.service");
+const aiAssistantService = require("./ai-assistant.service");
 const paths = require("../config/paths");
 
 const VALID_INTENTS = [
@@ -19,14 +20,14 @@ const VALID_CONFIDENCE = ["high", "medium", "low"];
 
 const FALLBACK_RESPONSE = {
   ok: false,
-  answer: "AI response unavailable",
+  answer: "Risposta AI non disponibile in questo momento.",
   intent: "generic",
   confidence: "low",
   data: {
     summary: "",
     items: [],
     totals: {},
-    warnings: ["Invalid AI output schema"],
+    warnings: ["Servizio AI temporaneamente non disponibile."],
   },
   sources: [],
   nextActions: [],
@@ -121,9 +122,27 @@ async function queryWithOpenAI(question, overrideSystemPrompt) {
   const model = env.OPENAI_MODEL;
 
   if (!apiKey || String(apiKey).trim() === "") {
+    // Nessuna chiave OpenAI configurata: torna al motore AI interno legacy
+    // in modo trasparente per Cassa / Cucina mantenendo lo schema di risposta
+    // JSON richiesto dal frontend.
+    const legacy = await aiAssistantService.getResponseForQuestion(question);
+    const answer =
+      (legacy && (legacy.answer || legacy.message)) ||
+      "Situazione operativa stabile. Nessun alert.";
+
     return {
-      ...FALLBACK_RESPONSE,
-      answer: "OpenAI non configurato. Imposta OPENAI_API_KEY in .env.",
+      ok: true,
+      answer,
+      intent: "generic",
+      confidence: "low",
+      data: {
+        summary: "",
+        items: [],
+        totals: {},
+        warnings: [],
+      },
+      sources: [],
+      nextActions: [],
     };
   }
 

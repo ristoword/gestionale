@@ -5,6 +5,82 @@
       "username": "risto_owner",
       "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
       "role": "owner",
+      "is_active": true,
+      "restaurantId": "risto1"
+    },
+    {
+      "id": "2",
+      "username": "risto_supervisor",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "supervisor",
+      "is_active": true,
+      "restaurantId": "risto1"
+    },
+    {
+      "id": "3",
+      "username": "risto_sala",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "sala",
+      "is_active": true,
+      "restaurantId": "risto1"
+    },
+    {
+      "id": "4",
+      "username": "risto_cucina",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "cucina",
+      "is_active": true,
+      "restaurantId": "risto1"
+    },
+    {
+      "id": "5",
+      "username": "risto_cassa",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "cassa",
+      "is_active": true,
+      "restaurantId": "risto1"
+    },
+    {
+      "id": "6",
+      "username": "risto_bar",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "bar",
+      "is_active": true,
+      "restaurantId": "risto1"
+    },
+    {
+      "id": "7",
+      "username": "risto_pizzeria",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "pizzeria",
+      "is_active": true,
+      "restaurantId": "risto1"
+    },
+    {
+      "id": "8",
+      "username": "risto_magazzino",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "magazzino",
+      "is_active": true,
+      "restaurantId": "risto1"
+    },
+    {
+      "id": "9",
+      "username": "risto_staff",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "staff",
+      "is_active": true,
+      "restaurantId": "risto1"
+    }
+  ]
+}
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "risto_owner",
+      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "role": "owner",
       "is_active": true
     },
     {

@@ -1,0 +1,8 @@
+{
+  "restaurantName": "Hotel Baia Verde",
+  "city": "Acicastello",
+  "language": "it",
+  "currency": "EUR",
+  "departments": ["Sala", "Cucina", "Bar"],
+  "tables": 20
+}

@@ -71,73 +71,16 @@
       "role": "staff",
       "is_active": true,
       "restaurantId": "risto1"
-    }
-  ]
-}
-{
-  "users": [
+    },
     {
-      "id": "1",
-      "username": "risto_owner",
-      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
+      "id": "10",
+      "username": "costantino",
+      "email": "costantinolaudani1@gmail.com",
+      "password": "$2b$10$6kyubeaejiCNeIqi8f6SLOZzFZ24xnY.SjcBkkIvxP95VU6CxmGoi",
       "role": "owner",
-      "is_active": true
-    },
-    {
-      "id": "2",
-      "username": "risto_supervisor",
-      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
-      "role": "supervisor",
-      "is_active": true
-    },
-    {
-      "id": "3",
-      "username": "risto_sala",
-      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
-      "role": "sala",
-      "is_active": true
-    },
-    {
-      "id": "4",
-      "username": "risto_cucina",
-      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
-      "role": "cucina",
-      "is_active": true
-    },
-    {
-      "id": "5",
-      "username": "risto_cassa",
-      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
-      "role": "cassa",
-      "is_active": true
-    },
-    {
-      "id": "6",
-      "username": "risto_bar",
-      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
-      "role": "bar",
-      "is_active": true
-    },
-    {
-      "id": "7",
-      "username": "risto_pizzeria",
-      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
-      "role": "pizzeria",
-      "is_active": true
-    },
-    {
-      "id": "8",
-      "username": "risto_magazzino",
-      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
-      "role": "magazzino",
-      "is_active": true
-    },
-    {
-      "id": "9",
-      "username": "risto_staff",
-      "password": "$2b$10$38L25kPpDxZguh7MjYtkiu2SFcOvJ2PCyQjkxkhw3nLezfZmx9sa6",
-      "role": "staff",
-      "is_active": true
+      "is_active": true,
+      "restaurantId": "baia-verde",
+      "createdAt": "2026-03-16T00:00:00.000Z"
     }
   ]
 }

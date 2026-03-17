@@ -6,9 +6,15 @@
       "status": "active",
       "source": "manual_onboarding",
       "createdAt": "2026-03-16T00:00:00.000Z"
+    },
+    {
+      "restaurantId": "baia-verde",
+      "plan": "pro",
+      "status": "active",
+      "startDate": "2026-03-16T00:00:00.000Z",
+      "endDate": "2027-03-16T00:00:00.000Z",
+      "activationCode": "BAIA-VERDE-8FJX-2MQL",
+      "source": "manual_activation"
     }
   ]
-}
-{
-  "licenses": []
 }

@@ -333,6 +333,125 @@ body {
   color: #6ea8ff;
 }
 
+.tag.status.open {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.tag.status.anomaly {
+  border-color: var(--accent-danger);
+  color: var(--accent-danger);
+}
+
+/* Presenze oggi */
+.presenze-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.presenze-toolbar label {
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.presenze-toolbar input[type="date"] {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #343848;
+  background: #151822;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.presenze-summary {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.presenze-summary .summary-line {
+  margin: 0;
+}
+
+/* Leave / Assenze */
+.leave-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.leave-filters label {
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leave-filters select {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #343848;
+  background: #151822;
+  color: var(--text);
+  font-size: 13px;
+  min-width: 120px;
+}
+
+.tag.leave-status.pending {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tag.leave-status.approved {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.tag.leave-status.rejected {
+  border-color: var(--accent-danger);
+  color: var(--accent-danger);
+}
+
+.saldi-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #181b25;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+}
+
+.saldi-panel.hidden {
+  display: none;
+}
+
+.saldi-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.saldi-user {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.saldi-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.saldi-list li {
+  margin-bottom: 4px;
+}
+
 .staff-notes {
   font-size: 11px;
   color: var(--text-muted);
@@ -385,4 +504,31 @@ body {
     flex-wrap: wrap;
     justify-content: flex-start;
   }
+}
+
+/* Tabella utenti staff */
+.table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+.staff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.staff-table th,
+.staff-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-soft);
+}
+.staff-table th {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+.staff-table td.actions {
+  white-space: nowrap;
+}
+.staff-table .btn-xs {
+  margin-right: 6px;
 }

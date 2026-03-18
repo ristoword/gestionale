@@ -557,10 +557,23 @@ function renderPaymentSummary() {
 }
 
 // =============================
-//   MENÙ UFFICIALE (localStorage)
+//   MENÙ UFFICIALE – API fonte ufficiale, localStorage solo cache
 // =============================
 
-function loadOfficialMenu() {
+async function loadOfficialMenu() {
+  try {
+    const res = await fetch("/api/menu", { credentials: "same-origin" });
+    if (res.ok) {
+      const data = await res.json();
+      menuOfficial = Array.isArray(data) ? data : [];
+      try {
+        localStorage.setItem(MENU_KEY, JSON.stringify(menuOfficial));
+      } catch (_) {}
+      return;
+    }
+  } catch (err) {
+    console.warn("Menu API non disponibile, uso cache:", err.message);
+  }
   try {
     const raw = localStorage.getItem(MENU_KEY);
     if (!raw) {
@@ -623,11 +636,20 @@ function renderMenuList() {
     const btnDel = document.createElement("button");
     btnDel.className = "btn-xs danger";
     btnDel.textContent = "Elimina";
-    btnDel.addEventListener("click", () => {
+    btnDel.addEventListener("click", async () => {
       if (!confirm(`Eliminare "${m.name}" dal menù?`)) return;
-      menuOfficial.splice(index, 1);
-      saveOfficialMenu();
-      renderMenuList();
+      try {
+        const res = await fetch("/api/menu/" + encodeURIComponent(m.id), {
+          method: "DELETE",
+          credentials: "same-origin",
+        });
+        if (!res.ok) throw new Error(await res.text());
+        await loadOfficialMenu();
+        renderMenuList();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Errore eliminazione voce menù.");
+      }
     });
 
     actions.appendChild(btnDel);
@@ -646,7 +668,7 @@ function setupMenuForm() {
   if (filterSel) filterSel.addEventListener("change", renderMenuList);
 
   if (btnAdd) {
-    btnAdd.addEventListener("click", () => {
+    btnAdd.addEventListener("click", async () => {
       const nameEl = document.getElementById("menu-name");
       const catEl = document.getElementById("menu-category-input");
       const areaEl = document.getElementById("menu-area");
@@ -660,24 +682,29 @@ function setupMenuForm() {
         return;
       }
 
-      const category = catEl.value;
-      const area = areaEl.value || "cucina";
-      const price = Number(priceEl.value) || 0;
-      const vat = Number(vatEl.value) || 0;
-      const notes = notesEl.value.trim();
+      const category = catEl?.value || "extra";
+      const area = areaEl?.value || "cucina";
+      const price = Number(priceEl?.value) || 0;
+      const vat = Number(vatEl?.value) || 0;
+      const notes = notesEl?.value?.trim() || "";
 
-      const nextId =
-        menuOfficial.length > 0
-          ? Math.max(...menuOfficial.map((m) => Number(m.id) || 0)) + 1
-          : 1;
-
-      menuOfficial.push({ id: nextId, name, category, area, price, vat, notes });
-      saveOfficialMenu();
-      renderMenuList();
-
-      nameEl.value = "";
-      priceEl.value = "";
-      notesEl.value = "";
+      try {
+        const res = await fetch("/api/menu", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ name, category, area, price, vat, notes }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        nameEl.value = "";
+        priceEl.value = "";
+        notesEl.value = "";
+        await loadOfficialMenu();
+        renderMenuList();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Errore creazione voce menù.");
+      }
     });
   }
 
@@ -690,10 +717,15 @@ function setupMenuForm() {
   }
 
   if (btnClearMenu) {
-    btnClearMenu.addEventListener("click", () => {
-      if (!confirm("Svuotare completamente il menù ufficiale?")) return;
-      menuOfficial = [];
-      saveOfficialMenu();
+    btnClearMenu.addEventListener("click", async () => {
+      if (!confirm("Eliminare tutte le voci menù (una per una via server)?")) return;
+      const ids = menuOfficial.map((m) => m.id).filter((id) => id != null);
+      for (const id of ids) {
+        try {
+          await fetch("/api/menu/" + encodeURIComponent(id), { method: "DELETE", credentials: "same-origin" });
+        } catch (_) {}
+      }
+      await loadOfficialMenu();
       renderMenuList();
     });
   }
@@ -2577,9 +2609,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   fetchShiftStatus().then(renderShiftStatus);
 
-  loadOfficialMenu();
+  loadOfficialMenu().then(() => renderMenuList());
   setupMenuForm();
-  renderMenuList();
 
   document.getElementById("btn-refresh-orders")?.addEventListener("click", loadOrdersAndRender);
 

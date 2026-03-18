@@ -1,6 +1,7 @@
 const authRepository = require("../repositories/auth.repository");
 const staffRepository = require("../repositories/staff.repository");
 const usersRepository = require("../repositories/users.repository");
+const attendanceRepository = require("../repositories/attendance.repository");
 const bcrypt = require("bcrypt");
 
 const BCRYPT_ROUNDS = 10;
@@ -35,22 +36,42 @@ exports.login = async (req, res, next) => {
     }
 
     req.session.user = {
+      id: user.id,
       username: user.username,
       role: user.role,
       department: user.department,
       mustChangePassword: user.mustChangePassword === true,
+      restaurantId: user.restaurantId,
     };
     req.session.restaurantId = user.restaurantId ?? "default";
 
+    // Timbratura: solo utenti non-owner, con restaurantId
+    if (user.role !== "owner" && user.restaurantId) {
+      try {
+        const openShift = attendanceRepository.findOpenShiftByUser(user.id, user.restaurantId);
+        if (openShift) {
+          attendanceRepository.markAnomaly(user.restaurantId, openShift.id, "double_clockin", "Login con turno già aperto");
+        } else {
+          attendanceRepository.createShift(user.restaurantId, {
+            userId: user.id,
+            status: "open",
+          });
+        }
+      } catch (err) {
+        console.error("[Auth] attendance on login:", err.message);
+      }
+    }
+
+    const mustChange = user.mustChangePassword === true;
     res.json({
       success: true,
       user: user.username,
       name: displayName,
       role: user.role,
       department: user.department,
-      mustChangePassword: user.mustChangePassword === true,
+      mustChangePassword: mustChange,
       token: user.token,
-      redirectTo: user.redirectTo
+      redirectTo: mustChange ? "/change-password" : (user.redirectTo || undefined),
     });
   } catch (err) {
     next(err);
@@ -60,6 +81,27 @@ exports.login = async (req, res, next) => {
 // POST /api/auth/logout
 exports.logout = async (req, res, next) => {
   try {
+    const sessionUser = req.session && req.session.user;
+    const restaurantId = req.session && req.session.restaurantId;
+    if (sessionUser && sessionUser.role !== "owner" && restaurantId && sessionUser.id) {
+      try {
+        const openShift = attendanceRepository.findOpenShiftByUser(sessionUser.id, restaurantId);
+        if (openShift) {
+          attendanceRepository.closeShift(restaurantId, openShift.id, {
+            clockOutAt: new Date().toISOString(),
+          });
+        } else {
+          attendanceRepository.createAnomalyRecord(
+            restaurantId,
+            sessionUser.id,
+            "double_clockout",
+            new Date().toISOString()
+          );
+        }
+      } catch (err) {
+        console.error("[Auth] attendance on logout:", err.message);
+      }
+    }
     if (req.session) req.session.destroy(() => {});
     res.json({
       success: true,
@@ -92,7 +134,7 @@ exports.me = async (req, res, next) => {
   }
 };
 
-// POST /api/auth/change-password – change password (requires current password)
+// POST /api/auth/change-password – change password (primo accesso: solo password; altrimenti current + new)
 exports.changePassword = async (req, res, next) => {
   try {
     const sessionUser = req.session?.user;
@@ -103,29 +145,39 @@ exports.changePassword = async (req, res, next) => {
       });
     }
 
-    const { currentPassword, newPassword } = req.body || {};
+    const { password, currentPassword, newPassword } = req.body || {};
+    const isFirstTime = sessionUser.mustChangePassword === true;
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        error: true,
-        message: "Password attuale e nuova password obbligatorie"
-      });
-    }
-
-    const newPwd = String(newPassword).trim();
-    if (newPwd.length < 8) {
-      return res.status(400).json({
-        error: true,
-        message: "La nuova password deve essere di almeno 8 caratteri"
-      });
-    }
-
-    const user = await authRepository.findByCredentials(sessionUser.username, currentPassword);
-    if (!user) {
-      return res.status(401).json({
-        error: true,
-        message: "Password attuale non corretta"
-      });
+    let newPwd;
+    if (isFirstTime && typeof password === "string") {
+      newPwd = String(password).trim();
+      if (newPwd.length < 6) {
+        return res.status(400).json({
+          error: true,
+          message: "La password deve essere di almeno 6 caratteri"
+        });
+      }
+    } else {
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          error: true,
+          message: "Password attuale e nuova password obbligatorie"
+        });
+      }
+      newPwd = String(newPassword).trim();
+      if (newPwd.length < 8) {
+        return res.status(400).json({
+          error: true,
+          message: "La nuova password deve essere di almeno 8 caratteri"
+        });
+      }
+      const user = await authRepository.findByCredentials(sessionUser.username, currentPassword);
+      if (!user) {
+        return res.status(401).json({
+          error: true,
+          message: "Password attuale non corretta"
+        });
+      }
     }
 
     const users = usersRepository.readUsers();
@@ -150,10 +202,7 @@ exports.changePassword = async (req, res, next) => {
       mustChangePassword: false,
     };
 
-    res.json({
-      success: true,
-      message: "Password aggiornata. Procedi alla dashboard."
-    });
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

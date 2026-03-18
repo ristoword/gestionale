@@ -27,7 +27,7 @@ form.addEventListener("submit", async (e) => {
   showMessage("Attivazione in corso...");
 
   try {
-    const res = await fetch("/api/license/activate", {
+    const res = await fetch("/api/licenses/activate", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },

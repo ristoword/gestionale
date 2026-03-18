@@ -2,8 +2,9 @@
 // Block access if license not activated. Skip for login, license API, QR.
 
 const { getLicense } = require("../config/license");
+const { hasUsedLicense } = require("../repositories/licenses.repository");
 
-const SKIP_PATHS = ["/login", "/api/auth", "/api/license", "/api/setup", "/license", "/setup", "/api/system/health", "/api/health", "/api/qr", "/qr", "/api/menu/active", "/change-password"];
+const SKIP_PATHS = ["/login", "/api/auth", "/api/license", "/api/licenses", "/api/setup", "/license", "/setup", "/api/system/health", "/api/health", "/api/qr", "/qr", "/api/menu/active", "/change-password"];
 
 function shouldSkipLicenseCheck(path) {
   const p = (path || "").split("?")[0];
@@ -15,6 +16,19 @@ async function requireLicense(req, res, next) {
     return next();
   }
   try {
+    const sessionUser = req.session && req.session.user;
+    // Owner: richiede sempre una licenza per-restaurant "used"
+    if (sessionUser && sessionUser.role === "owner") {
+      const rid = sessionUser.restaurantId || req.session.restaurantId;
+      if (!rid) {
+        return res.redirect("/login");
+      }
+      const ok = hasUsedLicense(rid);
+      if (!ok) {
+        return res.redirect("/owner-activate");
+      }
+    }
+
     const license = await getLicense();
     const status = license && license.status;
     if (status === "active" || status === "grace") {

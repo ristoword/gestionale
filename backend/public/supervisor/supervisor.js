@@ -1,19 +1,17 @@
 // backend/public/supervisor/supervisor.js
 
 // =============================
-//  KEYS (localStorage)
+//  KEYS (localStorage – solo cache/secondario, non fonte di verità)
 // =============================
-const MENU_KEY = "rw_menu_official";         // condiviso con Cassa
-const REPORTS_KEY = "rw_reports_history";    // storico chiusure giornata
-const STORNI_KEY_PREFIX = "rw_storni_";      // rw_storni_YYYY-MM-DD
+const MENU_KEY = "rw_menu_official";         // cache passiva; fonte ufficiale = API menu
 
 // =============================
-//  STATE
+//  STATE (chiusure e storni da backend)
 // =============================
 let allOrders = [];
 let menuOfficial = [];
-let reportsHistory = [];
-let storniToday = [];
+let closuresList = [];   // GET /api/closures – storico chiusure
+let storniToday = [];    // GET /api/storni?date= – storni del giorno (con id per DELETE)
 
 let inventoryCache = null;
 let shoppingCache = [];
@@ -54,9 +52,20 @@ async function readJsonFile(file){
 }
 
 // =============================
-//  MENÙ (shared with Cassa)
+//  MENÙ – API come fonte ufficiale; localStorage solo cache
 // =============================
-function loadMenu(){
+async function loadMenu(){
+  try{
+    const res = await fetch("/api/menu", { credentials: "same-origin" });
+    if (res.ok) {
+      const data = await res.json();
+      menuOfficial = Array.isArray(data) ? data : [];
+      try { localStorage.setItem(MENU_KEY, JSON.stringify(menuOfficial)); } catch (_) {}
+      return;
+    }
+  }catch(e){
+    console.warn("Menu API non disponibile, uso cache:", e.message);
+  }
   try{
     const raw = localStorage.getItem(MENU_KEY);
     menuOfficial = raw ? JSON.parse(raw) : [];
@@ -67,11 +76,7 @@ function loadMenu(){
   }
 }
 function saveMenu(){
-  try{
-    localStorage.setItem(MENU_KEY, JSON.stringify(menuOfficial));
-  }catch(e){
-    console.error("Menu save error:", e);
-  }
+  try{ localStorage.setItem(MENU_KEY, JSON.stringify(menuOfficial)); } catch (_) {}
 }
 function nextMenuId(){
   if (!menuOfficial.length) return 1;
@@ -117,49 +122,46 @@ async function loadDailyMenuSupervisor(){
 }
 
 // =============================
-//  REPORTS (day close history)
+//  CHIUSURE / STORICO (backend – GET /api/closures)
 // =============================
-function loadReports(){
+async function loadClosuresFromBackend(){
   try{
-    const raw = localStorage.getItem(REPORTS_KEY);
-    reportsHistory = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(reportsHistory)) reportsHistory = [];
+    const res = await fetch("/api/closures", { credentials: "same-origin" });
+    if (!res.ok) throw new Error("Errore /api/closures");
+    const data = await res.json();
+    closuresList = Array.isArray(data) ? data : [];
   }catch(e){
-    console.error("Reports load error:", e);
-    reportsHistory = [];
-  }
-}
-function saveReports(){
-  try{
-    localStorage.setItem(REPORTS_KEY, JSON.stringify(reportsHistory));
-  }catch(e){
-    console.error("Reports save error:", e);
+    console.error("Closures load error:", e);
+    closuresList = [];
   }
 }
 function getReportForDate(ymd){
-  return reportsHistory.find(r => r && r.date === ymd) || null;
+  const d = String(ymd || "").slice(0, 10);
+  const c = closuresList.find(r => String(r && r.date || "").slice(0, 10) === d);
+  if (!c) return null;
+  return {
+    date: c.date,
+    gross: c.grandTotal ?? 0,
+    storni: c.storniTotal ?? 0,
+    net: c.netTotal ?? (c.grandTotal ?? 0) - (c.storniTotal ?? 0),
+    closedOrders: c.closedOrdersCount ?? 0,
+    covers: c.covers ?? "—",
+  };
 }
 
 // =============================
-//  STORNI (today)
+//  STORNI (backend – GET/POST/DELETE /api/storni)
 // =============================
-function loadStorni(){
-  const key = STORNI_KEY_PREFIX + todayKey();
+async function loadStorniFromBackend(){
+  const date = todayKey();
   try{
-    const raw = localStorage.getItem(key);
-    storniToday = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(storniToday)) storniToday = [];
+    const res = await fetch("/api/storni?date=" + encodeURIComponent(date), { credentials: "same-origin" });
+    if (!res.ok) throw new Error("Errore /api/storni");
+    const data = await res.json();
+    storniToday = Array.isArray(data) ? data : [];
   }catch(e){
     console.error("Storni load error:", e);
     storniToday = [];
-  }
-}
-function saveStorni(){
-  const key = STORNI_KEY_PREFIX + todayKey();
-  try{
-    localStorage.setItem(key, JSON.stringify(storniToday));
-  }catch(e){
-    console.error("Storni save error:", e);
   }
 }
 function storniTotal(){
@@ -242,6 +244,63 @@ async function apiPing(){
     return res2.ok;
   }catch(_){}
   return false;
+}
+
+async function apiGetClosures(dateFrom, dateTo){
+  let url = "/api/closures";
+  const q = [];
+  if (dateFrom) q.push("dateFrom=" + encodeURIComponent(dateFrom));
+  if (dateTo) q.push("dateTo=" + encodeURIComponent(dateTo));
+  if (q.length) url += "?" + q.join("&");
+  const res = await fetch(url, { credentials: "same-origin" });
+  if (!res.ok) throw new Error("Errore /api/closures");
+  return await res.json();
+}
+
+async function apiGetClosurePreview(dateStr){
+  const res = await fetch("/api/closures/preview/" + encodeURIComponent(String(dateStr).slice(0, 10)), { credentials: "same-origin" });
+  if (!res.ok) throw new Error("Errore preview chiusura");
+  return await res.json();
+}
+
+async function apiCreateClosure(body){
+  const res = await fetch("/api/closures", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || err.message || "Errore chiusura giornata");
+  }
+  return await res.json();
+}
+
+async function apiGetStorni(date){
+  const d = date || todayKey();
+  const res = await fetch("/api/storni?date=" + encodeURIComponent(d), { credentials: "same-origin" });
+  if (!res.ok) throw new Error("Errore /api/storni");
+  return await res.json();
+}
+
+async function apiPostStorno(payload){
+  const res = await fetch("/api/storni", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Errore creazione storno");
+  }
+  return await res.json();
+}
+
+async function apiDeleteStorno(id){
+  const res = await fetch("/api/storni/" + encodeURIComponent(id), { method: "DELETE", credentials: "same-origin" });
+  if (!res.ok) throw new Error("Errore eliminazione storno");
 }
 
 // =============================
@@ -409,20 +468,23 @@ function renderReportsList(){
   const box = document.getElementById("reports-list");
   box.innerHTML = "";
 
-  if (!reportsHistory.length){
-    box.innerHTML = `<div class="tiny muted">Nessun report salvato.</div>`;
+  if (!closuresList.length){
+    box.innerHTML = `<div class="tiny muted">Nessuna chiusura salvata. Usa "Chiudi giornata" per salvare sul server.</div>`;
     return;
   }
 
-  const arr = [...reportsHistory].sort((a,b)=> (b.date||"").localeCompare(a.date||""));
-  for (const r of arr.slice(0, 60)){
+  const arr = [...closuresList].sort((a,b)=> (b.date||"").localeCompare(a.date||""));
+  for (const c of arr.slice(0, 60)){
+    const net = c.netTotal ?? (c.grandTotal ?? 0) - (c.storniTotal ?? 0);
+    const gross = c.grandTotal ?? 0;
+    const storni = c.storniTotal ?? 0;
     const div = document.createElement("div");
     div.className = "list-item";
     div.innerHTML = `
-      <div class="list-item-title">${safeText(r.date)} — Netto ${toMoney(r.net)}</div>
+      <div class="list-item-title">${safeText(c.date)} — Netto ${toMoney(net)}</div>
       <div class="list-item-meta">
-        Lordo: ${toMoney(r.gross)} • Storni: ${toMoney(r.storni)} • Ordini chiusi: ${safeText(r.closedOrders)}
-        • Coperti: ${safeText(r.covers)}
+        Lordo: ${toMoney(gross)} • Storni: ${toMoney(storni)} • Ordini chiusi: ${safeText(c.closedOrdersCount)}
+        • Pagamenti: ${safeText(c.paymentsCount)}
       </div>
     `;
     box.appendChild(div);
@@ -430,66 +492,36 @@ function renderReportsList(){
 }
 
 function setupReportsActions(){
-  document.getElementById("btn-close-day").addEventListener("click", ()=>{
+  document.getElementById("btn-close-day").addEventListener("click", async ()=>{
     const ymd = todayKey();
-    const closed = allOrders.filter(o => o.status === "chiuso");
-    const gross = computeGrossFromOrders(closed);
-    const storni = storniTotal();
-    const net = Math.max(0, gross - storni);
+    const closedBy = document.getElementById("closure-closed-by")?.value?.trim() || "";
+    const notes = document.getElementById("closure-notes")?.value?.trim() || "";
 
-    const rep = {
-      date: ymd,
-      gross,
-      storni,
-      net,
-      closedOrders: closed.length,
-      covers: coversFromOrders(closed),
-      receipts: receiptsEstimate(closed),
-      savedAt: new Date().toISOString()
-    };
-
-    // sostituisci se esiste già report stesso giorno
-    const idx = reportsHistory.findIndex(x => x && x.date === ymd);
-    if (idx >= 0) reportsHistory[idx] = rep;
-    else reportsHistory.push(rep);
-
-    saveReports();
-    renderReportsList();
-    renderComparisons();
-
-    alert(`Report salvato: ${ymd}\nNetto stimato: ${toMoney(net)}`);
-  });
-
-  document.getElementById("btn-export-reports").addEventListener("click", ()=>{
-    downloadJson(`ristoword_reports_${todayKey()}.json`, reportsHistory);
-  });
-
-  document.getElementById("file-import-reports").addEventListener("change", async (e)=>{
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    try{
-      const obj = await readJsonFile(file);
-      if (!Array.isArray(obj)) throw new Error("JSON non valido");
-      reportsHistory = obj;
-      saveReports();
+    try {
+      const closure = await apiCreateClosure({ date: ymd, closedBy, notes });
+      await loadClosuresFromBackend();
       renderReportsList();
       renderComparisons();
-      alert("Import reports: OK");
-    }catch(err){
+      const net = closure.netTotal ?? (closure.grandTotal ?? 0) - (closure.storniTotal ?? 0);
+      alert(`Giornata chiusa: ${ymd}\nNetto: ${toMoney(net)}`);
+    } catch (err) {
       console.error(err);
-      alert("Import reports: errore JSON.");
-    }finally{
-      e.target.value = "";
+      alert(err.message || "Errore chiusura giornata.");
     }
   });
 
-  document.getElementById("btn-clear-reports").addEventListener("click", ()=>{
-    if (!confirm("Svuotare lo storico report?")) return;
-    reportsHistory = [];
-    saveReports();
-    renderReportsList();
-    renderComparisons();
+  document.getElementById("btn-export-reports").addEventListener("click", ()=>{
+    downloadJson(`ristoword_closures_${todayKey()}.json`, closuresList);
   });
+
+  const fileImport = document.getElementById("file-import-reports");
+  if (fileImport) {
+    fileImport.closest("div")?.classList.add("hidden");
+  }
+  const btnClear = document.getElementById("btn-clear-reports");
+  if (btnClear) {
+    btnClear.style.display = "none";
+  }
 }
 
 // =============================
@@ -585,8 +617,7 @@ function renderStorni(){
     return;
   }
 
-  storniToday.slice().reverse().forEach((s, idxRev)=>{
-    const idx = storniToday.length - 1 - idxRev;
+  storniToday.slice().reverse().forEach((s)=>{
     const div = document.createElement("div");
     div.className = "list-item";
     div.innerHTML = `
@@ -595,53 +626,64 @@ function renderStorni(){
         ${s.table ? `Tavolo: ${safeText(s.table)} • ` : ""}${s.orderId ? `Ordine: ${safeText(s.orderId)} • ` : ""}${safeText(s.note||"")}
       </div>
       <div class="list-item-actions">
-        <button class="btn-xs danger" data-del="${idx}">Elimina</button>
+        <button class="btn-xs danger" data-id="${safeText(s.id)}">Elimina</button>
       </div>
     `;
-    div.querySelector("[data-del]").addEventListener("click", ()=>{
+    div.querySelector("[data-id]").addEventListener("click", async ()=>{
       if (!confirm("Eliminare questo storno?")) return;
-      storniToday.splice(idx, 1);
-      saveStorni();
-      renderStorni();
-      renderTopKpis();
-      renderComparisons();
+      const id = s.id;
+      try {
+        await apiDeleteStorno(id);
+        await loadStorniFromBackend();
+        renderStorni();
+        renderTopKpis();
+        renderComparisons();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Errore eliminazione storno.");
+      }
     });
     box.appendChild(div);
   });
 }
 
 function setupStorni(){
-  document.getElementById("btn-add-storno").addEventListener("click", ()=>{
+  document.getElementById("btn-add-storno").addEventListener("click", async ()=>{
     const amount = Number(document.getElementById("st-amount").value) || 0;
     if (amount <= 0){
       alert("Inserisci un importo > 0.");
       return;
     }
-    const storno = {
+    const payload = {
+      date: todayKey(),
       amount,
-      reason: document.getElementById("st-reason").value,
-      table: document.getElementById("st-table").value.trim(),
-      orderId: document.getElementById("st-orderid").value.trim(),
-      note: document.getElementById("st-note").value.trim(),
-      ts: new Date().toISOString()
+      reason: document.getElementById("st-reason").value?.trim() || "",
+      table: document.getElementById("st-table").value?.trim() || "",
+      orderId: document.getElementById("st-orderid").value?.trim() || "",
+      note: document.getElementById("st-note").value?.trim() || "",
     };
-    storniToday.push(storno);
-    saveStorni();
-
-    document.getElementById("st-amount").value = "";
-    document.getElementById("st-table").value = "";
-    document.getElementById("st-orderid").value = "";
-    document.getElementById("st-note").value = "";
-
-    renderStorni();
-    renderTopKpis();
-    renderComparisons();
+    try {
+      await apiPostStorno(payload);
+      document.getElementById("st-amount").value = "";
+      document.getElementById("st-table").value = "";
+      document.getElementById("st-orderid").value = "";
+      document.getElementById("st-note").value = "";
+      await loadStorniFromBackend();
+      renderStorni();
+      renderTopKpis();
+      renderComparisons();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Errore creazione storno.");
+    }
   });
 
-  document.getElementById("btn-clear-storni").addEventListener("click", ()=>{
-    if (!confirm("Svuotare gli storni di oggi?")) return;
-    storniToday = [];
-    saveStorni();
+  document.getElementById("btn-clear-storni").addEventListener("click", async ()=>{
+    if (!confirm("Eliminare tutti gli storni di oggi? (richiede una chiamata per ciascuno)")) return;
+    for (const s of [...storniToday]) {
+      try { await apiDeleteStorno(s.id); } catch (_) {}
+    }
+    await loadStorniFromBackend();
     renderStorni();
     renderTopKpis();
     renderComparisons();
@@ -687,42 +729,55 @@ function renderMenuList(){
         <button class="btn-xs danger" data-del="${safeText(m.id)}">Elimina</button>
       </div>
     `;
-    div.querySelector("[data-del]").addEventListener("click", ()=>{
+    div.querySelector("[data-del]").addEventListener("click", async ()=>{
       if (!confirm(`Eliminare "${m.name}" dal menù?`)) return;
-      menuOfficial = menuOfficial.filter(x => String(x.id) !== String(m.id));
-      saveMenu();
-      renderMenuList();
+      try {
+        const res = await fetch("/api/menu/" + encodeURIComponent(m.id), { method: "DELETE", credentials: "same-origin" });
+        if (!res.ok) throw new Error(await res.text());
+        await loadMenu();
+        renderMenuList();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Errore eliminazione voce menù.");
+      }
     });
     box.appendChild(div);
   });
 }
 
 function setupMenu(){
-  document.getElementById("btn-menu-add").addEventListener("click", ()=>{
+  document.getElementById("btn-menu-add").addEventListener("click", async ()=>{
     const name = document.getElementById("menu-name").value.trim();
     if (!name){
       alert("Inserisci un nome.");
       return;
     }
     const price = Number(document.getElementById("menu-price").value) || 0;
-
-    const item = {
-      id: nextMenuId(),
+    const body = {
       name,
-      category: document.getElementById("menu-category").value,
-      area: document.getElementById("menu-area").value,
+      category: document.getElementById("menu-category").value || "extra",
+      area: document.getElementById("menu-area").value || "",
       price,
       vat: Number(document.getElementById("menu-vat").value) || 0,
-      notes: document.getElementById("menu-notes").value.trim()
+      notes: document.getElementById("menu-notes").value.trim() || "",
     };
-
-    menuOfficial.push(item);
-    saveMenu();
-    renderMenuList();
-
-    document.getElementById("menu-name").value = "";
-    document.getElementById("menu-price").value = "";
-    document.getElementById("menu-notes").value = "";
+    try {
+      const res = await fetch("/api/menu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      document.getElementById("menu-name").value = "";
+      document.getElementById("menu-price").value = "";
+      document.getElementById("menu-notes").value = "";
+      await loadMenu();
+      renderMenuList();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Errore creazione voce menù.");
+    }
   });
 
   document.getElementById("btn-menu-clear-form").addEventListener("click", ()=>{
@@ -1091,10 +1146,13 @@ async function refreshAll(){
   const ok = await apiPing();
   document.getElementById("backend-status").textContent = "Backend: " + (ok ? "OK" : "OFF");
 
-  await Promise.all([loadOrders(), loadDashboardSummary()]);
-  loadMenu();       // in caso sia cambiato da Cassa
-  loadReports();
-  loadStorni();
+  await Promise.all([
+    loadOrders(),
+    loadDashboardSummary(),
+    loadClosuresFromBackend(),
+    loadStorniFromBackend(),
+    loadMenu(),
+  ]);
 
   renderTopKpis();
   if (dashboardSummaryCache) renderBusinessKpis(dashboardSummaryCache);
@@ -1103,8 +1161,6 @@ async function refreshAll(){
   renderOrdersTable();
   renderStorni();
   renderMenuList();
-
-  // magazzino non forzato ogni refresh (solo on demand) per non pesare
 }
 
 // =============================
@@ -1149,9 +1205,17 @@ document.addEventListener("DOMContentLoaded", ()=>{
   setupOrderFilters();
   initStaffAccess();
 
-  loadMenu();
-  loadReports();
-  loadStorni();
+  Promise.all([
+    loadMenu(),
+    loadClosuresFromBackend(),
+    loadStorniFromBackend(),
+  ]).then(() => {
+    renderReportsList();
+    renderComparisons();
+    renderStorni();
+    renderTopKpis();
+    renderMenuList();
+  });
   loadDailyMenuSupervisor();
 
   setupReportsActions();

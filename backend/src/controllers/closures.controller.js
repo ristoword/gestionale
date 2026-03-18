@@ -4,6 +4,7 @@
 const closuresRepository = require("../repositories/closures.repository");
 const paymentsRepository = require("../repositories/payments.repository");
 const ordersRepository = require("../repositories/orders.repository");
+const storniRepository = require("../repositories/storni.repository");
 const XLSX = require("xlsx");
 
 function toNumber(v, fallback = 0) {
@@ -95,13 +96,18 @@ async function createClosure(req, res) {
   }
 
   const totals = await computeDayTotals(dateStr);
+  const grandTotal = body.grandTotal != null ? toNumber(body.grandTotal) : totals.grandTotal;
+  const storniTotal = await storniRepository.getTotalByDate(dateStr);
+  const netTotal = Math.max(0, grandTotal - storniTotal);
 
   const closure = await closuresRepository.createClosure({
     date: dateStr,
     cashTotal: body.cashTotal != null ? toNumber(body.cashTotal) : totals.cashTotal,
     cardTotal: body.cardTotal != null ? toNumber(body.cardTotal) : totals.cardTotal,
     otherTotal: body.otherTotal != null ? toNumber(body.otherTotal) : totals.otherTotal,
-    grandTotal: body.grandTotal != null ? toNumber(body.grandTotal) : totals.grandTotal,
+    grandTotal,
+    storniTotal,
+    netTotal,
     paymentsCount: body.paymentsCount != null ? toNumber(body.paymentsCount) : totals.paymentsCount,
     closedOrdersCount: body.closedOrdersCount != null ? toNumber(body.closedOrdersCount) : totals.closedOrdersCount,
     closedAt: new Date().toISOString(),
@@ -144,12 +150,16 @@ async function getClosurePreview(req, res) {
   const { date } = req.params;
   const dateStr = String(date).slice(0, 10);
   const totals = await computeDayTotals(dateStr);
+  const storniTotal = await storniRepository.getTotalByDate(dateStr);
+  const netTotal = Math.max(0, (totals.grandTotal || 0) - storniTotal);
   const closed = await closuresRepository.isDayClosed(dateStr);
-  res.json({ date: dateStr, ...totals, closed });
+  res.json({ date: dateStr, ...totals, storniTotal, netTotal, closed });
 }
 
 function buildExportRows(closureOrPreview) {
   const c = closureOrPreview || {};
+  const storni = c.storniTotal ?? 0;
+  const net = c.netTotal ?? (c.grandTotal ?? 0) - storni;
   return [
     ["RISTOWORD – Chiusura Z", ""],
     ["Data", c.date || ""],
@@ -159,7 +169,9 @@ function buildExportRows(closureOrPreview) {
     ["Contanti", c.cashTotal ?? c.cash ?? 0],
     ["Carta / POS", c.cardTotal ?? c.card ?? 0],
     ["Altri", c.otherTotal ?? c.other ?? 0],
-    ["Totale", c.grandTotal ?? 0],
+    ["Totale lordo", c.grandTotal ?? 0],
+    ["Storni", storni],
+    ["Totale netto", net],
     ["", ""],
     ["Pagamenti", c.paymentsCount ?? 0],
     ["Ordini chiusi", c.closedOrdersCount ?? 0],
@@ -177,9 +189,13 @@ async function exportClosure(req, res) {
   let data = await closuresRepository.getClosureByDate(dateStr);
   if (!data) {
     const preview = await computeDayTotals(dateStr);
+    const storniTotal = await storniRepository.getTotalByDate(dateStr);
+    const netTotal = Math.max(0, (preview.grandTotal || 0) - storniTotal);
     data = {
       date: dateStr,
       ...preview,
+      storniTotal,
+      netTotal,
       closedAt: "",
       closedBy: "",
       notes: "(Anteprima - giornata non chiusa)",

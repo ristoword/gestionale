@@ -1,5 +1,9 @@
 // backend/src/controllers/license.controller.js
 const { getLicense, saveLicense } = require("../config/license");
+const {
+  findByActivationCode,
+  updateLicense,
+} = require("../repositories/licenses.repository");
 
 // GET /api/license
 async function getLicenseController(req, res) {
@@ -36,6 +40,71 @@ async function deactivateLicense(req, res) {
     expiresAt: null,
   });
   return res.json({ ok: true, message: "Licenza disattivata." });
+}
+
+// POST /api/license/owner-activate
+// Body: { "licenseCode": "XXXX-YYYY" }
+async function ownerActivate(req, res) {
+  const { licenseCode } = req.body || {};
+
+  if (!licenseCode || typeof licenseCode !== "string") {
+    return res.status(400).json({
+      ok: false,
+      status: "invalid",
+      message: "Codice licenza mancante o non valido",
+    });
+  }
+
+  const license = findByActivationCode(licenseCode);
+  if (!license) {
+    return res.status(404).json({
+      ok: false,
+      status: "invalid",
+      message: "Licenza non trovata",
+    });
+  }
+
+  if (license.status === "used") {
+    return res.status(409).json({
+      ok: false,
+      status: "used",
+      message: "Licenza già utilizzata",
+    });
+  }
+
+  if (license.status && license.status !== "active" && license.status !== "grace") {
+    return res.status(400).json({
+      ok: false,
+      status: license.status,
+      message: "Licenza non attiva",
+    });
+  }
+
+  const nowIso = new Date().toISOString();
+  const updated = updateLicense({
+    restaurantId: license.restaurantId,
+    activationCode: license.activationCode,
+    status: "used",
+    activatedAt: nowIso,
+    source: license.source || "manual_activation",
+  });
+
+  if (!updated) {
+    return res.status(500).json({
+      ok: false,
+      status: "error",
+      message: "Impossibile aggiornare lo stato della licenza",
+    });
+  }
+
+  return res.json({
+    ok: true,
+    status: "valid",
+    message: "Licenza attivata correttamente",
+    restaurantId: updated.restaurantId,
+    activatedAt: updated.activatedAt,
+    redirectTo: "/login?ownerActivated=1",
+  });
 }
 
 // POST /api/license/activate
@@ -92,4 +161,5 @@ module.exports = {
   activateLicense,
   getStatus,
   deactivateLicense,
+  ownerActivate,
 };

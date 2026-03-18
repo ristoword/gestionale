@@ -5,6 +5,12 @@ const licenseController = require("../controllers/license.controller");
 // GET /api/license
 router.get("/", asyncHandler(licenseController.getLicense));
 
+// POST /api/license/owner-activate
+router.post(
+  "/owner-activate",
+  asyncHandler(licenseController.ownerActivate)
+);
+
 // POST /api/license/activate
 router.post("/activate", asyncHandler(licenseController.activateLicense));
 

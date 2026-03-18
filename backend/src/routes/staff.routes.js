@@ -38,6 +38,7 @@ router.get("/reports/personnel-cost", asyncHandler(staffReportsController.person
 router.get("/:id", asyncHandler(staffController.getStaffById));
 router.patch("/:id", asyncHandler(staffController.updateStaff));
 router.delete("/:id", asyncHandler(staffController.deleteStaff));
+router.post("/:id/reset-password", asyncHandler(staffController.resetPassword));
 
 // Shifts by staff
 router.get("/:id/shifts", asyncHandler(staffShiftsController.listByStaff));

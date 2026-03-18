@@ -15,7 +15,7 @@ function getRedirectByRole(role) {
   if (r === "cucina" || r === "kitchen" || r === "kitchen_manager") return "/cucina/cucina.html";
   if (r === "cassa" || r === "cashier" || r === "cash_manager") return "/cassa/cassa.html";
   if (r === "supervisor") return "/supervisor/supervisor.html";
-  if (r === "staff") return "/staff/staff.html";
+  if (r === "staff") return "/dashboard/dashboard.html";
   if (r === "bar" || r === "bar_manager") return "/bar/bar.html";
   if (r === "pizzeria") return "/pizzeria/pizzeria.html";
   if (r === "magazzino") return "/magazzino/magazzino.html";
@@ -66,6 +66,11 @@ if (params.get("license") === "required") {
 if (params.get("license") === "expired") {
   const msg = document.getElementById("login-message");
   if (msg) msg.innerHTML = 'Licenza scaduta. <a href="/license/license.html" style="color:var(--accent)">Rinnova licenza</a>';
+}
+if (params.get("ownerActivated") === "1") {
+  const msg = document.getElementById("login-message");
+  if (msg) msg.textContent = "Licenza attivata. Accedi con il tuo utente owner.";
+  if (msg) msg.classList.add("success");
 }
 
 form.addEventListener("submit", async (event) => {

@@ -5,6 +5,7 @@
 const LOGIN_PATH = "/login/login.html";
 
 const PROTECTED_PATTERNS = [
+  /^\/change-password$/,
   /^\/change-password\/change-password\.html$/,
   /^\/dashboard\/dashboard\.html$/,
   /^\/sala\/sala\.html$/,

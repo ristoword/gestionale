@@ -22,6 +22,44 @@ function findByRestaurantId(restaurantId) {
   return readLicenses().find((l) => l.restaurantId === id);
 }
 
+function findByActivationCode(activationCode) {
+  const code = String(activationCode || "").trim();
+  if (!code) return null;
+  return readLicenses().find(
+    (l) =>
+      typeof l.activationCode === "string" &&
+      l.activationCode.trim() === code
+  );
+}
+
+function hasUsedLicense(restaurantId) {
+  const id = String(restaurantId || "").trim();
+  if (!id) return false;
+  const licenses = readLicenses();
+  return licenses.some(
+    (l) => l.restaurantId === id && l.status === "used"
+  );
+}
+
+function updateLicense(updated) {
+  const licenses = readLicenses();
+  const idx = licenses.findIndex(
+    (l) =>
+      (updated.restaurantId && l.restaurantId === updated.restaurantId) ||
+      (updated.activationCode &&
+        typeof l.activationCode === "string" &&
+        l.activationCode.trim() === String(updated.activationCode || "").trim())
+  );
+  if (idx === -1) return null;
+  const merged = {
+    ...licenses[idx],
+    ...updated,
+  };
+  licenses[idx] = merged;
+  writeLicenses(licenses);
+  return merged;
+}
+
 function create(license) {
   const licenses = readLicenses();
   const record = {
@@ -39,5 +77,8 @@ function create(license) {
 module.exports = {
   readLicenses,
   findByRestaurantId,
+  findByActivationCode,
+  updateLicense,
+  hasUsedLicense,
   create,
 };

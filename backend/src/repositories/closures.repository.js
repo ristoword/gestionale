@@ -82,6 +82,8 @@ function normalizeClosureInput(input = {}) {
     cardTotal: toNumber(input.cardTotal, 0),
     otherTotal: toNumber(input.otherTotal, 0),
     grandTotal: toNumber(input.grandTotal, 0),
+    storniTotal: toNumber(input.storniTotal, 0),
+    netTotal: toNumber(input.netTotal, 0),
     paymentsCount: toNumber(input.paymentsCount, 0),
     closedOrdersCount: toNumber(input.closedOrdersCount, 0),
     closedAt: input.closedAt || nowIso,

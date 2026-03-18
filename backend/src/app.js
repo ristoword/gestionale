@@ -28,9 +28,11 @@ const { requireSetup } = require("./middleware/requireSetup.middleware");
 const { requireAuth } = require("./middleware/requireAuth.middleware");
 const { requireRole } = require("./middleware/requireRole.middleware");
 const { requirePageAuth } = require("./middleware/requirePageAuth.middleware");
+const { requireMustChangePassword } = require("./middleware/requireMustChangePassword.middleware");
 
 app.use(requireLicense);
 app.use(requireSetup);
+app.use(requireMustChangePassword);
 
 // SYSTEM HEALTH (no auth – for monitoring/load balancers)
 function healthHandler(req, res) {
@@ -48,10 +50,10 @@ app.get("/api/health", healthHandler); // alias for backward compatibility
 
 const ROLES_ALL = ["owner", "sala", "cucina", "cassa"];
 const ROLES_ORDERS = ["owner", "sala", "cucina", "cassa"];
-const ROLES_MENU = ["owner", "sala", "cassa"];
+const ROLES_MENU = ["owner", "sala", "cassa", "supervisor"];
 const ROLES_PAYMENTS = ["owner", "cassa"];
 const ROLES_REPORTS = ["owner", "sala", "cucina", "cassa"];
-const ROLES_CLOSURES = ["owner", "cassa"];
+const ROLES_CLOSURES = ["owner", "cassa", "supervisor"];
 
 // =======================
 //  ROUTE PAGINA HOME / DASHBOARD (prima di static, così / serve la dashboard)
@@ -75,6 +77,13 @@ app.get("/dashboard", requirePageAuth, (req, res) => {
 app.get("/change-password", requirePageAuth, (req, res) => {
   res.sendFile(
     path.join(__dirname, "../public/change-password/change-password.html")
+  );
+});
+
+// Owner activation (public)
+app.get("/owner-activate", (req, res) => {
+  res.sendFile(
+    path.join(__dirname, "../public/owner-activate/owner-activate.html")
   );
 });
 
@@ -130,7 +139,7 @@ try {
 // LICENSE (no auth – for activation flow)
 try {
   const licenseRouter = require("./routes/license.routes");
-  app.use("/api/license", licenseRouter);
+  app.use("/api/licenses", licenseRouter);
 } catch (e) {
   console.warn("license.routes non trovato (ok se non ancora creato)");
 }
@@ -176,12 +185,29 @@ try {
   console.warn("bookings.routes non trovato (ok se non ancora creato)");
 }
 
-// STAFF / TURNI
+// STAFF – owner: CRUD completo; supervisor: sola lettura (elenco, dettaglio) per dropdown/staff attivi
 try {
   const staffRouter = require("./routes/staff.routes");
-  app.use("/api/staff", requireAuth, requireRole(ROLES_ALL), staffRouter);
+  const ROLES_STAFF_READ = ["owner", "supervisor"];
+  app.use("/api/staff", requireAuth, requireRole(ROLES_STAFF_READ), staffRouter);
 } catch (e) {
   console.warn("staff.routes non trovato (ok se non ancora creato)");
+}
+
+// ATTENDANCE – presenze/timbrature (owner: lista/summary/close; user: me/today)
+try {
+  const attendanceRouter = require("./routes/attendance.routes");
+  app.use("/api/attendance", requireAuth, attendanceRouter);
+} catch (e) {
+  console.warn("attendance.routes non trovato (ok se non ancora creato)");
+}
+
+// LEAVE – richieste assenze (ferie, permessi, malattia). Owner: list/approve/reject/balances; staff: me/create/cancel
+try {
+  const leaveRouter = require("./routes/leave.routes");
+  app.use("/api/leave", requireAuth, leaveRouter);
+} catch (e) {
+  console.warn("leave.routes non trovato (ok se non ancora creato)");
 }
 
 // CATERING / BANCHETTI
@@ -208,12 +234,20 @@ try {
   console.warn("payments.routes non trovato (ok se non ancora creato)");
 }
 
-// CLOSURES (Daily Z) – owner/cassa only
+// CLOSURES (Daily Z) – owner/cassa/supervisor
 try {
   const closuresRouter = require("./routes/closures.routes");
   app.use("/api/closures", requireAuth, requireRole(ROLES_CLOSURES), closuresRouter);
 } catch (e) {
   console.warn("closures.routes non trovato (ok se non ancora creato)");
+}
+
+// STORNI – fonte unica per netto (lordo - storni)
+try {
+  const storniRouter = require("./routes/storni.routes");
+  app.use("/api/storni", requireAuth, requireRole(ROLES_CLOSURES), storniRouter);
+} catch (e) {
+  console.warn("storni.routes non trovato (ok se non ancora creato)");
 }
 
 // AI – /api/ai

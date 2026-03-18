@@ -101,10 +101,25 @@ async function apiSetStatus(id, status) {
 }
 
 // =============================
-//   MENÙ UFFICIALE (localStorage + API fallback)
+//   MENÙ UFFICIALE – API fonte ufficiale, localStorage solo cache
 // =============================
 
 async function loadOfficialMenu() {
+  try {
+    const res = await fetch("/api/menu/active", { credentials: "same-origin" });
+    if (res.ok) {
+      const arr = await res.json();
+      menuOfficial = Array.isArray(arr) ? arr : [];
+      if (menuOfficial.length) {
+        try {
+          localStorage.setItem("rw_menu_official", JSON.stringify(menuOfficial));
+        } catch (_) {}
+      }
+      return;
+    }
+  } catch (apiErr) {
+    console.warn("Menu API non disponibile, uso cache:", apiErr.message);
+  }
   try {
     const raw = localStorage.getItem("rw_menu_official");
     if (raw) {
@@ -112,25 +127,8 @@ async function loadOfficialMenu() {
       menuOfficial = Array.isArray(arr) ? arr : [];
       return;
     }
-    // Fallback: se localStorage vuoto, carica dal backend
-    try {
-      const res = await fetch("/api/menu/active", { credentials: "same-origin" });
-      if (res.ok) {
-        const arr = await res.json();
-        menuOfficial = Array.isArray(arr) ? arr : [];
-        if (menuOfficial.length) {
-          localStorage.setItem("rw_menu_official", JSON.stringify(menuOfficial));
-        }
-        return;
-      }
-    } catch (apiErr) {
-      console.warn("Fallback menù API non disponibile:", apiErr.message);
-    }
-    menuOfficial = [];
-  } catch (err) {
-    console.error("Errore lettura menù ufficiale:", err);
-    menuOfficial = [];
-  }
+  } catch (_) {}
+  menuOfficial = [];
 }
 
 function getMenuByCategory(category) {

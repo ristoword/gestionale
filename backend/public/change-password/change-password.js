@@ -1,8 +1,25 @@
-// change-password.js – Cambio password obbligatorio al primo accesso
+// change-password.js – Primo accesso (solo nuova password) o cambio password (attuale + nuova)
 
 const form = document.getElementById("change-form");
 const messageBox = document.getElementById("change-message");
 const btnSubmit = document.getElementById("btn-submit");
+const fieldCurrent = document.getElementById("field-current");
+const inputCurrent = document.getElementById("current-password");
+
+let mustChangePassword = true;
+
+async function loadMe() {
+  try {
+    const res = await fetch("/api/auth/me", { credentials: "same-origin" });
+    if (!res.ok) return;
+    const data = await res.json();
+    mustChangePassword = data.mustChangePassword === true;
+    if (!mustChangePassword && fieldCurrent) {
+      fieldCurrent.style.display = "";
+      if (inputCurrent) inputCurrent.setAttribute("required", "required");
+    }
+  } catch (_) {}
+}
 
 function showMessage(text, type = "") {
   messageBox.textContent = text || "";
@@ -13,17 +30,17 @@ function showMessage(text, type = "") {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const currentPassword = document.getElementById("current-password").value;
   const newPassword = document.getElementById("new-password").value;
   const confirmPassword = document.getElementById("confirm-password").value;
+  const minLen = mustChangePassword ? 6 : 8;
 
-  if (!currentPassword || !newPassword) {
+  if (!newPassword || !confirmPassword) {
     showMessage("Compila tutti i campi.", "error");
     return;
   }
 
-  if (newPassword.length < 8) {
-    showMessage("La nuova password deve essere di almeno 8 caratteri.", "error");
+  if (newPassword.length < minLen) {
+    showMessage("La password deve essere di almeno " + minLen + " caratteri.", "error");
     return;
   }
 
@@ -36,14 +53,18 @@ form.addEventListener("submit", async (event) => {
   showMessage("Aggiornamento in corso...");
 
   try {
+    const body = mustChangePassword
+      ? { password: newPassword }
+      : {
+          currentPassword: document.getElementById("current-password").value,
+          newPassword,
+        };
+
     const res = await fetch("/api/auth/change-password", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        currentPassword,
-        newPassword,
-      }),
+      body: JSON.stringify(body),
     });
 
     const data = await res.json().catch(() => ({}));
@@ -56,7 +77,7 @@ form.addEventListener("submit", async (event) => {
 
     showMessage("Password aggiornata. Reindirizzamento...", "success");
     setTimeout(() => {
-      window.location.href = "/dashboard/dashboard.html";
+      window.location.href = "/dashboard";
     }, 800);
   } catch (err) {
     console.error("Errore cambio password:", err);
@@ -64,3 +85,5 @@ form.addEventListener("submit", async (event) => {
     btnSubmit.disabled = false;
   }
 });
+
+loadMe();

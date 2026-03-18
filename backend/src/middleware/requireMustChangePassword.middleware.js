@@ -1,6 +1,8 @@
 // Redirect to /change-password when user must change password and is not already there.
 
 function requireMustChangePassword(req, res, next) {
+  // DEV bridge: bypass forced password change.
+  if (req.devOwner === true) return next();
   const sessionUser = req.session && req.session.user;
   if (!sessionUser || sessionUser.mustChangePassword !== true) {
     return next();

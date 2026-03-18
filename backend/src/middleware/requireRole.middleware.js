@@ -4,6 +4,8 @@
 function requireRole(allowedRoles) {
   const set = new Set(Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]);
   return (req, res, next) => {
+    // DEV bridge: bypass role checks for the dev session.
+    if (req.devOwner === true) return next();
     if (!req.session || !req.session.user) {
       return res.status(401).json({ error: "Non autenticato", message: "Effettua il login." });
     }

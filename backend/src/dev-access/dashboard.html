@@ -82,7 +82,21 @@
 
         <div class="card section-wide"><h2>6) Link rapidi</h2>
           <div class="links" id="quick-links"></div>
-          <div class="muted" style="margin-top:10px;">Se un link richiede login standard/owner activation potresti essere reindirizzato.</div>
+          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;" id="dev-bridge-buttons">
+            <button class="btn" type="button" data-open-module="dashboard">Apri Dashboard</button>
+            <button class="btn" type="button" data-open-module="sala">Apri Sala</button>
+            <button class="btn" type="button" data-open-module="cucina">Apri Cucina</button>
+            <button class="btn" type="button" data-open-module="pizzeria">Apri Pizzeria</button>
+            <button class="btn" type="button" data-open-module="cassa">Apri Cassa</button>
+            <button class="btn" type="button" data-open-module="magazzino">Apri Magazzino</button>
+            <button class="btn" type="button" data-open-module="prenotazioni">Apri Prenotazioni</button>
+            <button class="btn" type="button" data-open-module="catering">Apri Catering</button>
+            <button class="btn" type="button" data-open-module="staff">Apri Staff</button>
+            <button class="btn" type="button" data-open-module="ricette">Apri Ricette</button>
+            <button class="btn" type="button" data-open-module="spesa">Apri Spesa</button>
+            <button class="btn" type="button" data-open-module="haccp">Apri HACCP</button>
+          </div>
+          <div class="muted" style="margin-top:10px;">Se un modulo non ha una pagina dedicata, il DEV BRIDGE ti porta al modulo più vicino (es. viste in cucina).</div>
         </div>
 
         <div class="card section-6"><h2>7) Operazioni (read-only)</h2>
@@ -348,6 +362,16 @@
         el("tenant-select")?.addEventListener("change", async ()=>{
           // evita sovraccarico: ricarica una volta sola
           await loadStatus();
+        });
+
+        // DEV BRIDGE module open buttons
+        document.querySelectorAll("[data-open-module]")?.forEach((btn)=>{
+          btn.addEventListener("click", ()=>{
+            const moduleName=(btn.dataset && btn.dataset.openModule) ? String(btn.dataset.openModule) : "";
+            const tid=(el("tenant-select").value||"").trim();
+            const q = tid ? ("?tenantId="+encodeURIComponent(tid)) : "";
+            window.location.href="/dev-access/open/"+encodeURIComponent(moduleName)+q;
+          });
         });
 
         el("btn-refresh").addEventListener("click",loadStatus);

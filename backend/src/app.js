@@ -22,6 +22,10 @@ app.use(sessionMiddleware);
 const { setTenantContext } = require("./middleware/tenantContext.middleware");
 app.use(setTenantContext);
 
+// Technical DEV bridge session -> expose `req.devOwner` to global middlewares.
+const { devOwnerSession } = require("./middleware/devOwnerSession.middleware");
+app.use(devOwnerSession);
+
 // =======================
 // DEV ACCESS (private technical emergency)
 // =======================

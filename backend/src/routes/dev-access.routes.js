@@ -29,6 +29,9 @@ router.get("/status", requireDevOwnerAuth, devAccessController.getDevStatus);
 // GET /dev-access/dashboard (HTML)
 router.get("/dashboard", requireDevOwnerAuth, devAccessController.getDevDashboard);
 
+// GET /dev-access/open/:module (DEV BRIDGE -> real module pages)
+router.get("/open/:module", requireDevOwnerAuth, devAccessController.openModule);
+
 // =============================
 // DEV API (private)
 // =============================

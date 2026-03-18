@@ -6,10 +6,12 @@ const path = require("path");
 const crypto = require("crypto");
 
 const devService = require("../dev-access/services/dev-access.service");
+const { getModuleTarget } = require("../dev-access/dev-bridge.mapping");
 
 const DEV_ENABLED = () => devService.isDevEnabled();
 
 const DEV_COOKIE_NAME = "rw-dev-access";
+const DEV_BRIDGE_TTL_MINUTES = Number(process.env.DEV_BRIDGE_SESSION_TTL_MINUTES || "15");
 
 // Rate limit login dev (best-effort, in-memory only)
 const devLoginAttempts = new Map(); // key => {count, firstTs}
@@ -85,6 +87,56 @@ function clearDevCookie(res) {
     "Set-Cookie",
     `${DEV_COOKIE_NAME}=; Path=/dev-access; Max-Age=0; HttpOnly; SameSite=Lax`
   );
+}
+
+function restorePrevSessionIfDevBridgeSaved(req) {
+  if (!req || !req.session) return;
+
+  const hasPrevUser = Object.prototype.hasOwnProperty.call(req.session, "_devPrevUser");
+  const hasPrevRestaurantId = Object.prototype.hasOwnProperty.call(req.session, "_devPrevRestaurantId");
+
+  if (hasPrevUser) {
+    req.session.user = req.session._devPrevUser;
+  } else if (req.session.user) {
+    delete req.session.user;
+  }
+
+  if (hasPrevRestaurantId) {
+    req.session.restaurantId = req.session._devPrevRestaurantId;
+  } else if (req.session.restaurantId) {
+    delete req.session.restaurantId;
+  }
+
+  delete req.session._devPrevUser;
+  delete req.session._devPrevRestaurantId;
+}
+
+function createDevBridgeSession(req, { tenantId } = {}) {
+  if (!req || !req.session) return;
+
+  const rid = String(tenantId || "").trim() || req.session.restaurantId || "default";
+
+  // Save current session to restore on logout / expiry.
+  const hasPrevUser = Object.prototype.hasOwnProperty.call(req.session, "_devPrevUser");
+  if (!hasPrevUser) {
+    req.session._devPrevUser = req.session.user;
+    req.session._devPrevRestaurantId = req.session.restaurantId;
+  }
+
+  // Technical DEV session:
+  // - mark devOwner for bypass in global middlewares
+  // - impersonate owner user so existing controllers (ensureOwner) work unchanged
+  req.session.devOwner = true;
+  req.session.devOwnerExpiresAt = Date.now() + DEV_BRIDGE_TTL_MINUTES * 60 * 1000;
+  req.session.restaurantId = rid;
+  req.session.user = {
+    id: "dev-owner-bridge",
+    username: "dev-owner-bridge",
+    role: "owner",
+    department: "dev",
+    mustChangePassword: false,
+    restaurantId: rid,
+  };
 }
 
 function timingSafeEqual(a, b) {
@@ -191,6 +243,21 @@ async function postDevLogin(req, res) {
 // POST/GET /dev-access/logout
 async function logout(req, res) {
   clearDevCookie(res);
+
+  // Cancel DEV bridge session + restore previous user context (if any).
+  try {
+    if (req.session && req.session.devOwner === true) {
+      restorePrevSessionIfDevBridgeSaved(req);
+    } else if (req.session) {
+      // If keys exist but devOwner flag was already cleared by expiry middleware.
+      restorePrevSessionIfDevBridgeSaved(req);
+    }
+    if (req.session) {
+      delete req.session.devOwner;
+      delete req.session.devOwnerExpiresAt;
+    }
+  } catch (_) {}
+
   try {
     await devService.appendDevLog({
       event: "logout",
@@ -208,6 +275,25 @@ async function logout(req, res) {
 // GET /dev-access/dashboard
 async function getDevDashboard(req, res) {
   return res.sendFile(htmlPath("dashboard.html"));
+}
+
+// GET /dev-access/open/:module
+// Creates a short-lived technical devOwner session and redirects to the real module page.
+async function openModule(req, res) {
+  const moduleName = req.params && req.params.module ? String(req.params.module) : "";
+  const tenantId = req.query && req.query.tenantId ? String(req.query.tenantId) : null;
+
+  const target = getModuleTarget(moduleName);
+  if (!target) return res.status(404).send("Module non riconosciuto");
+
+  // Create dev bridge session.
+  try {
+    createDevBridgeSession(req, { tenantId });
+  } catch (e) {
+    // Non bloccare: la sessione rimane best-effort.
+  }
+
+  return res.redirect(target.targetPath);
 }
 
 // GET /dev-access/status
@@ -403,6 +489,7 @@ module.exports = {
   logout,
   getDevDashboard,
   getDevStatus,
+  openModule,
   // step 3-10 api
   apiGetTenants,
   apiGetLicenses,

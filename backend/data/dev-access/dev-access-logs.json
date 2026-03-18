@@ -1,0 +1,38 @@
+[
+  {
+    "event": "dev_status_view",
+    "ts": "2026-03-18T17:06:56.269Z",
+    "ip": "::1",
+    "tenantId": null
+  },
+  {
+    "event": "dev_status_view",
+    "ts": "2026-03-18T17:06:56.305Z",
+    "ip": "::1",
+    "tenantId": "default"
+  },
+  {
+    "event": "dev_status_view",
+    "ts": "2026-03-18T17:06:57.290Z",
+    "ip": "::1",
+    "tenantId": null
+  },
+  {
+    "event": "dev_status_view",
+    "ts": "2026-03-18T17:06:57.367Z",
+    "ip": "::1",
+    "tenantId": "default"
+  },
+  {
+    "event": "dev_status_view",
+    "ts": "2026-03-18T17:21:39.079Z",
+    "ip": "::1",
+    "tenantId": null
+  },
+  {
+    "event": "dev_status_view",
+    "ts": "2026-03-18T17:21:39.200Z",
+    "ip": "::1",
+    "tenantId": "default"
+  }
+]

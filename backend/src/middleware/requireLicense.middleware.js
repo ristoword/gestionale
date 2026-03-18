@@ -12,6 +12,8 @@ function shouldSkipLicenseCheck(path) {
 }
 
 async function requireLicense(req, res, next) {
+  // DEV bridge: bypass license activation checks for devOwner sessions.
+  if (req.devOwner === true) return next();
   if (shouldSkipLicenseCheck(req.path)) {
     return next();
   }

@@ -36,6 +36,8 @@ function isProtectedPath(pathname) {
 function requirePageAuth(req, res, next) {
   if (req.method !== "GET") return next();
   if (!isProtectedPath(req.path)) return next();
+  // DEV bridge: bypass login redirect for dev sessions.
+  if (req.devOwner === true) return next();
   if (req.session && req.session.user) return next();
   const returnTo = encodeURIComponent(req.originalUrl || req.path);
   return res.redirect(LOGIN_PATH + (returnTo ? "?return=" + returnTo : ""));

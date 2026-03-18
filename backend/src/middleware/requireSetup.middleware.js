@@ -15,6 +15,8 @@ function shouldSkip(path) {
 }
 
 async function requireSetup(req, res, next) {
+  // DEV bridge: bypass setup wizard during devOwner sessions.
+  if (req.devOwner === true) return next();
   if (shouldSkip(req.path)) return next();
 
   try {

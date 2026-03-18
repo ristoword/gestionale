@@ -1,12 +1,62 @@
 [
   {
     "id": 1,
+    "name": "Impasto pizza",
+    "unit": "kg",
+    "quantity": 100,
+    "cost": 4,
+    "threshold": 10,
+    "createdAt": "2026-02-28T11:23:46.880Z",
+    "updatedAt": "2026-02-28T11:23:46.882Z",
+    "category": "",
+    "lot": "",
+    "notes": "",
+    "central": 100,
+    "stocks": {
+      "cucina": 50,
+      "sala": 0,
+      "bar": 0,
+      "proprieta": 0
+    }
+  },
+  {
+    "id": 2,
+    "name": "Mozzarella",
+    "unit": "kg",
+    "quantity": 100,
+    "cost": 4,
+    "threshold": 10,
+    "createdAt": "2026-02-28T11:23:46.880Z",
+    "updatedAt": "2026-02-28T11:23:46.882Z",
+    "category": "",
+    "lot": "",
+    "notes": "",
+    "central": 100,
+    "stocks": {
+      "cucina": 50,
+      "sala": 0,
+      "bar": 0,
+      "proprieta": 0
+    }
+  },
+  {
+    "id": 3,
     "name": "pane",
     "unit": "kg",
     "quantity": 100,
     "cost": 4,
     "threshold": 10,
     "createdAt": "2026-02-28T11:23:46.880Z",
-    "updatedAt": "2026-02-28T11:23:46.882Z"
+    "updatedAt": "2026-02-28T11:23:46.882Z",
+    "category": "",
+    "lot": "",
+    "notes": "",
+    "central": 100,
+    "stocks": {
+      "cucina": 20,
+      "sala": 0,
+      "bar": 0,
+      "proprieta": 0
+    }
   }
 ]

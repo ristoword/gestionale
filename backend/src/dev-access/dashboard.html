@@ -70,8 +70,20 @@
         </div>
 
         <div class="card section-6"><h2>4) Stato Stripe (config)</h2>
-          <div class="muted">Solo verifica chiavi env presenti (no checkout).</div>
+          <div class="muted">Mock checkout + sync licenze (no Stripe SDK).</div>
           <div style="margin-top:10px;"><div class="k">Chiavi trovate</div><div class="v mono" id="stripe-keys">—</div><div class="muted" id="stripe-present"></div></div>
+          <div style="margin-top:12px;display:grid;grid-template-columns:repeat(12,1fr);gap:10px;">
+            <div style="grid-column:span 6;">
+              <div class="k">Webhook (last)</div>
+              <div class="v mono" id="stripe-webhook-last">—</div>
+              <div class="muted" id="stripe-webhook-pending">pending: —</div>
+            </div>
+            <div style="grid-column:span 6;">
+              <div class="k">Mismatch</div>
+              <div class="v mono" id="stripe-mismatch">—</div>
+              <div class="muted" id="stripe-sync-status">—</div>
+            </div>
+          </div>
           <div style="overflow:auto;max-height:210px;margin-top:10px;"><table><thead><tr><th>Env Key</th><th>Stato</th></tr></thead><tbody id="stripe-table-body"></tbody></table></div>
         </div>
 
@@ -158,6 +170,7 @@
           <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
             <button class="btn" id="btn-action-clear-temp">Clear temp</button>
             <button class="btn" id="btn-action-toggle-module">Toggle module</button>
+            <button class="btn" id="btn-action-sync-stripe-license" style="background:transparent;border-color:rgba(59,130,246,.4);">Sync Stripe/Licenze</button>
           </div>
           <div class="muted" style="margin-top:10px;" id="action-result">—</div>
         </div>
@@ -260,6 +273,47 @@
           const stripeEntries=Object.entries(stripe.keys||{});
           renderRows(el("stripe-table-body"),stripeEntries,(p)=>[p[0],p[1]]);
 
+          // --- DEV Stripe details (webhook + mismatch + sync) ---
+          // Lettura via endpoint dedicato: /dev-access/api/stripe/mock/status
+          try {
+            const smTenantParam = requestedTenant ? ("?tenantId=" + encodeURIComponent(requestedTenant)) : "";
+            const smRes = await fetch("/dev-access/api/stripe/mock/status" + smTenantParam, { credentials: "same-origin" });
+            const smJson = await smRes.json().catch(() => null);
+            const stripeMock = smJson && smJson.stripe ? smJson.stripe : smJson;
+
+            const webhook = stripeMock?.webhookStatus || {};
+            el("stripe-webhook-last").textContent = webhook.lastProcessedAt ? new Date(webhook.lastProcessedAt).toLocaleString() : "—";
+            const pendingForTenant =
+              webhook.pendingForTenantCount != null
+                ? webhook.pendingForTenantCount
+                : webhook.pendingCount != null
+                  ? webhook.pendingCount
+                  : 0;
+            el("stripe-webhook-pending").textContent = "pending: " + pendingForTenant;
+
+            el("stripe-mismatch").textContent = stripeMock?.mismatch || "—";
+
+            const ss = stripeMock?.stripeSession || null;
+            const localJson = stripeMock?.localLicenseJson || null;
+            const localTenant = stripeMock?.localTenantLicense || null;
+            let syncTxt = "—";
+            if (ss) {
+              syncTxt =
+                "session=" +
+                (ss.status || "—") +
+                " • local.json=" +
+                (localJson ? localJson.status || "—" : "none") +
+                " • tenant=" +
+                (localTenant ? localTenant.status || "—" : "none");
+            }
+            el("stripe-sync-status").textContent = syncTxt;
+          } catch (_) {
+            el("stripe-webhook-last").textContent = "—";
+            el("stripe-webhook-pending").textContent = "pending: —";
+            el("stripe-mismatch").textContent = "—";
+            el("stripe-sync-status").textContent = "—";
+          }
+
           // --- Card 5: Probes ---
           const probes=data.fileProbes||{};
           const rows=Object.entries(probes).map(([k,v])=>({k,v}));
@@ -357,6 +411,12 @@
           if(!moduleName) return alert("moduleName obbligatorio");
           const enabled = enabledStr === "true";
           await runAction("btn-action-toggle-module","/dev-access/api/actions/toggle-module",{tenantId:tid,moduleName,enabled});
+        });
+
+        el("btn-action-sync-stripe-license")?.addEventListener("click", async ()=>{
+          const tid=(el("action-tenant-id").value||"").trim();
+          if(!tid) return alert("tenantId obbligatorio");
+          await runAction("btn-action-sync-stripe-license","/dev-access/api/stripe/mock/sync",{tenantId:tid});
         });
 
         el("tenant-select")?.addEventListener("change", async ()=>{

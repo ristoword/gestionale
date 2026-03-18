@@ -29,6 +29,32 @@ router.get("/status", requireDevOwnerAuth, devAccessController.getDevStatus);
 // GET /dev-access/dashboard (HTML)
 router.get("/dashboard", requireDevOwnerAuth, devAccessController.getDevDashboard);
 
+// =============================
+// DEV BRIDGE explicit module routes
+// =============================
+// Le route esplicite reindirizzano alla route generica /open/:module
+// preservando querystring (es. tenantId).
+function redirectToOpen(moduleName) {
+  return (req, res) => {
+    const idx = String(req.originalUrl || "").indexOf("?");
+    const q = idx >= 0 ? String(req.originalUrl || "").slice(idx) : "";
+    return res.redirect(`/dev-access/open/${encodeURIComponent(moduleName)}${q}`);
+  };
+}
+
+router.get("/open/dashboard", requireDevOwnerAuth, redirectToOpen("dashboard"));
+router.get("/open/sala", requireDevOwnerAuth, redirectToOpen("sala"));
+router.get("/open/cucina", requireDevOwnerAuth, redirectToOpen("cucina"));
+router.get("/open/pizzeria", requireDevOwnerAuth, redirectToOpen("pizzeria"));
+router.get("/open/cassa", requireDevOwnerAuth, redirectToOpen("cassa"));
+router.get("/open/magazzino", requireDevOwnerAuth, redirectToOpen("magazzino"));
+router.get("/open/prenotazioni", requireDevOwnerAuth, redirectToOpen("prenotazioni"));
+router.get("/open/catering", requireDevOwnerAuth, redirectToOpen("catering"));
+router.get("/open/staff", requireDevOwnerAuth, redirectToOpen("staff"));
+router.get("/open/ricette", requireDevOwnerAuth, redirectToOpen("ricette"));
+router.get("/open/spesa", requireDevOwnerAuth, redirectToOpen("spesa"));
+router.get("/open/haccp", requireDevOwnerAuth, redirectToOpen("haccp"));
+
 // GET /dev-access/open/:module (DEV BRIDGE -> real module pages)
 router.get("/open/:module", requireDevOwnerAuth, devAccessController.openModule);
 
@@ -39,6 +65,7 @@ router.get("/api/tenants", requireDevOwnerAuth, devAccessController.apiGetTenant
 router.get("/api/licenses", requireDevOwnerAuth, devAccessController.apiGetLicenses);
 router.get("/api/users", requireDevOwnerAuth, devAccessController.apiGetUsers);
 router.get("/api/stripe/status", requireDevOwnerAuth, devAccessController.apiGetStripeStatus);
+router.get("/api/stripe/mock/status", requireDevOwnerAuth, require("../controllers/dev-access-stripe-mock.controller").apiGetStripeMockStatus);
 router.get("/api/operations", requireDevOwnerAuth, devAccessController.apiGetOperations);
 router.get("/api/business", requireDevOwnerAuth, devAccessController.apiGetBusiness);
 router.get("/api/logs", requireDevOwnerAuth, devAccessController.apiGetLogs);
@@ -50,6 +77,11 @@ router.post("/api/actions/force-activate", requireDevOwnerAuth, devAccessControl
 router.post("/api/actions/clear-temp", requireDevOwnerAuth, devAccessController.apiPostActionClearTemp);
 router.post("/api/actions/toggle-module", requireDevOwnerAuth, devAccessController.apiPostActionToggleModule);
 router.post("/api/actions/extend-trial", requireDevOwnerAuth, devAccessController.apiPostActionExtendTrial);
+router.post(
+  "/api/stripe/mock/sync",
+  requireDevOwnerAuth,
+  require("../controllers/dev-access-stripe-mock.controller").apiPostStripeMockSync
+);
 
 // Alias: /dev-access -> /dev-access/dashboard
 router.get("/", requireDevOwnerAuth, (req, res) => res.redirect("/dev-access/dashboard"));

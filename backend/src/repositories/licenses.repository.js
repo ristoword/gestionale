@@ -62,7 +62,10 @@ function updateLicense(updated) {
 
 function create(license) {
   const licenses = readLicenses();
+  // Important: keep optional fields (activationCode, dates, etc.) so owner-activate can work.
+  // The previous implementation dropped activationCode and other extra payload fields.
   const record = {
+    ...license,
     restaurantId: license.restaurantId,
     plan: license.plan || "ristoword_pro",
     status: license.status || "active",

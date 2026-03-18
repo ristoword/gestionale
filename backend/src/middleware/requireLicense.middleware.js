@@ -4,7 +4,23 @@
 const { getLicense } = require("../config/license");
 const { hasUsedLicense } = require("../repositories/licenses.repository");
 
-const SKIP_PATHS = ["/login", "/api/auth", "/api/license", "/api/licenses", "/api/setup", "/license", "/setup", "/api/system/health", "/api/health", "/api/qr", "/qr", "/api/menu/active", "/change-password"];
+const SKIP_PATHS = [
+  "/login",
+  "/api/auth",
+  "/api/license",
+  "/api/licenses",
+  "/api/setup",
+  "/api/checkout",
+  "/api/stripe",
+  "/license",
+  "/setup",
+  "/api/system/health",
+  "/api/health",
+  "/api/qr",
+  "/qr",
+  "/api/menu/active",
+  "/change-password",
+];
 
 function shouldSkipLicenseCheck(path) {
   const p = (path || "").split("?")[0];

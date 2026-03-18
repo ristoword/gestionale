@@ -4,6 +4,7 @@ const { isSetupComplete } = require("../config/setup");
 const SKIP_PATHS = [
   "/login", "/license", "/setup",
   "/api/auth", "/api/license", "/api/setup",
+  "/api/checkout", "/api/stripe",
   "/api/system/health", "/api/health",
   "/qr", "/api/qr",
   "/api/menu/active",

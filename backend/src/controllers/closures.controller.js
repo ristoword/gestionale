@@ -17,15 +17,17 @@ function normalizeString(v, fallback = "") {
   return String(v).trim();
 }
 
-function isSameDay(dateValue, targetDate) {
+function isoDay(dateValue) {
   const d = new Date(dateValue);
-  const t = new Date(targetDate);
-  if (Number.isNaN(d.getTime()) || Number.isNaN(t.getTime())) return false;
-  return (
-    d.getFullYear() === t.getFullYear() &&
-    d.getMonth() === t.getMonth() &&
-    d.getDate() === t.getDate()
-  );
+  if (Number.isNaN(d.getTime())) return null;
+  // Always compare by UTC day to avoid timezone parsing issues with "YYYY-MM-DD" strings.
+  return d.toISOString().slice(0, 10);
+}
+
+function isSameDay(dateValue, targetDateStr) {
+  const d = isoDay(dateValue);
+  const t = String(targetDateStr || "").slice(0, 10);
+  return d != null && d === t;
 }
 
 function getPaymentDate(p) {
@@ -33,21 +35,17 @@ function getPaymentDate(p) {
 }
 
 async function computeDayTotals(dateStr) {
-  const targetDate = new Date(dateStr);
-  const dateFrom = new Date(targetDate);
-  dateFrom.setHours(0, 0, 0, 0);
-  const dateTo = new Date(targetDate);
-  dateTo.setHours(23, 59, 59, 999);
+  const day = String(dateStr || "").slice(0, 10);
 
   const allPayments = await paymentsRepository.listPayments({});
   const dailyPayments = allPayments.filter((p) =>
-    isSameDay(getPaymentDate(p), targetDate)
+    isSameDay(getPaymentDate(p), day)
   );
 
   const allOrders = ordersRepository.getAllOrders();
   const closedOrders = allOrders.filter(
     (o) =>
-      isSameDay(o.updatedAt || o.createdAt, targetDate) &&
+      isSameDay(o.updatedAt || o.createdAt, day) &&
       String(o.status || "").toLowerCase() === "chiuso"
   );
 

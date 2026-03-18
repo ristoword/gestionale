@@ -168,6 +168,22 @@ try {
   console.warn("setup.routes non trovato (ok se non ancora creato)");
 }
 
+// CHECKOUT (Stripe mock -> license sync)
+try {
+  const checkoutRouter = require("./routes/checkout.routes");
+  app.use("/api/checkout", checkoutRouter);
+} catch (e) {
+  console.warn("checkout.routes non trovato (ok se non ancora creato)");
+}
+
+// STRIPE WEBHOOK (mock)
+try {
+  const stripeWebhookRouter = require("./routes/stripe-webhook.routes");
+  app.use("/api/stripe", stripeWebhookRouter);
+} catch (e) {
+  console.warn("stripe-webhook.routes non trovato (ok se non ancora creato)");
+}
+
 // INVENTORY (Magazzino)
 try {
   const inventoryRouter = require("./routes/inventory.routes");

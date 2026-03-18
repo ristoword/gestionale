@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Ristoword - Dev Dashboard</title>
+    <style>
+      :root{--bg:#0b0f19;--card:#111827;--text:#e5e7eb;--muted:#9ca3af;--primary:#3b82f6;--border:rgba(255,255,255,.12);--chip:rgba(255,255,255,.06)}
+      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
+      .wrap{max-width:1100px;margin:22px auto;padding:0 16px}
+      .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
+      .brand{display:flex;gap:12px;align-items:center}
+      .pill{background:var(--chip);border:1px solid var(--border);padding:8px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
+      .btn{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:10px;padding:10px 12px;cursor:pointer;font-weight:800;text-decoration:none;display:inline-block}
+      .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+      .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+      .card h2{margin:0 0 10px;font-size:15px}
+      .k{color:var(--muted);font-size:12px;margin-bottom:2px}
+      .v{font-weight:900;font-size:14px}
+      .section-wide{grid-column:span 12}
+      .section-6{grid-column:span 6}
+      table{width:100%;border-collapse:collapse}
+      th,td{border-top:1px solid var(--border);padding:8px 6px;text-align:left;vertical-align:top;font-size:12px;color:var(--muted)}
+      th{color:var(--text)}
+      code{background:rgba(0,0,0,.35);border:1px solid var(--border);padding:2px 6px;border-radius:8px;color:#e5e7eb;font-size:12px}
+      .muted{color:var(--muted);font-size:12px;line-height:1.5}
+      .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+      .links a{display:inline-block;margin-right:10px;margin-top:6px;color:var(--primary);text-decoration:none;font-weight:800;font-size:13px}
+      @media (max-width:900px){.section-6{grid-column:span 12}}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <div class="brand">
+          <div>
+            <div style="font-weight:950;font-size:18px;">Dev Dashboard</div>
+            <div class="muted">Accesso tecnico emergenza (privato)</div>
+          </div>
+          <div id="dev-env-pill" class="pill">ENV: —</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn" id="btn-refresh">Aggiorna</button>
+          <a class="btn" href="/dev-access/logout">Logout</a>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card section-6"><h2>1) Stato sistema</h2>
+          <div><div class="k">Ambiente</div><div class="v" id="sys-env">—</div></div>
+          <div style="margin-top:10px;"><div class="k">Data/Ora</div><div class="v mono" id="sys-time">—</div></div>
+          <div style="margin-top:10px;"><div class="k">Uptime</div><div class="v mono" id="sys-uptime">—</div></div>
+          <div style="margin-top:10px;"><div class="k">Versione</div><div class="v mono" id="sys-version">—</div></div>
+          <div style="margin-top:10px;"><div class="k">Node</div><div class="v mono" id="sys-node">—</div></div>
+        </div>
+
+        <div class="card section-6"><h2>2) Licenze locali</h2>
+          <div><div class="k">license.json</div><div class="v mono" id="lic-global">—</div><div class="muted" id="lic-global-details"></div></div>
+          <div style="margin-top:14px;"><div class="k">licenses.json (sample)</div><div class="muted" id="lic-count">—</div></div>
+          <div style="overflow:auto;max-height:210px;margin-top:10px;"><table><thead><tr><th>restaurantId</th><th>status</th><th>plan</th><th>expiresAt</th></tr></thead><tbody id="lic-table-body"></tbody></table></div>
+        </div>
+
+        <div class="card section-6"><h2>3) Users locali</h2>
+          <div class="muted" id="users-meta">—</div>
+          <div style="overflow:auto;max-height:210px;margin-top:10px;"><table><thead><tr><th>username</th><th>role</th><th>dept</th><th>restaurantId</th><th>active</th></tr></thead><tbody id="users-table-body"></tbody></table></div>
+        </div>
+
+        <div class="card section-6"><h2>4) Stato Stripe (config)</h2>
+          <div class="muted">Solo verifica chiavi env presenti (no checkout).</div>
+          <div style="margin-top:10px;"><div class="k">Chiavi trovate</div><div class="v mono" id="stripe-keys">—</div><div class="muted" id="stripe-present"></div></div>
+          <div style="overflow:auto;max-height:210px;margin-top:10px;"><table><thead><tr><th>Env Key</th><th>Stato</th></tr></thead><tbody id="stripe-table-body"></tbody></table></div>
+        </div>
+
+        <div class="card section-wide"><h2>5) Probe file / repo (lettura)</h2>
+          <div class="muted">Verifica presenza/leggibilità JSON senza modificare dati.</div>
+          <div style="overflow:auto;margin-top:12px;"><table><thead><tr><th>Probe</th><th>exists</th><th>ok</th><th>error</th></tr></thead><tbody id="probe-table-body"></tbody></table></div>
+        </div>
+
+        <div class="card section-wide"><h2>6) Link rapidi</h2>
+          <div class="links" id="quick-links"></div>
+          <div class="muted" style="margin-top:10px;">Se un link richiede login standard/owner activation potresti essere reindirizzato.</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function(){
+        const el=(id)=>document.getElementById(id);
+        const esc=(v)=>String(v==null?"":v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+        const renderRows=(tbody,rows,map)=>{tbody.innerHTML="";(rows||[]).forEach(r=>{const tr=document.createElement("tr");tr.innerHTML=map(r).map(c=>"<td>"+esc(c)+"</td>").join("");tbody.appendChild(tr);});};
+        async function loadStatus(){
+          const res=await fetch("/dev-access/status",{credentials:"same-origin"});
+          if(!res.ok){window.location.href="/dev-access/login";return;}
+          const data=await res.json();
+          el("dev-env-pill").textContent="ENV: "+(data.environment||"—");
+          el("sys-env").textContent=data.environment||"—";
+          el("sys-time").textContent=data.serverTime||"—";
+          el("sys-uptime").textContent=data.uptime||"—";
+          el("sys-version").textContent=data.version||"—";
+          el("sys-node").textContent=data.node?data.node.version+" • "+data.node.platform:"—";
+
+          const lic=data.localLicenses||{};
+          const decorated=lic.decoratedLicense;
+          el("lic-global").textContent=decorated?(decorated.status+" • "+(decorated.plan||"")):"—";
+          el("lic-global-details").textContent=decorated?("expiresAt="+(decorated.expiresAt||"null")+" • daysLeft="+(decorated.daysLeft==null?"null":decorated.daysLeft)):"nessun license.json";
+          el("lic-count").textContent=(lic.licensesCount!=null?("count="+lic.licensesCount):"—");
+          renderRows(el("lic-table-body"),lic.licensesRecords||[],(r)=>[r.restaurantId||"",r.status||"",r.plan||"",r.expiresAt||""]);
+
+          const users=data.localUsers||{};
+          el("users-meta").textContent="usersCount="+(users.usersCount||0);
+          renderRows(el("users-table-body"),users.sample||[],(u)=>[u.username||"",u.role||"",u.department||"",u.restaurantId||"",u.is_active===false?"false":"true"]);
+
+          const stripe=data.stripe||{};
+          el("stripe-keys").textContent=(stripe.stripeEnvKeys?stripe.stripeEnvKeys.length:0)+" keys";
+          el("stripe-present").textContent=stripe.hasAnyStripeConfig?"almeno una chiave presente":"nessuna chiave STRIPE trovata/popolata";
+          const stripeEntries=Object.entries(stripe.keys||{});
+          renderRows(el("stripe-table-body"),stripeEntries,(p)=>[p[0],p[1]]);
+
+          const probes=data.fileProbes||{};
+          const rows=Object.entries(probes).map(([k,v])=>({k,v}));
+          const tbody=el("probe-table-body");
+          tbody.innerHTML="";
+          rows.forEach(({k,v})=>{
+            const tr=document.createElement("tr");
+            tr.innerHTML=["<td>"+esc(k)+"</td>","<td>"+esc(v&&v.exists==null?"":String(v.exists))+"</td>","<td>"+esc(v&&v.ok==null?"":String(v.ok))+"</td>","<td>"+esc(v&&v.error||"")+"</td>"].join("");
+            tbody.appendChild(tr);
+          });
+
+          const links=data.quickLinks||{};
+          const container=el("quick-links");
+          container.innerHTML="";
+          Object.entries(links).forEach(([label,url])=>{const a=document.createElement("a");a.href=url;a.target="_self";a.textContent=label;container.appendChild(a);});
+        }
+        el("btn-refresh").addEventListener("click",loadStatus);
+        loadStatus().catch((e)=>{console.error(e);alert("Errore caricamento status DEV.");});
+      })();
+    </script>
+  </body>
+</html>
+

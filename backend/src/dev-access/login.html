@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ristoword - Dev Access</title>
+    <style>
+      :root {
+        --bg: #0b0f19;
+        --card: #111827;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --primary: #3b82f6;
+        --danger: #ef4444;
+        --border: rgba(255, 255, 255, 0.12);
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 680px;
+        margin: 48px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 20px;
+      }
+      p {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      label {
+        display: block;
+        margin-top: 12px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      input {
+        width: 100%;
+        margin-top: 6px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        color: var(--text);
+        outline: none;
+      }
+      button {
+        margin-top: 16px;
+        width: 100%;
+        border: 0;
+        border-radius: 10px;
+        padding: 12px 14px;
+        background: var(--primary);
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .error {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        background: rgba(239, 68, 68, 0.12);
+        color: #fecaca;
+        font-size: 13px;
+        display: none;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+      }
+      .row > div {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Accesso tecnico DEV</h1>
+        <p>Solo per emergenze tecniche (non accessibile agli utenti normali).</p>
+
+        <div id="dev-error" class="error"></div>
+
+        <form id="dev-login-form">
+          <label>Email DEV</label>
+          <input id="dev-email" type="email" autocomplete="username" required />
+
+          <label>Password DEV</label>
+          <input id="dev-password" type="password" autocomplete="current-password" required />
+
+          <button type="submit">Entra</button>
+          <div class="muted">
+            Se questa schermata non funziona, controlla che nel server sia attivo <code>DEV_OWNER_ENABLED=true</code>.
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const form = document.getElementById("dev-login-form");
+        const errBox = document.getElementById("dev-error");
+
+        function showError(msg) {
+          if (!msg) msg = "Credenziali non valide.";
+          errBox.textContent = msg;
+          errBox.style.display = "block";
+        }
+
+        form.addEventListener("submit", async (ev) => {
+          ev.preventDefault();
+          errBox.style.display = "none";
+
+          const email = document.getElementById("dev-email").value.trim();
+          const password = document.getElementById("dev-password").value;
+
+          try {
+            const res = await fetch("/dev-access/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "same-origin",
+              body: JSON.stringify({ email, password }),
+            });
+
+            if (!res.ok) {
+              const data = await res.json().catch(() => null);
+              showError(data && data.error ? "Accesso DEV negato." : "Accesso DEV negato.");
+              return;
+            }
+
+            window.location.href = "/dev-access/dashboard";
+          } catch (e) {
+            console.error(e);
+            showError("Errore di rete durante login DEV.");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
+

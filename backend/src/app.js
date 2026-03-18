@@ -22,6 +22,18 @@ app.use(sessionMiddleware);
 const { setTenantContext } = require("./middleware/tenantContext.middleware");
 app.use(setTenantContext);
 
+// =======================
+// DEV ACCESS (private technical emergency)
+// =======================
+// Mounted before license/setup/must-change-password middlewares, so it stays reachable
+// even if the public client flow is broken.
+try {
+  const devAccessRouter = require("./routes/dev-access.routes");
+  app.use("/dev-access", devAccessRouter);
+} catch (e) {
+  console.warn("dev-access.routes non trovato (ok se non ancora creato):", e.message);
+}
+
 // License check: block app if not activated (except login, license API, QR)
 const { requireLicense } = require("./middleware/requireLicense.middleware");
 const { requireSetup } = require("./middleware/requireSetup.middleware");

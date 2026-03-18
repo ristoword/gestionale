@@ -29,6 +29,25 @@ router.get("/status", requireDevOwnerAuth, devAccessController.getDevStatus);
 // GET /dev-access/dashboard (HTML)
 router.get("/dashboard", requireDevOwnerAuth, devAccessController.getDevDashboard);
 
+// =============================
+// DEV API (private)
+// =============================
+router.get("/api/tenants", requireDevOwnerAuth, devAccessController.apiGetTenants);
+router.get("/api/licenses", requireDevOwnerAuth, devAccessController.apiGetLicenses);
+router.get("/api/users", requireDevOwnerAuth, devAccessController.apiGetUsers);
+router.get("/api/stripe/status", requireDevOwnerAuth, devAccessController.apiGetStripeStatus);
+router.get("/api/operations", requireDevOwnerAuth, devAccessController.apiGetOperations);
+router.get("/api/business", requireDevOwnerAuth, devAccessController.apiGetBusiness);
+router.get("/api/logs", requireDevOwnerAuth, devAccessController.apiGetLogs);
+
+// actions
+router.post("/api/actions/unlock-user", requireDevOwnerAuth, devAccessController.apiPostActionUnlockUser);
+router.post("/api/actions/reset-license", requireDevOwnerAuth, devAccessController.apiPostActionResetLicense);
+router.post("/api/actions/force-activate", requireDevOwnerAuth, devAccessController.apiPostActionForceActivate);
+router.post("/api/actions/clear-temp", requireDevOwnerAuth, devAccessController.apiPostActionClearTemp);
+router.post("/api/actions/toggle-module", requireDevOwnerAuth, devAccessController.apiPostActionToggleModule);
+router.post("/api/actions/extend-trial", requireDevOwnerAuth, devAccessController.apiPostActionExtendTrial);
+
 // Alias: /dev-access -> /dev-access/dashboard
 router.get("/", requireDevOwnerAuth, (req, res) => res.redirect("/dev-access/dashboard"));
 

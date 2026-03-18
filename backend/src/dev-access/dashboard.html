@@ -39,7 +39,11 @@
           </div>
           <div id="dev-env-pill" class="pill">ENV: —</div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+          <span class="muted" style="font-weight:800;">Tenant</span>
+          <select id="tenant-select" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;outline:none;">
+            <option value="">default</option>
+          </select>
           <button class="btn" id="btn-refresh">Aggiorna</button>
           <a class="btn" href="/dev-access/logout">Logout</a>
         </div>
@@ -80,18 +84,141 @@
           <div class="links" id="quick-links"></div>
           <div class="muted" style="margin-top:10px;">Se un link richiede login standard/owner activation potresti essere reindirizzato.</div>
         </div>
+
+        <div class="card section-6"><h2>7) Operazioni (read-only)</h2>
+          <div class="muted">Orders per stato + pagamenti (tenant)</div>
+          <div style="margin-top:10px;" class="mono" id="ops-summary">—</div>
+          <div style="overflow:auto;max-height:260px;margin-top:10px;">
+            <table>
+              <thead><tr><th>Stato</th><th>Count</th></tr></thead>
+              <tbody id="ops-orders-table-body"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:10px;" class="mono" id="ops-payments">—</div>
+        </div>
+
+        <div class="card section-6"><h2>8) Business</h2>
+          <div class="muted">Clienti/licenze + KPI base</div>
+          <div style="margin-top:10px;" class="mono" id="biz-summary">—</div>
+          <div style="overflow:auto;max-height:260px;margin-top:10px;">
+            <table>
+              <thead><tr><th>Plan</th><th>Count</th></tr></thead>
+              <tbody id="biz-licenses-by-plan"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card section-wide"><h2>9) Logs DEV</h2>
+          <div class="muted">Ultimi accessi/azioni (anonimizzati)</div>
+          <div style="overflow:auto;max-height:280px;margin-top:10px;">
+            <table>
+              <thead><tr><th>ts</th><th>event</th><th>ip</th><th>emailHash</th><th>tenantId</th></tr></thead>
+              <tbody id="dev-logs-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card section-wide"><h2>10) Azioni rapide (DEV)</h2>
+          <div class="muted">Interventi tecnici su licenze/tenant (POST)</div>
+          <div style="margin-top:12px;display:grid;grid-template-columns:repeat(12,1fr);gap:10px;">
+            <div style="grid-column:span 4;">
+              <div class="k">tenantId</div>
+              <input id="action-tenant-id" style="width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);outline:none;" placeholder="es. default"/>
+            </div>
+            <div style="grid-column:span 3;">
+              <div class="k">moduleName</div>
+              <input id="action-module-name" style="width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);outline:none;" placeholder="es. inventory"/>
+            </div>
+            <div style="grid-column:span 2;">
+              <div class="k">enabled</div>
+              <select id="action-module-enabled" style="width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);outline:none;">
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+            </div>
+            <div style="grid-column:span 3;display:flex;flex-direction:column;gap:10px;justify-content:flex-end;">
+              <button class="btn" id="btn-action-force-activate" style="background:var(--primary);border-color:var(--border);">Force activate license</button>
+              <button class="btn" id="btn-action-reset-license" style="background:transparent;border-color:rgba(239,68,68,.4);">Reset license activation</button>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn" id="btn-action-clear-temp">Clear temp</button>
+            <button class="btn" id="btn-action-toggle-module">Toggle module</button>
+          </div>
+          <div class="muted" style="margin-top:10px;" id="action-result">—</div>
+        </div>
       </div>
     </div>
 
     <script>
       (function(){
         const el=(id)=>document.getElementById(id);
-        const esc=(v)=>String(v==null?"":v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-        const renderRows=(tbody,rows,map)=>{tbody.innerHTML="";(rows||[]).forEach(r=>{const tr=document.createElement("tr");tr.innerHTML=map(r).map(c=>"<td>"+esc(c)+"</td>").join("");tbody.appendChild(tr);});};
+        const esc=(v)=>String(v==null?"":v)
+          .replaceAll("&","&amp;")
+          .replaceAll("<","&lt;")
+          .replaceAll(">","&gt;")
+          .replaceAll('"',"&quot;")
+          .replaceAll("'","&#039;");
+        const renderRows=(tbody,rows,map)=>{
+          tbody.innerHTML="";
+          (rows||[]).forEach(r=>{
+            const tr=document.createElement("tr");
+            const cols=map(r);
+            tr.innerHTML=cols.map(c=>"<td>"+esc(c)+"</td>").join("");
+            tbody.appendChild(tr);
+          });
+        };
+
+        let tenantInitDone=false;
+
+        async function postJson(url, body){
+          const res=await fetch(url,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            credentials:"same-origin",
+            body:JSON.stringify(body||{})
+          });
+          let data=null;
+          try { data=await res.json(); } catch (_) {}
+          if(!res.ok){
+            const msg=(data&& (data.error || data.message)) || ("HTTP "+res.status);
+            throw new Error(msg);
+          }
+          return data;
+        }
+
         async function loadStatus(){
-          const res=await fetch("/dev-access/status",{credentials:"same-origin"});
+          const requestedTenant=(el("tenant-select").value||"").trim();
+          const tenantParam=requestedTenant?("?tenantId="+encodeURIComponent(requestedTenant)):"";
+
+          const res=await fetch("/dev-access/status"+tenantParam,{credentials:"same-origin"});
           if(!res.ok){window.location.href="/dev-access/login";return;}
           const data=await res.json();
+
+          // INIT tenant select (una sola volta)
+          const tenantList=data.tenants && Array.isArray(data.tenants.tenants) ? data.tenants.tenants : null;
+          if(!tenantInitDone && tenantList && tenantList.length){
+            tenantInitDone=true;
+            const current=requestedTenant;
+            const select=el("tenant-select");
+            select.innerHTML="";
+            // default first when available
+            const preferred = tenantList.includes("default") ? "default" : tenantList[0];
+            const initial = current || preferred;
+            tenantList.forEach(t=>{
+              const opt=document.createElement("option");
+              opt.value=t;
+              opt.textContent=t;
+              select.appendChild(opt);
+            });
+            select.value=initial;
+            if(initial && initial!==current){
+              // ricarica con tenant effettivo
+              return await loadStatus();
+            }
+          }
+
+          // --- Card 1: System base ---
           el("dev-env-pill").textContent="ENV: "+(data.environment||"—");
           el("sys-env").textContent=data.environment||"—";
           el("sys-time").textContent=data.serverTime||"—";
@@ -99,6 +226,7 @@
           el("sys-version").textContent=data.version||"—";
           el("sys-node").textContent=data.node?data.node.version+" • "+data.node.platform:"—";
 
+          // --- Card 2: Licenses ---
           const lic=data.localLicenses||{};
           const decorated=lic.decoratedLicense;
           el("lic-global").textContent=decorated?(decorated.status+" • "+(decorated.plan||"")):"—";
@@ -106,31 +234,122 @@
           el("lic-count").textContent=(lic.licensesCount!=null?("count="+lic.licensesCount):"—");
           renderRows(el("lic-table-body"),lic.licensesRecords||[],(r)=>[r.restaurantId||"",r.status||"",r.plan||"",r.expiresAt||""]);
 
+          // --- Card 3: Users ---
           const users=data.localUsers||{};
           el("users-meta").textContent="usersCount="+(users.usersCount||0);
           renderRows(el("users-table-body"),users.sample||[],(u)=>[u.username||"",u.role||"",u.department||"",u.restaurantId||"",u.is_active===false?"false":"true"]);
 
+          // --- Card 4: Stripe ---
           const stripe=data.stripe||{};
           el("stripe-keys").textContent=(stripe.stripeEnvKeys?stripe.stripeEnvKeys.length:0)+" keys";
           el("stripe-present").textContent=stripe.hasAnyStripeConfig?"almeno una chiave presente":"nessuna chiave STRIPE trovata/popolata";
           const stripeEntries=Object.entries(stripe.keys||{});
           renderRows(el("stripe-table-body"),stripeEntries,(p)=>[p[0],p[1]]);
 
+          // --- Card 5: Probes ---
           const probes=data.fileProbes||{};
           const rows=Object.entries(probes).map(([k,v])=>({k,v}));
           const tbody=el("probe-table-body");
           tbody.innerHTML="";
           rows.forEach(({k,v})=>{
             const tr=document.createElement("tr");
-            tr.innerHTML=["<td>"+esc(k)+"</td>","<td>"+esc(v&&v.exists==null?"":String(v.exists))+"</td>","<td>"+esc(v&&v.ok==null?"":String(v.ok))+"</td>","<td>"+esc(v&&v.error||"")+"</td>"].join("");
+            tr.innerHTML=[
+              "<td>"+esc(k)+"</td>",
+              "<td>"+esc(v&&v.exists==null?"":String(v.exists))+"</td>",
+              "<td>"+esc(v&&v.ok==null?"":String(v.ok))+"</td>",
+              "<td>"+esc(v&&v.error||"")+"</td>",
+            ].join("");
             tbody.appendChild(tr);
           });
 
+          // --- Card 6: Quick links ---
           const links=data.quickLinks||{};
           const container=el("quick-links");
           container.innerHTML="";
-          Object.entries(links).forEach(([label,url])=>{const a=document.createElement("a");a.href=url;a.target="_self";a.textContent=label;container.appendChild(a);});
+          Object.entries(links).forEach(([label,url])=>{
+            const a=document.createElement("a");
+            a.href=url;
+            a.target="_self";
+            a.textContent=label;
+            container.appendChild(a);
+          });
+
+          // --- Card 7: Operations ---
+          const ops=data.operations||{};
+          const buckets=(ops.orders && ops.orders.buckets) ? ops.orders.buckets : {};
+          const bucketsArr=Object.entries(buckets);
+          const totalOrders=ops.orders?ops.orders.total||0:0;
+          const closedOrders=ops.orders?ops.orders.closedOrders||0:0;
+          el("ops-summary").textContent="ordersTotal="+totalOrders+" • closedOrders="+closedOrders;
+          renderRows(el("ops-orders-table-body"),bucketsArr,(p)=>[p[0],p[1]]);
+          const pay=ops.payments||{};
+          el("ops-payments").textContent="payments: count="+(pay.count||0)+" • gross="+(pay.gross||0);
+
+          // --- Card 8: Business ---
+          const biz=data.business||{};
+          const c=biz.clients||{};
+          el("biz-summary").textContent="tenants="+(biz.tenantsCount||0)+" • active="+(c.active||0)+" • trial="+(c.trial||0)+" • used="+(c.used||0)+" • conversionBase="+(c.conversionBase||0);
+          const plans=biz.licensesByPlan||{};
+          renderRows(el("biz-licenses-by-plan"),Object.entries(plans),(p)=>[p[0],p[1]]);
+
+          // --- Card 9: Dev logs ---
+          const logs=data.devLogs||[];
+          const logRows=(Array.isArray(logs)?logs.slice(-60).reverse():[]);
+          renderRows(el("dev-logs-table-body"),logRows,(l)=>[
+            l.ts||"",
+            l.event||"",
+            l.ip||"",
+            l.emailHash||"",
+            l.tenantId||"",
+          ]);
+
+          // --- Card 10: prefill action tenant ---
+          const currentTenant=(el("tenant-select").value||"").trim() || "default";
+          const tenantInput=el("action-tenant-id");
+          if(tenantInput && !tenantInput.value){
+            tenantInput.value=currentTenant;
+          }
         }
+
+        // --- Actions ---
+        async function runAction(btnId, url, body){
+          const out=el("action-result");
+          out.textContent="Esecuzione..."; // no await
+          const data=await postJson(url, body);
+          out.textContent="OK: "+JSON.stringify(data);
+          await loadStatus();
+        }
+
+        el("btn-action-force-activate")?.addEventListener("click", async ()=>{
+          const tid=(el("action-tenant-id").value||"").trim();
+          if(!tid) return alert("tenantId obbligatorio");
+          await runAction("btn-action-force-activate","/dev-access/api/actions/force-activate",{tenantId:tid});
+        });
+        el("btn-action-reset-license")?.addEventListener("click", async ()=>{
+          const tid=(el("action-tenant-id").value||"").trim();
+          if(!tid) return alert("tenantId obbligatorio");
+          await runAction("btn-action-reset-license","/dev-access/api/actions/reset-license",{tenantId:tid});
+        });
+        el("btn-action-clear-temp")?.addEventListener("click", async ()=>{
+          const tid=(el("action-tenant-id").value||"").trim();
+          if(!tid) return alert("tenantId obbligatorio");
+          await runAction("btn-action-clear-temp","/dev-access/api/actions/clear-temp",{tenantId:tid});
+        });
+        el("btn-action-toggle-module")?.addEventListener("click", async ()=>{
+          const tid=(el("action-tenant-id").value||"").trim();
+          const moduleName=(el("action-module-name").value||"").trim();
+          const enabledStr=(el("action-module-enabled").value||"false").trim();
+          if(!tid) return alert("tenantId obbligatorio");
+          if(!moduleName) return alert("moduleName obbligatorio");
+          const enabled = enabledStr === "true";
+          await runAction("btn-action-toggle-module","/dev-access/api/actions/toggle-module",{tenantId:tid,moduleName,enabled});
+        });
+
+        el("tenant-select")?.addEventListener("change", async ()=>{
+          // evita sovraccarico: ricarica una volta sola
+          await loadStatus();
+        });
+
         el("btn-refresh").addEventListener("click",loadStatus);
         loadStatus().catch((e)=>{console.error(e);alert("Errore caricamento status DEV.");});
       })();

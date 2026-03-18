@@ -8,6 +8,15 @@
       "createdAt": "2026-03-16T00:00:00.000Z"
     },
     {
+      "restaurantId": "risto2",
+      "plan": "pro",
+      "status": "active",
+      "activationCode": "RISTO2-0001",
+      "expiresAt": "2026-04-18T00:00:00.000Z",
+      "createdAt": "2026-03-18T00:00:00.000Z",
+      "updatedAt": "2026-03-18T00:00:00.000Z"
+    },
+    {
       "restaurantId": "baia-verde",
       "plan": "pro",
       "status": "active",

@@ -86,6 +86,7 @@ function normalizeClosureInput(input = {}) {
     netTotal: toNumber(input.netTotal, 0),
     paymentsCount: toNumber(input.paymentsCount, 0),
     closedOrdersCount: toNumber(input.closedOrdersCount, 0),
+    covers: toNumber(input.covers, 0),
     closedAt: input.closedAt || nowIso,
     closedBy: normalizeString(input.closedBy, ""),
     notes: normalizeString(input.notes, ""),

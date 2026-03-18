@@ -13,8 +13,8 @@ Obiettivo: una sola fonte di verità per chiusura giornata, storni, report e men
 
 ### Backend (modificati)
 - `src/app.js` – ROLES_CLOSURES con "supervisor", mount `/api/storni`, ROLES_MENU con "supervisor"
-- `src/repositories/closures.repository.js` – campi `storniTotal`, `netTotal` in closure
-- `src/controllers/closures.controller.js` – integrazione storni (createClosure, getClosurePreview, buildExportRows, exportClosure)
+- `src/repositories/closures.repository.js` – campi `storniTotal`, `netTotal`, `covers` in closure
+- `src/controllers/closures.controller.js` – integrazione storni e covers (createClosure, computeDayTotals, getClosurePreview, buildExportRows, exportClosure)
 - `src/repositories/reports.repository.js` – persistenza su file `data/tenants/{id}/reports.json` (non più in-memory)
 
 ### Frontend Supervisor
@@ -43,7 +43,7 @@ Obiettivo: una sola fonte di verità per chiusura giornata, storni, report e men
 
 | Concetto | Fonte unica | Dettaglio |
 |----------|-------------|-----------|
-| **Chiusura giornata** | `GET /api/closures`, `POST /api/closures`, `GET /api/closures/preview/:date`, `GET /api/closures/:date/export` | File `data/tenants/{id}/closures.json`. Lordo, netto, storni, ordini chiusi, pagamenti da backend. Supervisor e Cassa leggono lo stesso storico. |
+| **Chiusura giornata** | `GET /api/closures`, `POST /api/closures`, `GET /api/closures/preview/:date`, `GET /api/closures/:date/export` | File `data/tenants/{id}/closures.json`. Lordo (grandTotal), storni, netto, ordini chiusi, coperti (covers), pagamenti. Supervisor e Cassa leggono lo stesso storico. |
 | **Storni** | `GET /api/storni?date=`, `GET /api/storni?dateFrom=&dateTo=`, `GET /api/storni/total?date=`, `POST /api/storni`, `DELETE /api/storni/:id` | File `data/tenants/{id}/storni.json`. Netto = lordo (payments) − storni. Coerente tra Supervisor e Cassa. |
 | **Storico report (chiusure)** | `GET /api/closures` (list con dateFrom/dateTo) | Lo “storico report” in Supervisor è la lista chiusure. Non più `rw_reports_history`. |
 | **Report (list/create/delete)** | `GET /api/reports`, `POST /api/reports`, `DELETE /api/reports/:id` | Persistenza su `data/tenants/{id}/reports.json` (non più array in-memory). |
@@ -51,35 +51,54 @@ Obiettivo: una sola fonte di verità per chiusura giornata, storni, report e men
 
 ---
 
-## D. Test manuali finali da fare
+## D. Endpoint finali usati
 
-1. **Storni**  
-   - Da Supervisor: aggiungere storno (importo, motivo), verificare in lista; eliminare uno storno.  
-   - Verificare che lo stesso giorno la Cassa (chiusura Z / preview) veda lo stesso totale storni e netto coerente.
+| Area | Metodo | Endpoint | Uso |
+|------|--------|----------|-----|
+| Chiusure | GET | `/api/closures?dateFrom=&dateTo=` | Lista storico chiusure |
+| Chiusure | POST | `/api/closures` | Chiudi giornata (body: date, closedBy, notes) |
+| Chiusure | GET | `/api/closures/preview/:date` | Anteprima totali + storni + netto |
+| Chiusure | GET | `/api/closures/check/:date` | Verifica se giornata chiusa |
+| Chiusure | GET | `/api/closures/:date` | Dettaglio chiusura |
+| Chiusure | GET | `/api/closures/:date/export?format=csv\|xlsx` | Export CSV/Excel |
+| Storni | GET | `/api/storni?date=YYYY-MM-DD` | Elenco storni del giorno |
+| Storni | GET | `/api/storni/total?date=YYYY-MM-DD` | Totale storni del giorno |
+| Storni | POST | `/api/storni` | Crea storno (body: date, amount, reason, table, orderId, note) |
+| Storni | DELETE | `/api/storni/:id` | Elimina storno |
+| Report | GET | `/api/reports` | Lista report (persistente) |
+| Report | POST | `/api/reports` | Crea report |
+| Report | DELETE | `/api/reports/:id` | Elimina report |
+| Menu | GET | `/api/menu` | Menu completo (fonte ufficiale) |
+| Menu | GET | `/api/menu/active` | Menu attivo (Sala/QR) |
+| Menu | POST | `/api/menu` | Crea voce menu |
+| Menu | PATCH | `/api/menu/:id` | Aggiorna voce |
+| Menu | DELETE | `/api/menu/:id` | Elimina voce |
 
-2. **Chiusura giornata**  
-   - Da Supervisor: “Chiudi giornata” per la data odierna; verificare che compaia in “Storico report” e che lordo/netto/storni/ordini chiusi siano corretti.  
-   - Da Cassa: aprire Chiusura Z, stesso giorno: verificare che la giornata risulti chiusa e che i totali (inclusi storni e netto) coincidano.  
-   - Export CSV/Excel da Cassa/Supervisor per una data chiusa: verificare righe Storni e Totale netto.
-
-3. **Menu**  
-   - Da Supervisor: aggiungere una voce menù, eliminarla. Da Cassa: aprire il menù e verificare che le stesse voci (stesso prezzo) compaiano senza rilevare da localStorage.  
-   - Da Sala: verificare che il menù attivo sia quello del backend (refresh dopo modifica da Supervisor/Cassa).
-
-4. **Report (API)**  
-   - Verificare che GET /api/reports restituisca la lista e che dopo riavvio server i report creati siano ancora presenti (persistenza su file).
-
-5. **Ruoli**  
-   - Accesso Supervisor a `/api/closures`, `/api/storni`, `/api/menu`: tutte le operazioni devono essere consentite con ruolo supervisor.
+Tutti gli endpoint sono tenant-aware (restaurantId da sessione/context).
 
 ---
 
-## E. Conferma: cosa è diventato REALE al 100%
+## E. Test manuali da fare (max 8 punti)
 
-- **Chiusura giornata**: unica fonte = backend (`closures.json` per tenant). Lordo, netto, storni, ordini chiusi, pagamenti sono calcolati e salvati lato server. Supervisor e Cassa usano le stesse API.
-- **Storni**: unica fonte = backend (`storni.json` per tenant). Inserimento ed eliminazione solo via API. Il netto (lordo − storni) è coerente in chiusure, preview ed export.
-- **Storico report (chiusure)**: Supervisor legge solo da GET /api/closures; nessun storico in localStorage.
-- **Report (list/create/delete)**: persistenza su file per tenant; niente più array in-memory.
-- **Menu/prezzi**: API menu (e menu/active) sono l’unica fonte ufficiale; Supervisor, Cassa e Sala leggono da backend; localStorage è solo cache in caso di API non disponibile.
+1. **Pagamento in Cassa** → Apri Supervisor: stessi incassi visibili (ordini/pagamenti da backend).
+2. **Storno** → Inserisci storno da Supervisor; apri Cassa (anche altro browser): stesso netto (lordo − storni da API).
+3. **Chiudi giornata da Cassa** → Apri Supervisor: stessa chiusura nello storico (GET /api/closures).
+4. **Chiudi giornata da Supervisor** → Apri Cassa Chiusura Z: giornata risulta chiusa, stessi totali.
+5. **Riavvio server** → Storico chiusure, storni e report ancora presenti (file tenant).
+6. **Cambio menu/prezzo** → Modifica da Supervisor o Cassa; Sala/Cassa altro dispositivo: stessa fonte backend.
+7. **Export chiusura** → CSV/Excel con righe lordo, storni, netto, coperti.
+8. **Ruolo supervisor** → Login supervisor: accesso a closures, storni, menu senza errore.
 
-**Non toccati** (come richiesto): owner activation, login/licenze, staff/presenze/assenze, ordini core, AI, GS.
+---
+
+## F. Conferma: moduli da MISTO/DEMO a REALE
+
+| Modulo | Prima | Dopo |
+|--------|--------|------|
+| **Chiusura giornata** | Cassa backend, Supervisor localStorage (`rw_reports_history`) | **REALE**: unica fonte `closures.json` tenant; Supervisor e Cassa usano stesse API. |
+| **Storico report** | Supervisor da localStorage | **REALE**: Supervisor legge GET /api/closures; nessuna fonte browser. |
+| **Storni** | localStorage `rw_storni_YYYY-MM-DD` | **REALE**: `storni.json` tenant; GET/POST/DELETE /api/storni; netto coerente ovunque. |
+| **Menu / prezzi ufficiali** | `rw_menu_official` fonte primaria | **REALE**: /api/menu e /api/menu/active fonte ufficiale; localStorage solo cache passiva (Supervisor, Cassa, Sala). |
+| **Reports (list/create/delete)** | In-memory (sparivano al riavvio) | **REALE**: persistenza `reports.json` tenant. |
+
+**Non toccati**: GS, owner activation, login/licenze, staff/presenze/assenze, AI, ordini core, magazzino, design generale.

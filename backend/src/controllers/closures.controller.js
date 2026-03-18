@@ -64,6 +64,7 @@ async function computeDayTotals(dateStr) {
   }
 
   const grandTotal = cashTotal + cardTotal + otherTotal;
+  const covers = closedOrders.reduce((acc, o) => acc + (Number(o.covers) || 0), 0);
 
   return {
     cashTotal,
@@ -72,6 +73,7 @@ async function computeDayTotals(dateStr) {
     grandTotal,
     paymentsCount: dailyPayments.length,
     closedOrdersCount: closedOrders.length,
+    covers,
   };
 }
 
@@ -110,6 +112,7 @@ async function createClosure(req, res) {
     netTotal,
     paymentsCount: body.paymentsCount != null ? toNumber(body.paymentsCount) : totals.paymentsCount,
     closedOrdersCount: body.closedOrdersCount != null ? toNumber(body.closedOrdersCount) : totals.closedOrdersCount,
+    covers: body.covers != null ? toNumber(body.covers) : (totals.covers ?? 0),
     closedAt: new Date().toISOString(),
     closedBy,
     notes,
@@ -175,6 +178,7 @@ function buildExportRows(closureOrPreview) {
     ["", ""],
     ["Pagamenti", c.paymentsCount ?? 0],
     ["Ordini chiusi", c.closedOrdersCount ?? 0],
+    ["Coperti", c.covers ?? 0],
     ["", ""],
     ["Note", c.notes || ""],
   ];

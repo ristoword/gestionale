@@ -5,11 +5,11 @@ const licenseController = require("../controllers/license.controller");
 // GET /api/license
 router.get("/", asyncHandler(licenseController.getLicense));
 
-// POST /api/license/owner-activate
-router.post(
-  "/owner-activate",
-  asyncHandler(licenseController.ownerActivate)
-);
+// POST /api/licenses/verify-code – verifica codice senza attivare
+router.post("/verify-code", asyncHandler(licenseController.verifyCode));
+
+// POST /api/licenses/complete-activation – crea owner, marca licenza, auto-login
+router.post("/complete-activation", asyncHandler(licenseController.completeActivation));
 
 // POST /api/license/activate
 router.post("/activate", asyncHandler(licenseController.activateLicense));

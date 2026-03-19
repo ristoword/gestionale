@@ -2,10 +2,10 @@
 // Block access if license not activated. Skip for login, license API, QR.
 
 const { getLicense } = require("../config/license");
-const { hasUsedLicense } = require("../repositories/licenses.repository");
 
 const SKIP_PATHS = [
   "/login",
+  "/owner-activate",
   "/api/auth",
   "/api/license",
   "/api/licenses",
@@ -34,17 +34,35 @@ async function requireLicense(req, res, next) {
     return next();
   }
   try {
+    // Temporary redirect diagnostics for owner activation online issues
+    // (only logs when ownerActivated=1 is present in the request URL).
+    try {
+      const original = String(req.originalUrl || "");
+      const shouldLog = original.includes("ownerActivated=1") || original.includes("ownerActivated%3D1");
+      if (shouldLog) {
+        console.warn("[REDIRECT][requireLicense] check", {
+          from: original,
+          path: req.path,
+          ownerActivated: new URLSearchParams(req.query || {}).get("ownerActivated"),
+        });
+      }
+    } catch (_) {}
+
     const sessionUser = req.session && req.session.user;
-    // Owner: richiede sempre una licenza per-restaurant "used"
-    if (sessionUser && sessionUser.role === "owner") {
+    const isOwner = sessionUser && sessionUser.role === "owner";
+
+    // Owner: può entrare anche senza licenza "used" (es. primo accesso, nessun attivo)
+    if (isOwner) {
       const rid = sessionUser.restaurantId || req.session.restaurantId;
       if (!rid) {
+        if (String(req.originalUrl || "").includes("ownerActivated=1")) {
+          console.warn("[REDIRECT][requireLicense] owner_no_rid -> /login");
+        }
         return res.redirect("/login");
       }
-      const ok = hasUsedLicense(rid);
-      if (!ok) {
-        return res.redirect("/owner-activate");
-      }
+      // Non reindirizziamo più a /owner-activate: l'owner può entrare comunque
+      // e attivare la licenza quando vuole da /owner-activate o /account
+      return next();
     }
 
     const license = await getLicense();
@@ -54,12 +72,18 @@ async function requireLicense(req, res, next) {
     }
     if (status === "expired") {
       if (req.xhr || req.headers.accept === "application/json" || req.path.startsWith("/api/")) {
+        if (String(req.originalUrl || "").includes("ownerActivated=1")) {
+          console.warn("[REDIRECT][requireLicense] expired_api -> 403", { path: req.path });
+        }
         return res.status(403).json({ error: "Licenza scaduta", message: "Rinnovare la licenza per continuare." });
       }
       return res.redirect("/license/license.html?expired=1");
     }
     if (!license || status === "unlicensed") {
       if (req.xhr || req.headers.accept === "application/json" || req.path.startsWith("/api/")) {
+        if (String(req.originalUrl || "").includes("ownerActivated=1")) {
+          console.warn("[REDIRECT][requireLicense] unlicensed_api -> 403", { path: req.path });
+        }
         return res.status(403).json({ error: "Licenza non attivata", message: "Attivare la licenza per accedere." });
       }
       return res.redirect("/license/license.html");

@@ -1,9 +1,200 @@
 // backend/src/controllers/license.controller.js
+const bcrypt = require("bcrypt");
 const { getLicense, saveLicense } = require("../config/license");
 const {
   findByActivationCode,
   updateLicense,
 } = require("../repositories/licenses.repository");
+const usersRepository = require("../repositories/users.repository");
+
+const BCRYPT_ROUNDS = 10;
+const MIN_PASSWORD_LENGTH = 8;
+
+function validateLicenseForActivation(license) {
+  if (!license) return { ok: false, status: "invalid", message: "Codice non trovato" };
+  if (license.status === "used") return { ok: false, status: "used", message: "Licenza già utilizzata" };
+  if (license.status && license.status !== "active" && license.status !== "grace") {
+    return { ok: false, status: license.status, message: "Licenza non attiva" };
+  }
+  if (license.expiresAt) {
+    const exp = new Date(license.expiresAt);
+    if (exp < new Date()) return { ok: false, status: "expired", message: "Licenza scaduta" };
+  }
+  return { ok: true };
+}
+
+// POST /api/licenses/verify-code – solo verifica, non attiva
+async function verifyCode(req, res) {
+  const { licenseCode } = req.body || {};
+  if (!licenseCode || typeof licenseCode !== "string") {
+    return res.status(400).json({
+      ok: false,
+      status: "invalid",
+      message: "Codice di attivazione mancante o non valido",
+    });
+  }
+  const code = String(licenseCode).trim();
+  if (!code) {
+    return res.status(400).json({
+      ok: false,
+      status: "invalid",
+      message: "Codice di attivazione mancante",
+    });
+  }
+
+  const license = findByActivationCode(code);
+  const validation = validateLicenseForActivation(license);
+  if (!validation.ok) {
+    return res.status(validation.status === "used" ? 409 : 400).json({
+      ok: false,
+      status: validation.status,
+      message: validation.message,
+    });
+  }
+
+  return res.json({
+    ok: true,
+    restaurantId: license.restaurantId,
+    message: "Codice valido. Procedi con la creazione dell'accesso.",
+  });
+}
+
+// POST /api/licenses/complete-activation – crea owner, marca licenza, auto-login
+async function completeActivation(req, res) {
+  const { licenseCode, email, password, confirmPassword } = req.body || {};
+
+  if (!licenseCode || typeof licenseCode !== "string") {
+    return res.status(400).json({
+      ok: false,
+      message: "Codice di attivazione mancante o non valido",
+    });
+  }
+  const code = String(licenseCode).trim();
+  if (!code) {
+    return res.status(400).json({
+      ok: false,
+      message: "Codice di attivazione mancante",
+    });
+  }
+
+  const license = findByActivationCode(code);
+  const validation = validateLicenseForActivation(license);
+  if (!validation.ok) {
+    return res.status(validation.status === "used" ? 409 : 400).json({
+      ok: false,
+      status: validation.status,
+      message: validation.message,
+    });
+  }
+
+  const emailVal = String(email || "").trim();
+  if (!emailVal) {
+    return res.status(400).json({
+      ok: false,
+      message: "Indirizzo email obbligatorio",
+    });
+  }
+  const username = emailVal.toLowerCase();
+
+  if (!password || typeof password !== "string") {
+    return res.status(400).json({
+      ok: false,
+      message: "Password obbligatoria",
+    });
+  }
+  const pwd = String(password);
+  if (pwd.length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({
+      ok: false,
+      message: `La password deve essere di almeno ${MIN_PASSWORD_LENGTH} caratteri`,
+    });
+  }
+  if (pwd !== String(confirmPassword || "")) {
+    return res.status(400).json({
+      ok: false,
+      message: "La conferma password non coincide",
+    });
+  }
+
+  const restaurantId = license.restaurantId;
+  if (!restaurantId) {
+    return res.status(500).json({
+      ok: false,
+      message: "Licenza senza restaurantId associato",
+    });
+  }
+
+  const hashedPassword = await bcrypt.hash(pwd, BCRYPT_ROUNDS);
+
+  let owner = usersRepository.findOwnerByRestaurantId(restaurantId);
+  if (owner) {
+    usersRepository.setUserPassword(owner.id, hashedPassword);
+  } else {
+    const created = usersRepository.createUser({
+      username,
+      password: hashedPassword,
+      role: "owner",
+      restaurantId,
+      is_active: true,
+      mustChangePassword: false,
+    });
+    if (!created) {
+      const existing = usersRepository.findByUsername(username);
+      if (!existing) {
+        return res.status(500).json({
+          ok: false,
+          message: "Impossibile creare l'account owner",
+        });
+      }
+      if (existing.restaurantId !== restaurantId) {
+        return res.status(409).json({
+          ok: false,
+          message: "Questo indirizzo email è già registrato per un altro locale",
+        });
+      }
+      if (existing.role === "owner") {
+        usersRepository.setUserPassword(existing.id, hashedPassword);
+      } else {
+        return res.status(409).json({
+          ok: false,
+          message: "Questo indirizzo email è già in uso per questo locale",
+        });
+      }
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+  updateLicense({
+    restaurantId,
+    activationCode: code,
+    status: "used",
+    activatedAt: nowIso,
+    source: license.source || "owner_activation",
+  });
+
+  owner = usersRepository.findOwnerByRestaurantId(restaurantId) || usersRepository.findByUsername(username);
+  if (!owner) {
+    return res.status(500).json({
+      ok: false,
+      message: "Account creato ma sessione non impostata",
+    });
+  }
+
+  req.session.user = {
+    id: owner.id,
+    username: owner.username,
+    role: "owner",
+    restaurantId: owner.restaurantId,
+    mustChangePassword: false,
+  };
+  req.session.restaurantId = owner.restaurantId || "default";
+
+  return res.json({
+    ok: true,
+    message: "Attivazione completata",
+    redirectTo: "/dashboard/dashboard.html",
+  });
+}
 
 // GET /api/license
 async function getLicenseController(req, res) {
@@ -40,71 +231,6 @@ async function deactivateLicense(req, res) {
     expiresAt: null,
   });
   return res.json({ ok: true, message: "Licenza disattivata." });
-}
-
-// POST /api/license/owner-activate
-// Body: { "licenseCode": "XXXX-YYYY" }
-async function ownerActivate(req, res) {
-  const { licenseCode } = req.body || {};
-
-  if (!licenseCode || typeof licenseCode !== "string") {
-    return res.status(400).json({
-      ok: false,
-      status: "invalid",
-      message: "Codice licenza mancante o non valido",
-    });
-  }
-
-  const license = findByActivationCode(licenseCode);
-  if (!license) {
-    return res.status(404).json({
-      ok: false,
-      status: "invalid",
-      message: "Licenza non trovata",
-    });
-  }
-
-  if (license.status === "used") {
-    return res.status(409).json({
-      ok: false,
-      status: "used",
-      message: "Licenza già utilizzata",
-    });
-  }
-
-  if (license.status && license.status !== "active" && license.status !== "grace") {
-    return res.status(400).json({
-      ok: false,
-      status: license.status,
-      message: "Licenza non attiva",
-    });
-  }
-
-  const nowIso = new Date().toISOString();
-  const updated = updateLicense({
-    restaurantId: license.restaurantId,
-    activationCode: license.activationCode,
-    status: "used",
-    activatedAt: nowIso,
-    source: license.source || "manual_activation",
-  });
-
-  if (!updated) {
-    return res.status(500).json({
-      ok: false,
-      status: "error",
-      message: "Impossibile aggiornare lo stato della licenza",
-    });
-  }
-
-  return res.json({
-    ok: true,
-    status: "valid",
-    message: "Licenza attivata correttamente",
-    restaurantId: updated.restaurantId,
-    activatedAt: updated.activatedAt,
-    redirectTo: "/login?ownerActivated=1",
-  });
 }
 
 // POST /api/license/activate
@@ -161,5 +287,6 @@ module.exports = {
   activateLicense,
   getStatus,
   deactivateLicense,
-  ownerActivate,
+  verifyCode,
+  completeActivation,
 };

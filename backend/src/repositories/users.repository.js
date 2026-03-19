@@ -135,6 +135,22 @@ function updateUser(id, patch) {
   return out;
 }
 
+function findOwnerByRestaurantId(restaurantId) {
+  const rid = String(restaurantId || "").trim();
+  if (!rid) return null;
+  return readUsers().find((u) => u.role === "owner" && String(u.restaurantId || "").trim() === rid) || null;
+}
+
+function setUserPassword(userId, hashedPassword) {
+  const users = readUsers();
+  const idx = users.findIndex((x) => String(x.id) === String(userId));
+  if (idx === -1) return false;
+  users[idx].password = hashedPassword;
+  users[idx].mustChangePassword = false;
+  writeUsers(users);
+  return true;
+}
+
 module.exports = {
   readUsers,
   writeUsers,
@@ -144,6 +160,8 @@ module.exports = {
   findByRestaurantId,
   createUser,
   updateUser,
+  findOwnerByRestaurantId,
+  setUserPassword,
   ensureLeaveBalances,
   DEFAULT_LEAVE_BALANCES,
 };

@@ -40,11 +40,16 @@ exports.apiLogin = async (req, res) => {
   const username = body.username;
   const password = body.password;
 
-  const result = await superAdminService.apiLogin({ username, password });
-  if (!result.ok) return res.status(401).json(result);
+  try {
+    const result = await superAdminService.apiLogin({ username, password });
+    if (!result.ok) return res.status(401).json(result);
 
-  setSuperAdminCookie(res, result.token, result.expiresAt);
-  return res.json({ ok: true, mustChangePassword: result.mustChangePassword });
+    setSuperAdminCookie(res, result.token, result.expiresAt);
+    return res.json({ ok: true, mustChangePassword: result.mustChangePassword });
+  } catch (err) {
+    const msg = err && err.message ? String(err.message) : "Errore server";
+    return res.status(500).json({ ok: false, message: msg });
+  }
 };
 
 exports.apiLogout = async (req, res) => {

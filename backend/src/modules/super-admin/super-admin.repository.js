@@ -260,13 +260,25 @@ async function deleteSessionToken(token) {
 }
 
 async function verifyLogin({ username, password }) {
-  const wantedUsername = normalizeUsername(requireEnv("SUPER_ADMIN_USERNAME"));
+  // Prima carica auth: se esiste auth.json (username già salvato), non dipendere da .env per lo username
+  // (utile quando il server non trova .env ma i dati super-admin ci sono già su disco).
+  const auth = await ensureAuthInitialized();
+
+  const envUser = process.env.SUPER_ADMIN_USERNAME && String(process.env.SUPER_ADMIN_USERNAME).trim();
+  const wantedUsername = normalizeUsername(envUser || auth.username || "");
+  if (!wantedUsername) {
+    return {
+      ok: false,
+      message:
+        "Super Admin non configurato: imposta SUPER_ADMIN_USERNAME e SUPER_ADMIN_PASSWORD nel file backend/.env e riavvia il server.",
+      mustChangePassword: false,
+    };
+  }
+
   const u = normalizeUsername(username);
   if (u !== wantedUsername) {
     return { ok: false, message: "Credenziali non valide", mustChangePassword: false };
   }
-
-  const auth = await ensureAuthInitialized();
   const pwdInput = String(password ?? "").trim();
   let match = auth.passwordHash && await bcrypt.compare(pwdInput, auth.passwordHash);
 

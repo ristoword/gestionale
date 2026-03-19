@@ -1,6 +1,6 @@
 // backend/src/server.js
 // Route registration is in ./app.js (orders, menu, reports, ai, recipes, etc.)
-require("dotenv").config();
+require("./config/loadEnv").loadEnv();
 
 // Centralized configuration validation (env, secrets, optional integrations).
 // This runs before loading the main app/session modules so that configuration

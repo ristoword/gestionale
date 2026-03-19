@@ -1,6 +1,6 @@
 // backend/src/config/env.js
 
-require("dotenv").config();
+require("./loadEnv").loadEnv();
 
 const env = {
   NODE_ENV: process.env.NODE_ENV || "development",

@@ -32,7 +32,11 @@ document.addEventListener("DOMContentLoaded", () => {
     showError("");
     const out = await postJson("/api/super-admin/login", { username, password });
     if (!out.ok) {
-      showError(out.data?.message || out.data?.error || "Credenziali non valide");
+      showError(
+        out.data?.message ||
+          out.data?.error ||
+          (out.status >= 500 ? "Errore server. Controlla che backend/.env sia caricato e riavvia il server." : "Credenziali non valide")
+      );
       return;
     }
 

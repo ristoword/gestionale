@@ -5,6 +5,7 @@ const {
   findByActivationCode,
   updateLicense,
 } = require("../repositories/licenses.repository");
+const { writeTenantLicenseMirror } = require("../stripe/stripeLicenseSync.service");
 const usersRepository = require("../repositories/users.repository");
 
 const BCRYPT_ROUNDS = 10;
@@ -164,13 +165,24 @@ async function completeActivation(req, res) {
   }
 
   const nowIso = new Date().toISOString();
-  updateLicense({
+  const merged = updateLicense({
     restaurantId,
     activationCode: code,
     status: "used",
     activatedAt: nowIso,
     source: license.source || "owner_activation",
   });
+  if (merged) {
+    writeTenantLicenseMirror({
+      restaurantId,
+      plan: merged.plan,
+      status: "used",
+      activationCode: code,
+      expiresAt: merged.expiresAt || null,
+      source: merged.source || "owner_activation",
+      activatedAt: nowIso,
+    });
+  }
 
   owner = usersRepository.findOwnerByRestaurantId(restaurantId) || usersRepository.findByUsername(username);
   if (!owner) {

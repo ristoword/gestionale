@@ -54,7 +54,7 @@ function listUnprocessedEvents(state) {
   return events.filter((e) => !e.processedAt);
 }
 
-function createCheckoutSession({ restaurantId, plan, mode }) {
+function createCheckoutSession({ restaurantId, plan, mode, customerEmail, customerName } = {}) {
   const state = readState();
   const rid = normalizeRestaurantId(restaurantId);
   if (!rid) {
@@ -63,6 +63,8 @@ function createCheckoutSession({ restaurantId, plan, mode }) {
 
   const sessionId = createId("cs");
   const nowIso = new Date().toISOString();
+  const email = customerEmail != null ? String(customerEmail).trim().toLowerCase() : "";
+  const name = customerName != null ? String(customerName).trim().slice(0, 200) : "";
   const session = {
     id: sessionId,
     restaurantId: rid,
@@ -73,6 +75,8 @@ function createCheckoutSession({ restaurantId, plan, mode }) {
     paidAt: null,
     failedAt: null,
     processedAt: null,
+    customerEmail: email || null,
+    customerName: name || null,
   };
 
   state.sessions.push(session);

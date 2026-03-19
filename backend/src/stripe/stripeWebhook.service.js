@@ -21,19 +21,25 @@ async function processWebhookEvent({ eventId } = {}) {
 
   const session = (state.sessions || []).find((s) => String(s.id) === String(event.sessionId)) || null;
 
+  let paidMeta = {};
   // Only on paid events we update licenses.
   if (String(event.paymentStatus || "").toLowerCase() === "paid") {
-    await syncLicenseFromPaidSession({
+    paidMeta = await syncLicenseFromPaidSession({
       session,
       event,
-      restaurantName: event.restaurantId,
+      restaurantName: session?.customerName || event.restaurantId,
       source: "stripe_webhook",
     });
   }
 
   stripeMockRepository.markEventProcessed({ eventId: id });
 
-  return { processed: true, eventId: id, paymentStatus: event.paymentStatus || null };
+  return {
+    processed: true,
+    eventId: id,
+    paymentStatus: event.paymentStatus || null,
+    ...paidMeta,
+  };
 }
 
 async function syncPendingWebhooks({ tenantId = null } = {}) {

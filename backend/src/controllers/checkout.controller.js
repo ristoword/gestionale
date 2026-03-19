@@ -4,21 +4,34 @@ const { getWebhookStatus } = require("../stripe/stripeWebhook.service");
 // POST /api/checkout
 // Starts a local mock checkout session.
 // Body:
-// - restaurantId (required)
+// - restaurantId (required) — stesso ID tenant usato in gestionale / GS
 // - plan (optional, default ristoword_pro)
 // - mode (optional: subscription|trial, default subscription)
+// - customerEmail / email / adminEmail (optional) — per email con codice dopo pagamento
+// - customerName (optional)
 async function startCheckout(req, res) {
   const body = req.body || {};
   const restaurantId = body.restaurantId || body.tenantId;
   const plan = body.plan || body.product || "ristoword_pro";
   const mode = body.mode || body.checkoutMode || "subscription";
+  const customerEmail = body.customerEmail || body.email || body.adminEmail || null;
+  const customerName = body.customerName || body.name || null;
 
   try {
-    const { sessionId, session } = await checkoutService.startCheckout({ restaurantId, plan, mode });
+    const { sessionId, session } = await checkoutService.startCheckout({
+      restaurantId,
+      plan,
+      mode,
+      customerEmail,
+      customerName,
+    });
     return res.json({
       ok: true,
       sessionId,
       status: session.status,
+      restaurantId: session.restaurantId,
+      mode: session.mode,
+      customerEmail: session.customerEmail || null,
       webhookStatus: getWebhookStatus(),
     });
   } catch (err) {
@@ -42,6 +55,11 @@ async function mockCompleteCheckout(req, res) {
       eventId: result?.event?.id || null,
       status: result?.session?.status || null,
       webhookStatus: getWebhookStatus(),
+      activationCode: result?.activationCode || null,
+      ownerActivateUrl: result?.ownerActivateUrl || null,
+      emailSent: !!result?.emailSent,
+      emailError: result?.emailError || null,
+      nextStep: result?.nextStep || null,
     });
   } catch (err) {
     return res.status(400).json({ ok: false, error: err && err.message ? err.message : String(err) });

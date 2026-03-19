@@ -1,0 +1,17 @@
+---
+description: Integrazione trial Gestione Semplificata (GS) con backend Ristoword (checkout, codice attivazione, owner-activate).
+globs:
+  - backend/src/stripe/**/*
+  - backend/src/controllers/checkout.controller.js
+  - backend/docs/INTEGRATION_GS_TRIAL.md
+---
+
+# GS → Ristoword (trial)
+
+- **Fonte di verità**: `backend/docs/INTEGRATION_GS_TRIAL.md` (API, payload, checklist).
+- Il **codice attivazione** è generato da Ristoword in `stripeLicenseSync` dopo pagamento confermato; GS non inventa il codice.
+- Flusso API: `POST /api/checkout` (`restaurantId`, `mode: trial`, `customerEmail`) → dopo Stripe `POST /api/checkout/mock/complete` (`sessionId`, `outcome: paid`) finché non c’è webhook Stripe reale sulla stessa logica.
+- Risposta post-pagamento: usare `activationCode`, `ownerActivateUrl`, `emailSent` / `emailError` per UX su GS.
+- Cliente finale: `/owner-activate` poi onboarding owner.
+
+Quando si modifica il flusso pagamento/licenza, aggiornare anche `INTEGRATION_GS_TRIAL.md`.

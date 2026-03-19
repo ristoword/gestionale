@@ -3,29 +3,27 @@
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Ristoword - Dev Dashboard</title>
+    <title>Ristoword – Console Owner</title>
     <style>
-      :root{--bg:#0b0f19;--card:#111827;--text:#e5e7eb;--muted:#9ca3af;--primary:#3b82f6;--border:rgba(255,255,255,.12);--chip:rgba(255,255,255,.06)}
-      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
+      :root{--bg:#0b0f19;--card:#111827;--text:#e5e7eb;--muted:#9ca3af;--primary:#f5b800;--border:rgba(255,255,255,.12);--chip:rgba(255,255,255,.06)}
+      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
       .wrap{max-width:1100px;margin:22px auto;padding:0 16px}
-      .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
-      .brand{display:flex;gap:12px;align-items:center}
-      .pill{background:var(--chip);border:1px solid var(--border);padding:8px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
-      .btn{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:10px;padding:10px 12px;cursor:pointer;font-weight:800;text-decoration:none;display:inline-block}
+      .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+      .brand h1{margin:0;font-size:18px}.brand .sub{color:var(--muted);font-size:13px;margin-top:4px}
+      .btn{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;font-size:14px}
+      .btn.primary{background:var(--primary);color:#111;border-color:var(--primary)}
       .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
       .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
-      .card h2{margin:0 0 10px;font-size:15px}
-      .k{color:var(--muted);font-size:12px;margin-bottom:2px}
-      .v{font-weight:900;font-size:14px}
-      .section-wide{grid-column:span 12}
-      .section-6{grid-column:span 6}
-      table{width:100%;border-collapse:collapse}
-      th,td{border-top:1px solid var(--border);padding:8px 6px;text-align:left;vertical-align:top;font-size:12px;color:var(--muted)}
-      th{color:var(--text)}
-      code{background:rgba(0,0,0,.35);border:1px solid var(--border);padding:2px 6px;border-radius:8px;color:#e5e7eb;font-size:12px}
+      .card h2{margin:0 0 12px;font-size:15px}
+      .k{color:var(--muted);font-size:12px;margin-bottom:2px}.v{font-weight:700;font-size:14px}
+      .section-wide{grid-column:span 12}.section-6{grid-column:span 6}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th,td{border-top:1px solid var(--border);padding:8px 6px;text-align:left}
+      th{color:var(--muted);font-weight:600}
+      .form-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end}
+      .form-row label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+      .form-row input,.form-row select{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px}
       .muted{color:var(--muted);font-size:12px;line-height:1.5}
-      .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-      .links a{display:inline-block;margin-right:10px;margin-top:6px;color:var(--primary);text-decoration:none;font-weight:800;font-size:13px}
       @media (max-width:900px){.section-6{grid-column:span 12}}
     </style>
   </head>
@@ -33,411 +31,157 @@
     <div class="wrap">
       <div class="topbar">
         <div class="brand">
-          <div>
-            <div style="font-weight:950;font-size:18px;">Dev Dashboard</div>
-            <div class="muted">Accesso tecnico emergenza (privato)</div>
-          </div>
-          <div id="dev-env-pill" class="pill">ENV: —</div>
+          <h1>RISTOWORD – Console Owner</h1>
+          <div class="sub">Gestione licenza, accessi e personale</div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-          <span class="muted" style="font-weight:800;">Tenant</span>
+        <div style="display:flex;gap:10px;align-items:center;">
           <select id="tenant-select" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;outline:none;">
-            <option value="">default</option>
+            <option value="">—</option>
           </select>
           <button class="btn" id="btn-refresh">Aggiorna</button>
-          <a class="btn" href="/dev-access/logout">Logout</a>
+          <button class="btn" id="btn-logout">Logout</button>
         </div>
       </div>
 
       <div class="grid">
-        <div class="card section-6"><h2>1) Stato sistema</h2>
-          <div><div class="k">Ambiente</div><div class="v" id="sys-env">—</div></div>
-          <div style="margin-top:10px;"><div class="k">Data/Ora</div><div class="v mono" id="sys-time">—</div></div>
-          <div style="margin-top:10px;"><div class="k">Uptime</div><div class="v mono" id="sys-uptime">—</div></div>
-          <div style="margin-top:10px;"><div class="k">Versione</div><div class="v mono" id="sys-version">—</div></div>
-          <div style="margin-top:10px;"><div class="k">Node</div><div class="v mono" id="sys-node">—</div></div>
+        <div class="card section-6"><h2>1) Licenza</h2>
+          <div><div class="k">Stato</div><div class="v" id="lic-status">—</div></div>
+          <div style="margin-top:10px"><div class="k">Piano</div><div class="v" id="lic-plan">—</div></div>
+          <div style="margin-top:10px"><div class="k">Scadenza</div><div class="v" id="lic-expires">—</div></div>
         </div>
 
-        <div class="card section-6"><h2>2) Licenze locali</h2>
-          <div><div class="k">license.json</div><div class="v mono" id="lic-global">—</div><div class="muted" id="lic-global-details"></div></div>
-          <div style="margin-top:14px;"><div class="k">licenses.json (sample)</div><div class="muted" id="lic-count">—</div></div>
-          <div style="overflow:auto;max-height:210px;margin-top:10px;"><table><thead><tr><th>restaurantId</th><th>status</th><th>plan</th><th>expiresAt</th></tr></thead><tbody id="lic-table-body"></tbody></table></div>
+        <div class="card section-6"><h2>2) Dati attività</h2>
+          <div><div class="k">Locale</div><div class="v mono" id="biz-id">—</div></div>
+          <div style="margin-top:10px"><div class="k">Utenti</div><div class="v" id="users-count">—</div></div>
         </div>
 
-        <div class="card section-6"><h2>3) Users locali</h2>
-          <div class="muted" id="users-meta">—</div>
-          <div style="overflow:auto;max-height:210px;margin-top:10px;"><table><thead><tr><th>username</th><th>role</th><th>dept</th><th>restaurantId</th><th>active</th></tr></thead><tbody id="users-table-body"></tbody></table></div>
-        </div>
-
-        <div class="card section-6"><h2>4) Stato Stripe (config)</h2>
-          <div class="muted">Mock checkout + sync licenze (no Stripe SDK).</div>
-          <div style="margin-top:10px;"><div class="k">Chiavi trovate</div><div class="v mono" id="stripe-keys">—</div><div class="muted" id="stripe-present"></div></div>
-          <div style="margin-top:12px;display:grid;grid-template-columns:repeat(12,1fr);gap:10px;">
-            <div style="grid-column:span 6;">
-              <div class="k">Webhook (last)</div>
-              <div class="v mono" id="stripe-webhook-last">—</div>
-              <div class="muted" id="stripe-webhook-pending">pending: —</div>
-            </div>
-            <div style="grid-column:span 6;">
-              <div class="k">Mismatch</div>
-              <div class="v mono" id="stripe-mismatch">—</div>
-              <div class="muted" id="stripe-sync-status">—</div>
-            </div>
-          </div>
-          <div style="overflow:auto;max-height:210px;margin-top:10px;"><table><thead><tr><th>Env Key</th><th>Stato</th></tr></thead><tbody id="stripe-table-body"></tbody></table></div>
-        </div>
-
-        <div class="card section-wide"><h2>5) Probe file / repo (lettura)</h2>
-          <div class="muted">Verifica presenza/leggibilità JSON senza modificare dati.</div>
-          <div style="overflow:auto;margin-top:12px;"><table><thead><tr><th>Probe</th><th>exists</th><th>ok</th><th>error</th></tr></thead><tbody id="probe-table-body"></tbody></table></div>
-        </div>
-
-        <div class="card section-wide"><h2>6) Link rapidi</h2>
-          <div class="links" id="quick-links"></div>
-          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;" id="dev-bridge-buttons">
-            <button class="btn" type="button" data-open-module="dashboard">Apri Dashboard</button>
-            <button class="btn" type="button" data-open-module="sala">Apri Sala</button>
-            <button class="btn" type="button" data-open-module="cucina">Apri Cucina</button>
-            <button class="btn" type="button" data-open-module="pizzeria">Apri Pizzeria</button>
-            <button class="btn" type="button" data-open-module="cassa">Apri Cassa</button>
-            <button class="btn" type="button" data-open-module="magazzino">Apri Magazzino</button>
-            <button class="btn" type="button" data-open-module="prenotazioni">Apri Prenotazioni</button>
-            <button class="btn" type="button" data-open-module="catering">Apri Catering</button>
-            <button class="btn" type="button" data-open-module="staff">Apri Staff</button>
-            <button class="btn" type="button" data-open-module="ricette">Apri Ricette</button>
-            <button class="btn" type="button" data-open-module="spesa">Apri Spesa</button>
-            <button class="btn" type="button" data-open-module="haccp">Apri HACCP</button>
-          </div>
-          <div class="muted" style="margin-top:10px;">Se un modulo non ha una pagina dedicata, il DEV BRIDGE ti porta al modulo più vicino (es. viste in cucina).</div>
-        </div>
-
-        <div class="card section-6"><h2>7) Operazioni (read-only)</h2>
-          <div class="muted">Orders per stato + pagamenti (tenant)</div>
-          <div style="margin-top:10px;" class="mono" id="ops-summary">—</div>
-          <div style="overflow:auto;max-height:260px;margin-top:10px;">
-            <table>
-              <thead><tr><th>Stato</th><th>Count</th></tr></thead>
-              <tbody id="ops-orders-table-body"></tbody>
-            </table>
-          </div>
-          <div style="margin-top:10px;" class="mono" id="ops-payments">—</div>
-        </div>
-
-        <div class="card section-6"><h2>8) Business</h2>
-          <div class="muted">Clienti/licenze + KPI base</div>
-          <div style="margin-top:10px;" class="mono" id="biz-summary">—</div>
-          <div style="overflow:auto;max-height:260px;margin-top:10px;">
-            <table>
-              <thead><tr><th>Plan</th><th>Count</th></tr></thead>
-              <tbody id="biz-licenses-by-plan"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="card section-wide"><h2>9) Logs DEV</h2>
-          <div class="muted">Ultimi accessi/azioni (anonimizzati)</div>
-          <div style="overflow:auto;max-height:280px;margin-top:10px;">
-            <table>
-              <thead><tr><th>ts</th><th>event</th><th>ip</th><th>emailHash</th><th>tenantId</th></tr></thead>
-              <tbody id="dev-logs-table-body"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="card section-wide"><h2>10) Azioni rapide (DEV)</h2>
-          <div class="muted">Interventi tecnici su licenze/tenant (POST)</div>
-          <div style="margin-top:12px;display:grid;grid-template-columns:repeat(12,1fr);gap:10px;">
-            <div style="grid-column:span 4;">
-              <div class="k">tenantId</div>
-              <input id="action-tenant-id" style="width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);outline:none;" placeholder="es. default"/>
-            </div>
-            <div style="grid-column:span 3;">
-              <div class="k">moduleName</div>
-              <input id="action-module-name" style="width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);outline:none;" placeholder="es. inventory"/>
-            </div>
-            <div style="grid-column:span 2;">
-              <div class="k">enabled</div>
-              <select id="action-module-enabled" style="width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);outline:none;">
-                <option value="true">true</option>
-                <option value="false">false</option>
+        <div class="card section-wide"><h2>3) Gestione personale</h2>
+          <div class="form-row">
+            <label>Nome <input type="text" id="staff-name" placeholder="Mario" /></label>
+            <label>Cognome <input type="text" id="staff-surname" placeholder="Rossi" /></label>
+            <label>Username <input type="text" id="staff-username" placeholder="mario.rossi" autocomplete="off" /></label>
+            <label>Password <input type="password" id="staff-password" placeholder="Min. 6 caratteri" autocomplete="new-password" /></label>
+            <label>Ruolo
+              <select id="staff-role">
+                <option value="sala">Sala</option>
+                <option value="cucina">Cucina</option>
+                <option value="pizzeria">Pizzeria</option>
+                <option value="bar">Bar</option>
+                <option value="cassa">Cassa</option>
+                <option value="magazzino">Magazzino</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="staff">Staff</option>
               </select>
-            </div>
-            <div style="grid-column:span 3;display:flex;flex-direction:column;gap:10px;justify-content:flex-end;">
-              <button class="btn" id="btn-action-force-activate" style="background:var(--primary);border-color:var(--border);">Force activate license</button>
-              <button class="btn" id="btn-action-reset-license" style="background:transparent;border-color:rgba(239,68,68,.4);">Reset license activation</button>
-            </div>
+            </label>
+            <label><button class="btn primary" id="btn-add-staff">Aggiungi</button></label>
           </div>
-          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn" id="btn-action-clear-temp">Clear temp</button>
-            <button class="btn" id="btn-action-toggle-module">Toggle module</button>
-            <button class="btn" id="btn-action-sync-stripe-license" style="background:transparent;border-color:rgba(59,130,246,.4);">Sync Stripe/Licenze</button>
+          <div id="form-msg" class="muted" style="margin-top:8px;"></div>
+          <div style="overflow:auto;max-height:240px;margin-top:12px">
+            <table><thead><tr><th>Username</th><th>Nome</th><th>Ruolo</th><th>Stato</th><th>Azioni</th></tr></thead>
+            <tbody id="staff-tbody"></tbody></table>
           </div>
-          <div class="muted" style="margin-top:10px;" id="action-result">—</div>
+        </div>
+
+        <div class="card section-wide"><h2>4) Accesso ai moduli</h2>
+          <div class="muted" style="margin-bottom:12px">Apri i moduli operativi del tuo locale.</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a class="btn" href="/dashboard/dashboard.html">Dashboard</a>
+            <a class="btn" href="/sala/sala.html">Sala</a>
+            <a class="btn" href="/cucina/cucina.html">Cucina</a>
+            <a class="btn" href="/cassa/cassa.html">Cassa</a>
+            <a class="btn" href="/bar/bar.html">Bar</a>
+            <a class="btn" href="/magazzino/magazzino.html">Magazzino</a>
+            <a class="btn" href="/supervisor/supervisor.html">Supervisor</a>
+            <a class="btn" href="/staff/staff.html">Staff</a>
+          </div>
         </div>
       </div>
     </div>
 
     <script>
       (function(){
-        const el=(id)=>document.getElementById(id);
-        const esc=(v)=>String(v==null?"":v)
-          .replaceAll("&","&amp;")
-          .replaceAll("<","&lt;")
-          .replaceAll(">","&gt;")
-          .replaceAll('"',"&quot;")
-          .replaceAll("'","&#039;");
-        const renderRows=(tbody,rows,map)=>{
-          tbody.innerHTML="";
-          (rows||[]).forEach(r=>{
-            const tr=document.createElement("tr");
-            const cols=map(r);
-            tr.innerHTML=cols.map(c=>"<td>"+esc(c)+"</td>").join("");
-            tbody.appendChild(tr);
-          });
-        };
-
-        let tenantInitDone=false;
-
-        async function postJson(url, body){
-          const res=await fetch(url,{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            credentials:"same-origin",
-            body:JSON.stringify(body||{})
-          });
-          let data=null;
-          try { data=await res.json(); } catch (_) {}
-          if(!res.ok){
-            const msg=(data&& (data.error || data.message)) || ("HTTP "+res.status);
-            throw new Error(msg);
-          }
-          return data;
-        }
+        const el=id=>document.getElementById(id);
+        const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
         async function loadStatus(){
-          const requestedTenant=(el("tenant-select").value||"").trim();
-          const tenantParam=requestedTenant?("?tenantId="+encodeURIComponent(requestedTenant)):"";
-
-          const res=await fetch("/dev-access/status"+tenantParam,{credentials:"same-origin"});
-          if(!res.ok){window.location.href="/dev-access/login";return;}
+          const tid=(el("tenant-select").value||"").trim();
+          const q=tid?("?tenantId="+encodeURIComponent(tid)):"";
+          const res=await fetch("/dev-access/status"+q,{credentials:"same-origin"});
+          if(!res.ok){ window.location.href="/login/login.html"; return; }
           const data=await res.json();
 
-          // INIT tenant select (una sola volta)
-          const tenantList=data.tenants && Array.isArray(data.tenants.tenants) ? data.tenants.tenants : null;
-          if(!tenantInitDone && tenantList && tenantList.length){
-            tenantInitDone=true;
-            const current=requestedTenant;
-            const select=el("tenant-select");
+          const tenantList=data.tenants?.tenants||[];
+          const select=el("tenant-select");
+          if(select.options.length<=1 && tenantList.length){
             select.innerHTML="";
-            // default first when available
-            const preferred = tenantList.includes("default") ? "default" : tenantList[0];
-            const initial = current || preferred;
             tenantList.forEach(t=>{
               const opt=document.createElement("option");
-              opt.value=t;
-              opt.textContent=t;
-              select.appendChild(opt);
+              opt.value=t; opt.textContent=t; select.appendChild(opt);
             });
-            select.value=initial;
-            if(initial && initial!==current){
-              // ricarica con tenant effettivo
-              return await loadStatus();
-            }
+            const preferred=data.currentTenant||tid||(tenantList[0]);
+          if(preferred) select.value=preferred;
           }
 
-          // --- Card 1: System base ---
-          el("dev-env-pill").textContent="ENV: "+(data.environment||"—");
-          el("sys-env").textContent=data.environment||"—";
-          el("sys-time").textContent=data.serverTime||"—";
-          el("sys-uptime").textContent=data.uptime||"—";
-          el("sys-version").textContent=data.version||"—";
-          el("sys-node").textContent=data.node?data.node.version+" • "+data.node.platform:"—";
-
-          // --- Card 2: Licenses ---
           const lic=data.localLicenses||{};
-          const decorated=lic.decoratedLicense;
-          el("lic-global").textContent=decorated?(decorated.status+" • "+(decorated.plan||"")):"—";
-          el("lic-global-details").textContent=decorated?("expiresAt="+(decorated.expiresAt||"null")+" • daysLeft="+(decorated.daysLeft==null?"null":decorated.daysLeft)):"nessun license.json";
-          el("lic-count").textContent=(lic.licensesCount!=null?("count="+lic.licensesCount):"—");
-          renderRows(el("lic-table-body"),lic.licensesRecords||[],(r)=>[r.restaurantId||"",r.status||"",r.plan||"",r.expiresAt||""]);
-
-          // --- Card 3: Users ---
+          const dec=lic.decoratedLicense;
+          el("lic-status").textContent=dec?(dec.status+" • "+(dec.plan||"")):"—";
+          el("lic-plan").textContent=dec?.plan||"—";
+          el("lic-expires").textContent=dec?.expiresAt?new Date(dec.expiresAt).toLocaleDateString("it-IT"):"—";
+          el("biz-id").textContent=(tid||data.tenantId||"default");
           const users=data.localUsers||{};
-          el("users-meta").textContent="usersCount="+(users.usersCount||0);
-          renderRows(el("users-table-body"),users.sample||[],(u)=>[u.username||"",u.role||"",u.department||"",u.restaurantId||"",u.is_active===false?"false":"true"]);
+          el("users-count").textContent=users.usersCount??0;
 
-          // --- Card 4: Stripe ---
-          const stripe=data.stripe||{};
-          el("stripe-keys").textContent=(stripe.stripeEnvKeys?stripe.stripeEnvKeys.length:0)+" keys";
-          el("stripe-present").textContent=stripe.hasAnyStripeConfig?"almeno una chiave presente":"nessuna chiave STRIPE trovata/popolata";
-          const stripeEntries=Object.entries(stripe.keys||{});
-          renderRows(el("stripe-table-body"),stripeEntries,(p)=>[p[0],p[1]]);
-
-          // --- DEV Stripe details (webhook + mismatch + sync) ---
-          // Lettura via endpoint dedicato: /dev-access/api/stripe/mock/status
-          try {
-            const smTenantParam = requestedTenant ? ("?tenantId=" + encodeURIComponent(requestedTenant)) : "";
-            const smRes = await fetch("/dev-access/api/stripe/mock/status" + smTenantParam, { credentials: "same-origin" });
-            const smJson = await smRes.json().catch(() => null);
-            const stripeMock = smJson && smJson.stripe ? smJson.stripe : smJson;
-
-            const webhook = stripeMock?.webhookStatus || {};
-            el("stripe-webhook-last").textContent = webhook.lastProcessedAt ? new Date(webhook.lastProcessedAt).toLocaleString() : "—";
-            const pendingForTenant =
-              webhook.pendingForTenantCount != null
-                ? webhook.pendingForTenantCount
-                : webhook.pendingCount != null
-                  ? webhook.pendingCount
-                  : 0;
-            el("stripe-webhook-pending").textContent = "pending: " + pendingForTenant;
-
-            el("stripe-mismatch").textContent = stripeMock?.mismatch || "—";
-
-            const ss = stripeMock?.stripeSession || null;
-            const localJson = stripeMock?.localLicenseJson || null;
-            const localTenant = stripeMock?.localTenantLicense || null;
-            let syncTxt = "—";
-            if (ss) {
-              syncTxt =
-                "session=" +
-                (ss.status || "—") +
-                " • local.json=" +
-                (localJson ? localJson.status || "—" : "none") +
-                " • tenant=" +
-                (localTenant ? localTenant.status || "—" : "none");
-            }
-            el("stripe-sync-status").textContent = syncTxt;
-          } catch (_) {
-            el("stripe-webhook-last").textContent = "—";
-            el("stripe-webhook-pending").textContent = "pending: —";
-            el("stripe-mismatch").textContent = "—";
-            el("stripe-sync-status").textContent = "—";
-          }
-
-          // --- Card 5: Probes ---
-          const probes=data.fileProbes||{};
-          const rows=Object.entries(probes).map(([k,v])=>({k,v}));
-          const tbody=el("probe-table-body");
-          tbody.innerHTML="";
-          rows.forEach(({k,v})=>{
-            const tr=document.createElement("tr");
-            tr.innerHTML=[
-              "<td>"+esc(k)+"</td>",
-              "<td>"+esc(v&&v.exists==null?"":String(v.exists))+"</td>",
-              "<td>"+esc(v&&v.ok==null?"":String(v.ok))+"</td>",
-              "<td>"+esc(v&&v.error||"")+"</td>",
-            ].join("");
-            tbody.appendChild(tr);
-          });
-
-          // --- Card 6: Quick links ---
-          const links=data.quickLinks||{};
-          const container=el("quick-links");
-          container.innerHTML="";
-          Object.entries(links).forEach(([label,url])=>{
-            const a=document.createElement("a");
-            a.href=url;
-            a.target="_self";
-            a.textContent=label;
-            container.appendChild(a);
-          });
-
-          // --- Card 7: Operations ---
-          const ops=data.operations||{};
-          const buckets=(ops.orders && ops.orders.buckets) ? ops.orders.buckets : {};
-          const bucketsArr=Object.entries(buckets);
-          const totalOrders=ops.orders?ops.orders.total||0:0;
-          const closedOrders=ops.orders?ops.orders.closedOrders||0:0;
-          el("ops-summary").textContent="ordersTotal="+totalOrders+" • closedOrders="+closedOrders;
-          renderRows(el("ops-orders-table-body"),bucketsArr,(p)=>[p[0],p[1]]);
-          const pay=ops.payments||{};
-          el("ops-payments").textContent="payments: count="+(pay.count||0)+" • gross="+(pay.gross||0);
-
-          // --- Card 8: Business ---
-          const biz=data.business||{};
-          const c=biz.clients||{};
-          el("biz-summary").textContent="tenants="+(biz.tenantsCount||0)+" • active="+(c.active||0)+" • trial="+(c.trial||0)+" • used="+(c.used||0)+" • conversionBase="+(c.conversionBase||0);
-          const plans=biz.licensesByPlan||{};
-          renderRows(el("biz-licenses-by-plan"),Object.entries(plans),(p)=>[p[0],p[1]]);
-
-          // --- Card 9: Dev logs ---
-          const logs=data.devLogs||[];
-          const logRows=(Array.isArray(logs)?logs.slice(-60).reverse():[]);
-          renderRows(el("dev-logs-table-body"),logRows,(l)=>[
-            l.ts||"",
-            l.event||"",
-            l.ip||"",
-            l.emailHash||"",
-            l.tenantId||"",
-          ]);
-
-          // --- Card 10: prefill action tenant ---
-          const currentTenant=(el("tenant-select").value||"").trim() || "default";
-          const tenantInput=el("action-tenant-id");
-          if(tenantInput && !tenantInput.value){
-            tenantInput.value=currentTenant;
-          }
+          const sample=users.sample||[];
+          const staffRows=sample.filter(u=>String(u.role||"").toLowerCase()!=="owner").map(u=>
+            "<tr><td>"+esc(u.username)+"</td><td>"+esc(u.name||"")+" "+esc(u.surname||"")+"</td><td>"+esc(u.role)+"</td><td>"+(u.is_active===false?"Disattivo":"Attivo")+"</td><td><button class='btn' data-action='toggle' data-id='"+esc(u.id)+"' data-active='"+u.is_active+"'>"+(u.is_active?"Disattiva":"Attiva")+"</button> <button class='btn' data-action='reset' data-id='"+esc(u.id)+"'>Reset password</button></td></tr>"
+          );
+          el("staff-tbody").innerHTML=staffRows.join("");
         }
 
-        // --- Actions ---
-        async function runAction(btnId, url, body){
-          const out=el("action-result");
-          out.textContent="Esecuzione..."; // no await
-          const data=await postJson(url, body);
-          out.textContent="OK: "+JSON.stringify(data);
-          await loadStatus();
+        async function api(method,url,body){
+          const opt={method,credentials:"same-origin",headers:{"Content-Type":"application/json"}};
+          if(body) opt.body=JSON.stringify(body);
+          const r=await fetch(url,opt);
+          let d=null;
+          try{d=await r.json();}catch(_){}
+          if(!r.ok) throw new Error(d?.message||d?.error||"Errore");
+          return d;
         }
 
-        el("btn-action-force-activate")?.addEventListener("click", async ()=>{
-          const tid=(el("action-tenant-id").value||"").trim();
-          if(!tid) return alert("tenantId obbligatorio");
-          await runAction("btn-action-force-activate","/dev-access/api/actions/force-activate",{tenantId:tid});
-        });
-        el("btn-action-reset-license")?.addEventListener("click", async ()=>{
-          const tid=(el("action-tenant-id").value||"").trim();
-          if(!tid) return alert("tenantId obbligatorio");
-          await runAction("btn-action-reset-license","/dev-access/api/actions/reset-license",{tenantId:tid});
-        });
-        el("btn-action-clear-temp")?.addEventListener("click", async ()=>{
-          const tid=(el("action-tenant-id").value||"").trim();
-          if(!tid) return alert("tenantId obbligatorio");
-          await runAction("btn-action-clear-temp","/dev-access/api/actions/clear-temp",{tenantId:tid});
-        });
-        el("btn-action-toggle-module")?.addEventListener("click", async ()=>{
-          const tid=(el("action-tenant-id").value||"").trim();
-          const moduleName=(el("action-module-name").value||"").trim();
-          const enabledStr=(el("action-module-enabled").value||"false").trim();
-          if(!tid) return alert("tenantId obbligatorio");
-          if(!moduleName) return alert("moduleName obbligatorio");
-          const enabled = enabledStr === "true";
-          await runAction("btn-action-toggle-module","/dev-access/api/actions/toggle-module",{tenantId:tid,moduleName,enabled});
+        el("btn-add-staff")?.addEventListener("click",async ()=>{
+          const name=(el("staff-name").value||"").trim(), surname=(el("staff-surname").value||"").trim(),
+            username=(el("staff-username").value||"").trim(), password=el("staff-password").value, role=el("staff-role").value;
+          if(!username){el("form-msg").textContent="Username obbligatorio";return;}
+          if(!password||password.length<6){el("form-msg").textContent="Password min. 6 caratteri";return;}
+          el("form-msg").textContent="";
+          try{
+            await api("POST","/api/staff",{name,surname,username,password,role});
+            el("form-msg").textContent="Dipendente aggiunto.";
+            el("staff-name").value="";el("staff-surname").value="";el("staff-username").value="";el("staff-password").value="";
+            await loadStatus();
+          }catch(e){el("form-msg").textContent=e.message;}
         });
 
-        el("btn-action-sync-stripe-license")?.addEventListener("click", async ()=>{
-          const tid=(el("action-tenant-id").value||"").trim();
-          if(!tid) return alert("tenantId obbligatorio");
-          await runAction("btn-action-sync-stripe-license","/dev-access/api/stripe/mock/sync",{tenantId:tid});
+        el("staff-tbody")?.addEventListener("click",async e=>{
+          const btn=e.target.closest("button");
+          if(!btn?.dataset?.action) return;
+          const id=btn.dataset.id;
+          if(btn.dataset.action==="toggle"){
+            const isActive=btn.dataset.active==="true";
+            try{ await api("PATCH","/api/staff/"+id,{active:!isActive}); await loadStatus(); }
+            catch(err){ alert(err.message); }
+          }else if(btn.dataset.action==="reset"){
+            try{ const d=await api("POST","/api/staff/"+id+"/reset-password",{}); alert("Nuova password: "+d.temporaryPassword); await loadStatus(); }
+            catch(err){ alert(err.message); }
+          }
         });
 
-        el("tenant-select")?.addEventListener("change", async ()=>{
-          // evita sovraccarico: ricarica una volta sola
-          await loadStatus();
-        });
+        el("tenant-select")?.addEventListener("change",loadStatus);
+        el("btn-refresh")?.addEventListener("click",loadStatus);
 
-        // DEV BRIDGE module open buttons
-        document.querySelectorAll("[data-open-module]")?.forEach((btn)=>{
-          btn.addEventListener("click", ()=>{
-            const moduleName=(btn.dataset && btn.dataset.openModule) ? String(btn.dataset.openModule) : "";
-            const tid=(el("tenant-select").value||"").trim();
-            const q = tid ? ("?tenantId="+encodeURIComponent(tid)) : "";
-            window.location.href="/dev-access/open/"+encodeURIComponent(moduleName)+q;
-          });
-        });
-
-        el("btn-refresh").addEventListener("click",loadStatus);
-        loadStatus().catch((e)=>{console.error(e);alert("Errore caricamento status DEV.");});
+        el("btn-logout")?.addEventListener("click",async ()=>{try{await api("POST","/api/auth/logout",{});}catch(_){} window.location.href="/login/login.html";});
+        loadStatus().catch(()=>window.location.href="/login/login.html");
       })();
     </script>
   </body>
 </html>
-

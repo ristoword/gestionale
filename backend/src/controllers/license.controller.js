@@ -192,7 +192,7 @@ async function completeActivation(req, res) {
   return res.json({
     ok: true,
     message: "Attivazione completata",
-    redirectTo: "/dashboard/dashboard.html",
+    redirectTo: "/dev-access/dashboard",
   });
 }
 

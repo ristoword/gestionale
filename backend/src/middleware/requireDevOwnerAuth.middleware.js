@@ -65,6 +65,11 @@ function getCookieValue(req, name) {
 }
 
 function requireDevOwnerAuth(req, res, next) {
+  // Owner session (cliente con licenza): sempre consentito per dashboard/status
+  if (req.session?.user?.role === "owner" && req.session?.restaurantId) {
+    return next();
+  }
+
   if (!DEV_ENABLED()) {
     return res.status(404).send("Not found");
   }

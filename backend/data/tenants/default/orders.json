@@ -294,9 +294,10 @@
         "note": null
       }
     ],
-    "status": "servito",
+    "status": "chiuso",
     "createdAt": "2026-03-07T00:24:31.278Z",
-    "updatedAt": "2026-03-09T13:59:29.985Z"
+    "updatedAt": "2026-03-19T15:51:27.003Z",
+    "inventoryProcessedAt": "2026-03-19T15:51:27.008Z"
   },
   {
     "id": 13,
@@ -331,9 +332,10 @@
         "note": null
       }
     ],
-    "status": "servito",
+    "status": "chiuso",
     "createdAt": "2026-03-07T00:25:55.204Z",
-    "updatedAt": "2026-03-10T19:43:03.524Z"
+    "updatedAt": "2026-03-19T15:51:29.837Z",
+    "inventoryProcessedAt": "2026-03-19T15:51:29.841Z"
   },
   {
     "id": 14,
@@ -373,9 +375,10 @@
         "note": null
       }
     ],
-    "status": "servito",
+    "status": "chiuso",
     "createdAt": "2026-03-09T15:02:55.730Z",
-    "updatedAt": "2026-03-09T15:03:23.486Z"
+    "updatedAt": "2026-03-19T15:51:32.117Z",
+    "inventoryProcessedAt": "2026-03-19T15:51:32.120Z"
   },
   {
     "id": 16,
@@ -415,9 +418,10 @@
         "note": null
       }
     ],
-    "status": "servito",
+    "status": "chiuso",
     "createdAt": "2026-03-11T11:05:48.832Z",
-    "updatedAt": "2026-03-11T11:06:03.383Z"
+    "updatedAt": "2026-03-19T15:51:34.761Z",
+    "inventoryProcessedAt": "2026-03-19T15:51:34.766Z"
   },
   {
     "id": 18,
@@ -436,9 +440,10 @@
         "note": null
       }
     ],
-    "status": "pronto",
+    "status": "chiuso",
     "createdAt": "2026-03-12T10:05:19.435Z",
-    "updatedAt": "2026-03-16T06:21:14.463Z"
+    "updatedAt": "2026-03-19T15:51:36.754Z",
+    "inventoryProcessedAt": "2026-03-19T15:51:36.757Z"
   },
   {
     "id": 19,
@@ -457,8 +462,31 @@
         "note": null
       }
     ],
-    "status": "in_attesa",
+    "status": "chiuso",
     "createdAt": "2026-03-16T06:22:09.853Z",
-    "updatedAt": "2026-03-16T06:22:09.853Z"
+    "updatedAt": "2026-03-19T15:51:39.088Z",
+    "inventoryProcessedAt": "2026-03-19T15:51:39.091Z"
+  },
+  {
+    "id": 20,
+    "table": 2,
+    "covers": 4,
+    "area": "cucina",
+    "waiter": "pippo",
+    "notes": "",
+    "items": [
+      {
+        "name": "Carbonara",
+        "qty": 1,
+        "category": "Primi",
+        "area": "cucina",
+        "price": 14,
+        "note": null
+      }
+    ],
+    "status": "chiuso",
+    "createdAt": "2026-03-19T15:48:39.148Z",
+    "updatedAt": "2026-03-19T15:50:24.528Z",
+    "inventoryProcessedAt": "2026-03-19T15:49:47.481Z"
   }
 ]

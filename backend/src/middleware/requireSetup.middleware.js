@@ -3,8 +3,9 @@ const { isSetupComplete } = require("../config/setup");
 
 const SKIP_PATHS = [
   "/login", "/license", "/setup", "/owner-activate",
-  "/api/auth", "/api/license", "/api/setup",
-  "/api/licenses",
+  "/super-admin-login", "/dashboard/super-admin-login", "/super-admin-dashboard", "/super-admin-change-password", "/super-admin",
+  "/owner-console",
+  "/api/auth", "/api/license", "/api/setup", "/api/licenses", "/api/super-admin",
   "/api/checkout", "/api/stripe",
   "/api/system/health", "/api/health",
   "/qr", "/api/qr",
@@ -22,6 +23,19 @@ async function requireSetup(req, res, next) {
   if (shouldSkip(req.path)) return next();
 
   try {
+    // Super-admin: può aprire moduli anche se il setup "globale" non è marcato completo
+    try {
+      const header = req.headers?.cookie || "";
+      const token = header.match(/super_admin_session=([^;]+)/)
+        ? decodeURIComponent(header.match(/super_admin_session=([^;]+)/)[1].trim())
+        : null;
+      if (token) {
+        const repo = require("../modules/super-admin/super-admin.repository");
+        const sa = await repo.verifySessionToken(token);
+        if (sa) return next();
+      }
+    } catch (_) {}
+
     try {
       const original = String(req.originalUrl || "");
       const shouldLog = original.includes("ownerActivated=1") || original.includes("ownerActivated%3D1");

@@ -2,6 +2,7 @@ const authRepository = require("../repositories/auth.repository");
 const staffRepository = require("../repositories/staff.repository");
 const usersRepository = require("../repositories/users.repository");
 const attendanceRepository = require("../repositories/attendance.repository");
+const { isOwnerSetupComplete } = require("../config/ownerSetup");
 const bcrypt = require("bcrypt");
 
 const BCRYPT_ROUNDS = 10;
@@ -63,6 +64,12 @@ exports.login = async (req, res, next) => {
     }
 
     const mustChange = user.mustChangePassword === true;
+    let redirectTo = mustChange ? "/change-password" : (user.redirectTo || undefined);
+    if (!mustChange && user.role === "owner") {
+      const restaurantId = user.restaurantId ?? "default";
+      const ownerSetupDone = await isOwnerSetupComplete(restaurantId);
+      if (!ownerSetupDone) redirectTo = "/dev-access/dashboard";
+    }
     res.json({
       success: true,
       user: user.username,
@@ -71,7 +78,7 @@ exports.login = async (req, res, next) => {
       department: user.department,
       mustChangePassword: mustChange,
       token: user.token,
-      redirectTo: mustChange ? "/change-password" : (user.redirectTo || undefined),
+      redirectTo,
     });
   } catch (err) {
     next(err);

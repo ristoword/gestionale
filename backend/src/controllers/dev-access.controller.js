@@ -298,7 +298,7 @@ async function openModule(req, res) {
 
 // GET /dev-access/status
 async function getDevStatus(req, res) {
-  const tenantId = req.query && req.query.tenantId ? String(req.query.tenantId).trim() : null;
+  const tenantId = (req.query?.tenantId && String(req.query.tenantId).trim()) || req.session?.restaurantId || null;
 
   let system = null;
   let licenses = null;
@@ -323,9 +323,12 @@ async function getDevStatus(req, res) {
     stripe = stripe || { stripeEnvKeys: [], keys: {}, stripeConfigured: false };
   }
 
+  const currentTenant = req.session?.restaurantId || tenantId || null;
   const status = {
     ...system,
     devOwnerAuthenticated: true,
+    tenantId: tenantId || currentTenant,
+    currentTenant: currentTenant,
     localLicenses: {
       decoratedLicense: system.localLicense || null,
       // Compatibilità con dashboard attuale: campo “licensesRecords”

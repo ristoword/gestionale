@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Ristoword – Configurazione Owner</title>
+  <style>
+    :root{--bg:#0b0f19;--card:#111827;--text:#e5e7eb;--muted:#9ca3af;--accent:#f5b800;--border:rgba(255,255,255,.12);--chip:rgba(255,255,255,.06);--success:#39d98a;--danger:#ff6b6b}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1100px;margin:22px auto;padding:0 16px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+    .brand h1{margin:0;font-size:20px}.brand .sub{color:var(--muted);font-size:13px;margin-top:4px}
+    .btn{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;font-size:14px}
+    .btn.primary{background:var(--accent);color:#111;border-color:var(--accent)}
+    .btn.danger{border-color:rgba(255,107,107,.5);color:var(--danger)}
+    .btn:hover{opacity:.9}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+    .card h2{margin:0 0 12px;font-size:15px}
+    .k{color:var(--muted);font-size:12px;margin-bottom:2px}.v{font-weight:700;font-size:14px}
+    .section-wide{grid-column:span 12}.section-6{grid-column:span 6}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border-top:1px solid var(--border);padding:8px 6px;text-align:left}
+    th{color:var(--muted);font-weight:600}
+    .msg{min-height:22px;font-size:13px;margin-top:8px}.msg.err{color:var(--danger)}.msg.ok{color:var(--success)}
+    .form-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:10px}
+    .form-row label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+    .form-row input,.form-row select{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+    .badge.ok{background:rgba(57,217,138,.2);color:var(--success)}
+    .badge.warn{background:rgba(245,184,0,.2);color:var(--accent)}
+    .badge.err{background:rgba(255,107,107,.2);color:var(--danger)}
+    @media (max-width:900px){.section-6{grid-column:span 12}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <h1>RISTOWORD – Configurazione Owner</h1>
+        <div class="sub">Completa il setup iniziale del tuo locale</div>
+      </div>
+      <button class="btn" id="btn-logout">Logout</button>
+    </div>
+
+    <div class="grid">
+      <div class="card section-6">
+        <h2>1) Stato licenza</h2>
+        <div><span class="k">Stato</span><div class="v" id="lic-status">—</div></div>
+        <div style="margin-top:10px"><span class="k">Piano</span><div class="v" id="lic-plan">—</div></div>
+        <div style="margin-top:10px"><span class="k">Scadenza</span><div class="v" id="lic-expires">—</div></div>
+      </div>
+
+      <div class="card section-6">
+        <h2>2) Dati attività</h2>
+        <div><span class="k">Locale ID</span><div class="v mono" id="biz-id">—</div></div>
+        <div style="margin-top:10px"><span class="k">Owner attivato</span><div class="v" id="owner-status">—</div></div>
+      </div>
+
+      <div class="card section-wide">
+        <h2>3) Gestione personale</h2>
+        <p class="muted" style="margin:0 0 12px;font-size:13px">Crea gli utenti staff e assegna i ruoli. Almeno un utente è consigliato prima di completare la configurazione.</p>
+
+        <div class="form-row">
+          <label>Nome <input type="text" id="staff-name" placeholder="Mario" /></label>
+          <label>Cognome <input type="text" id="staff-surname" placeholder="Rossi" /></label>
+          <label>Username <input type="text" id="staff-username" placeholder="mario.rossi" autocomplete="off" /></label>
+          <label>Password <input type="password" id="staff-password" placeholder="Min. 6 caratteri" autocomplete="new-password" /></label>
+          <label>Ruolo
+            <select id="staff-role">
+              <option value="sala">Sala</option>
+              <option value="cucina">Cucina</option>
+              <option value="pizzeria">Pizzeria</option>
+              <option value="bar">Bar</option>
+              <option value="cassa">Cassa</option>
+              <option value="magazzino">Magazzino</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="staff">Staff</option>
+            </select>
+          </label>
+          <label style="align-self:flex-end"><button class="btn primary" id="btn-add-staff">Aggiungi dipendente</button></label>
+        </div>
+        <div id="form-msg" class="msg"></div>
+
+        <div style="overflow:auto;max-height:280px;margin-top:14px">
+          <table><thead><tr><th>Username</th><th>Nome</th><th>Ruolo</th><th>Stato</th><th>Azioni</th></tr></thead>
+          <tbody id="staff-tbody"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card section-wide">
+        <h2>4) Completa configurazione</h2>
+        <p class="muted" style="margin:0 0 12px;font-size:13px">Quando hai configurato il personale e sei pronto a usare Ristoword, clicca il pulsante per completare il setup e accedere alla gestione operativa.</p>
+        <button class="btn primary" id="btn-complete" style="padding:14px 24px;font-size:16px">Completa configurazione iniziale</button>
+        <div id="complete-msg" class="msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const $=id=>document.getElementById(id);
+      const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+      async function api(method,url,body){
+        const opt={method,credentials:'same-origin',headers:{"Content-Type":"application/json"}};
+        if(body) opt.body=JSON.stringify(body);
+        const r=await fetch(url,opt);
+        let d=null;
+        try{d=await r.json();}catch(_){}
+        if(!r.ok) throw new Error(d?.message||d?.error||'Errore');
+        return d;
+      }
+
+      async function loadStatus(){
+        const d=await api('GET','/api/owner-console/status');
+        const lic=d.license||{};
+        $('lic-status').innerHTML=lic.valid?'<span class="badge ok">Attiva</span>':(lic.expired?'<span class="badge err">Scaduta</span>':'<span class="badge warn">'+esc(lic.status)+'</span>');
+        $('lic-plan').textContent=lic.plan||'—';
+        $('lic-expires').textContent=lic.expiresAt?new Date(lic.expiresAt).toLocaleDateString('it-IT'):'—';
+        $('biz-id').textContent=d.restaurantId||'—';
+        $('owner-status').innerHTML=d.ownerSetup?.ownerSetupCompleted?'<span class="badge ok">Sì</span>':'<span class="badge warn">Da completare</span>';
+
+        const rows=(d.staff||[]).map(u=>'<tr><td>'+esc(u.username)+'</td><td>'+esc(u.name)+' '+esc(u.surname)+'</td><td>'+esc(u.role)+'</td><td>'+(u.is_active?'<span class="badge ok">Attivo</span>':'<span class="badge err">Disattivo</span>')+'</td><td><button class="btn" data-action="toggle" data-id="'+esc(u.id)+'" data-active="'+u.is_active+'">'+(u.is_active?'Disattiva':'Attiva')+'</button> <button class="btn" data-action="reset" data-id="'+esc(u.id)+'">Reset password</button></td></tr>');
+        $('staff-tbody').innerHTML=rows.join('');
+      }
+
+      $('btn-add-staff').addEventListener('click',async ()=>{
+        const name=($('staff-name').value||'').trim(), surname=($('staff-surname').value||'').trim(), username=($('staff-username').value||'').trim(), password=$('staff-password').value, role=$('staff-role').value;
+        if(!username){$('form-msg').textContent='Username obbligatorio';$('form-msg').className='msg err';return;}
+        if(!password||password.length<6){$('form-msg').textContent='Password min. 6 caratteri';$('form-msg').className='msg err';return;}
+        $('form-msg').textContent='';
+        try{
+          await api('POST','/api/staff',{name,surname,username,password,role});
+          $('form-msg').textContent='Dipendente aggiunto.';$('form-msg').className='msg ok';
+          $('staff-name').value='';$('staff-surname').value='';$('staff-username').value='';$('staff-password').value='';
+          await loadStatus();
+        }catch(e){$('form-msg').textContent=e.message;$('form-msg').className='msg err';}
+      });
+
+      $('staff-tbody').addEventListener('click',async e=>{
+        const btn=e.target.closest('button');if(!btn||!btn.dataset?.action)return;
+        const id=btn.dataset.id;if(!id)return;
+        if(btn.dataset.action==='toggle'){
+          const isActive=btn.dataset.active==='true';
+          try{
+            await api('PATCH','/api/staff/'+id,{active:!isActive});
+            await loadStatus();
+          }catch(err){alert(err.message);}
+        }else if(btn.dataset.action==='reset'){
+          try{
+            const d=await api('POST','/api/staff/'+id+'/reset-password',{});
+            alert('Nuova password temporanea: '+d.temporaryPassword);
+            await loadStatus();
+          }catch(err){alert(err.message);}
+        }
+      });
+
+      $('btn-complete').addEventListener('click',async ()=>{
+        $('btn-complete').disabled=true;
+        $('complete-msg').textContent='';
+        try{
+          const d=await api('POST','/api/owner-console/complete',{});
+          $('complete-msg').textContent='Configurazione completata. Reindirizzamento...';
+          $('complete-msg').className='msg ok';
+          setTimeout(()=>{window.location.href=d.redirectTo||'/supervisor/supervisor.html';},800);
+        }catch(e){
+          $('complete-msg').textContent=e.message;
+          $('complete-msg').className='msg err';
+          $('btn-complete').disabled=false;
+        }
+      });
+
+      $('btn-logout').addEventListener('click',async ()=>{try{await api('POST','/api/auth/logout',{});}catch(_){} window.location.href='/login/login.html';});
+
+      loadStatus().catch(()=>window.location.href='/login/login.html');
+    })();
+  </script>
+</body>
+</html>

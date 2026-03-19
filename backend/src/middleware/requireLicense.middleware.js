@@ -3,9 +3,26 @@
 
 const { getLicense } = require("../config/license");
 
+function parseCookie(header) {
+  if (!header || typeof header !== "string") return {};
+  return header.split(";").reduce((acc, part) => {
+    const [k, ...rest] = part.trim().split("=");
+    if (!k) return acc;
+    acc[k] = decodeURIComponent((rest.join("=") || "").trim());
+    return acc;
+  }, {});
+}
+
 const SKIP_PATHS = [
   "/login",
   "/owner-activate",
+  "/super-admin-login",
+  "/dashboard/super-admin-login",
+  "/owner-console",
+  "/super-admin-dashboard",
+  "/super-admin-change-password",
+  "/super-admin",
+  "/api/super-admin",
   "/api/auth",
   "/api/license",
   "/api/licenses",
@@ -45,6 +62,16 @@ async function requireLicense(req, res, next) {
           path: req.path,
           ownerActivated: new URLSearchParams(req.query || {}).get("ownerActivated"),
         });
+      }
+    } catch (_) {}
+
+    // Super-admin autenticato: bypass licenza globale (supporto / ispezione tenant da dashboard)
+    try {
+      const token = parseCookie(req.headers.cookie).super_admin_session;
+      if (token) {
+        const superAdminRepository = require("../modules/super-admin/super-admin.repository");
+        const saSession = await superAdminRepository.verifySessionToken(token);
+        if (saSession) return next();
       }
     } catch (_) {}
 

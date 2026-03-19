@@ -100,6 +100,23 @@ function validateAppUrl() {
   }
 }
 
+function validateSuperAdmin() {
+  const username = process.env.SUPER_ADMIN_USERNAME;
+  const password = process.env.SUPER_ADMIN_PASSWORD;
+  if (!username || String(username).trim().length === 0) {
+    console.warn(
+      "[CONFIG][SUPER_ADMIN] SUPER_ADMIN_USERNAME non impostata. " +
+        "L'accesso a /super-admin-login non funzionerà fino a quando non la imposti."
+    );
+  }
+  if (!password || String(password).trim().length === 0) {
+    console.warn(
+      "[CONFIG][SUPER_ADMIN] SUPER_ADMIN_PASSWORD non impostata. " +
+        "L'accesso a /super-admin-login non funzionerà fino a quando non la imposti."
+    );
+  }
+}
+
 function validateConfig() {
   // Order matters: fail-fast on mandatory session,
   // then only warnings for optional integrations.
@@ -108,6 +125,7 @@ function validateConfig() {
   validateSmtp();
   validateLicenseAndOnboarding();
   validateAppUrl();
+  validateSuperAdmin();
 }
 
 module.exports = {

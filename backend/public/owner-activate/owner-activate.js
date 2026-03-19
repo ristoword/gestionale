@@ -162,7 +162,7 @@ formPassword.addEventListener("submit", async (e) => {
     }
 
     showMessage("Attivazione completata. Reindirizzamento...", "success");
-    const redirectTo = result.redirectTo || "/dashboard/dashboard.html";
+    const redirectTo = result.redirectTo || "/dev-access/dashboard";
     setTimeout(() => {
       window.location.href = redirectTo;
     }, 800);

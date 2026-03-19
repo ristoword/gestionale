@@ -14,6 +14,16 @@ function requireMustChangePassword(req, res, next) {
   if (p === "/api/auth/change-password" || p === "/api/auth/me") {
     return next();
   }
+  try {
+    const original = String(req.originalUrl || "");
+    const shouldLog = original.includes("ownerActivated=1") || original.includes("ownerActivated%3D1");
+    if (shouldLog) {
+      console.warn("[REDIRECT][requireMustChangePassword] mustChange -> /change-password", {
+        from: original,
+        path: req.path,
+      });
+    }
+  } catch (_) {}
   return res.redirect("/change-password");
 }
 

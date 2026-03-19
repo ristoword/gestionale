@@ -15,6 +15,22 @@
       "relatedTable": "1",
       "createdAt": "2026-03-16T06:22:10.008Z",
       "updatedAt": "2026-03-16T06:22:10.008Z"
+    },
+    {
+      "id": "d7f8f7dc-56e8-4dc8-95be-6ef20afd0ba8",
+      "restaurantId": "default",
+      "eventType": "order_ticket_kitchen",
+      "department": "cucina",
+      "deviceId": null,
+      "documentTitle": "Comanda Tavolo 2 (cucina)",
+      "content": "=== COMANDA TAVOLO 2 ===\nReparto: cucina\nCameriere: pippo\nCoperti: 4\n1x Carbonara\n\n--- 08:48:39 ---",
+      "sourceModule": "sala",
+      "status": "failed",
+      "errorMessage": "Nessun dispositivo configurato per order_ticket_kitchen / cucina. Usa stampa manuale.",
+      "relatedOrderId": 20,
+      "relatedTable": "2",
+      "createdAt": "2026-03-19T15:48:39.672Z",
+      "updatedAt": "2026-03-19T15:48:39.672Z"
     }
   ]
 }

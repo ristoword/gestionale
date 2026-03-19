@@ -6,5 +6,61 @@
     "closedAt": "2026-03-11T16:40:12.682Z",
     "estimatedRevenue": 10,
     "estimatedMargin": 10
+  },
+  {
+    "orderId": 20,
+    "date": "2026-03-19",
+    "totalFoodCost": 0,
+    "closedAt": "2026-03-19T15:49:47.478Z",
+    "estimatedRevenue": 14,
+    "estimatedMargin": 14
+  },
+  {
+    "orderId": 12,
+    "date": "2026-03-19",
+    "totalFoodCost": 0,
+    "closedAt": "2026-03-19T15:51:27.003Z",
+    "estimatedRevenue": 25,
+    "estimatedMargin": 25
+  },
+  {
+    "orderId": 13,
+    "date": "2026-03-19",
+    "totalFoodCost": 0,
+    "closedAt": "2026-03-19T15:51:29.837Z",
+    "estimatedRevenue": 675,
+    "estimatedMargin": 675
+  },
+  {
+    "orderId": 15,
+    "date": "2026-03-19",
+    "totalFoodCost": 0,
+    "closedAt": "2026-03-19T15:51:32.117Z",
+    "estimatedRevenue": 100,
+    "estimatedMargin": 100
+  },
+  {
+    "orderId": 17,
+    "date": "2026-03-19",
+    "totalFoodCost": 0,
+    "closedAt": "2026-03-19T15:51:34.761Z",
+    "estimatedRevenue": 36,
+    "estimatedMargin": 36
+  },
+  {
+    "orderId": 18,
+    "date": "2026-03-19",
+    "totalFoodCost": 0,
+    "closedAt": "2026-03-19T15:51:36.754Z",
+    "estimatedRevenue": 9,
+    "estimatedMargin": 9
+  },
+  {
+    "orderId": 19,
+    "date": "2026-03-19",
+    "totalFoodCost": 0,
+    "closedAt": "2026-03-19T15:51:39.088Z",
+    "estimatedRevenue": 25,
+    "estimatedMargin": 25
   }
 ]

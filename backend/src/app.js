@@ -38,6 +38,47 @@ try {
   console.warn("dev-access.routes non trovato (ok se non ancora creato):", e.message);
 }
 
+// =======================
+//  SUPER ADMIN (private)
+// =======================
+// Route esplicita per /super-admin-login: evita "Cannot GET" se il modulo fallisce a caricarsi
+app.get("/super-admin-login", (req, res) => {
+  try {
+    const controller = require("./modules/super-admin/super-admin.controller");
+    controller.getSuperAdminLoginPage(req, res);
+  } catch (e) {
+    console.error("[super-admin] Login page error:", e?.message || e);
+    res.status(500).send(
+      "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Super Admin</title></head><body>" +
+        "<h1>Super Admin non configurato</h1>" +
+        "<p>Imposta <code>SUPER_ADMIN_USERNAME</code> e <code>SUPER_ADMIN_PASSWORD</code> nelle variabili d'ambiente.</p>" +
+        "</body></html>"
+    );
+  }
+});
+
+// Alias comune errato: /dashboard/super-admin-login → pagina reale è /super-admin-login
+app.get("/dashboard/super-admin-login", (req, res) => {
+  res.redirect(302, "/super-admin-login");
+});
+
+try {
+  const superAdminRouter = require("./modules/super-admin/super-admin.routes");
+  app.use(superAdminRouter);
+} catch (e) {
+  console.warn("super-admin.routes non trovato (ok se non ancora creato):", e.message);
+}
+
+// =======================
+//  MAINTENANCE MODE (public site only)
+// =======================
+try {
+  const { maintenanceMiddleware } = require("./middleware/maintenance.middleware");
+  app.use(maintenanceMiddleware);
+} catch (e) {
+  console.warn("maintenance.middleware non trovato (ok se non ancora creato):", e.message);
+}
+
 // License check: block app if not activated (except login, license API, QR)
 const { requireLicense } = require("./middleware/requireLicense.middleware");
 const { requireSetup } = require("./middleware/requireSetup.middleware");
@@ -45,10 +86,12 @@ const { requireAuth } = require("./middleware/requireAuth.middleware");
 const { requireRole } = require("./middleware/requireRole.middleware");
 const { requirePageAuth } = require("./middleware/requirePageAuth.middleware");
 const { requireMustChangePassword } = require("./middleware/requireMustChangePassword.middleware");
+const { requireOwnerSetup } = require("./middleware/requireOwnerSetup.middleware");
 
 app.use(requireLicense);
-app.use(requireSetup);
 app.use(requireMustChangePassword);
+app.use(requireOwnerSetup); // prima di requireSetup: owner va a owner-console se non completato
+app.use(requireSetup);
 
 // SYSTEM HEALTH (no auth – for monitoring/load balancers)
 function healthHandler(req, res) {
@@ -63,6 +106,14 @@ function healthHandler(req, res) {
 }
 app.get("/api/system/health", healthHandler);
 app.get("/api/health", healthHandler); // alias for backward compatibility
+
+// Owner Console (configurazione iniziale cliente)
+try {
+  const ownerConsoleRouter = require("./routes/owner-console.routes");
+  app.use(ownerConsoleRouter);
+} catch (e) {
+  console.warn("owner-console.routes non trovato:", e.message);
+}
 
 const ROLES_ALL = ["owner", "sala", "cucina", "cassa"];
 const ROLES_ORDERS = ["owner", "sala", "cucina", "cassa"];
@@ -110,6 +161,12 @@ app.get("/qr", (req, res) => {
 app.get("/qr/:table", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/qr/index.html"));
 });
+
+// Super-admin JS assets (served before requirePageAuth)
+app.use(
+  "/super-admin/js",
+  express.static(path.join(__dirname, "../src/public/js"))
+);
 
 // Protected HTML pages – redirect to login if no session
 app.use(requirePageAuth);

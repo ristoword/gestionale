@@ -37,13 +37,19 @@
   },
   {
     "event": "dev_status_view",
-    "ts": "2026-03-18T18:18:10.869Z",
+    "ts": "2026-03-18T22:34:44.554Z",
     "ip": "::1",
     "tenantId": null
   },
   {
     "event": "dev_status_view",
-    "ts": "2026-03-18T18:18:11.422Z",
+    "ts": "2026-03-18T22:34:44.789Z",
+    "ip": "::1",
+    "tenantId": "default"
+  },
+  {
+    "event": "dev_status_view",
+    "ts": "2026-03-18T23:45:42.161Z",
     "ip": "::1",
     "tenantId": "default"
   }

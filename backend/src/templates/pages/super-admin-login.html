@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Super Admin - Login</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      :root{--bg:#0b0f19;--card:#111827;--text:#e5e7eb;--muted:#9ca3af;--primary:#3b82f6;--border:rgba(255,255,255,.12)}
+      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
+      .wrap{max-width:520px;margin:0 auto;padding:40px 16px}
+      .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
+      h1{margin:0 0 10px;font-size:20px}
+      p{margin:0 0 14px;color:var(--muted);line-height:1.5}
+      label{display:block;margin:12px 0 6px;font-size:12px;color:var(--muted)}
+      input{width:100%;box-sizing:border-box;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:12px;padding:12px 12px;font-size:14px;outline:none}
+      .btn{margin-top:14px;width:100%;border-radius:12px;padding:12px 14px;border:1px solid var(--border);background:var(--primary);color:white;font-weight:900;cursor:pointer}
+      .err{margin-top:12px;color:#f87171;font-weight:800;font-size:13px}
+      .hint{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.45}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Super Admin</h1>
+        <p>Accesso privato per manutentore/sviluppatore del sistema.</p>
+
+        <form id="sa-login-form">
+          <label for="sa-username">Username</label>
+          <input id="sa-username" name="username" type="text" autocomplete="username" value="" required />
+
+          <label for="sa-password">Password</label>
+          <input id="sa-password" name="password" type="password" autocomplete="current-password" required />
+
+          <button class="btn" type="submit">Accedi</button>
+        </form>
+
+        <div id="sa-login-error" class="err" style="display:none;"></div>
+
+        <div class="hint">
+          Nessun link pubblico verso questa area.<br/>
+          Se viene richiesto cambio password, completa il primo accesso.
+        </div>
+      </div>
+    </div>
+
+    <script src="/super-admin/js/super-admin-login.js"></script>
+  </body>
+</html>
+

@@ -9,3 +9,6 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Super Admin: credenziali e sessioni (generati in locale)
+backend/data/super-admin/

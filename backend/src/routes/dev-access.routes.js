@@ -8,10 +8,15 @@ const { requireDevOwnerAuth } = require("../middleware/requireDevOwnerAuth.middl
 
 const DEV_ENABLED = () => String(process.env.DEV_OWNER_ENABLED || "").toLowerCase() === "true";
 
-// Disabilita completamente la route se DEV_OWNER_ENABLED non è true.
+// Consenti accesso owner console: owner session può accedere a dashboard/status anche senza DEV_ENABLED.
+function isOwnerSession(req) {
+  return req.session?.user?.role === "owner" && req.session?.restaurantId;
+}
+
 router.use((req, res, next) => {
-  if (!DEV_ENABLED()) return res.status(404).send("Not found");
-  return next();
+  if (DEV_ENABLED()) return next();
+  if (isOwnerSession(req) && /^\/(dashboard|status)?$/.test(req.path)) return next();
+  return res.status(404).send("Not found");
 });
 
 // GET /dev-access/login

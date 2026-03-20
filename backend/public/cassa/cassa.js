@@ -70,6 +70,76 @@ function round2(n) {
 function approxEqual(a, b, eps = 0.01) {
   return Math.abs((Number(a) || 0) - (Number(b) || 0)) <= eps;
 }
+
+// =============================
+//   STAMPA: coda server (/api/print-jobs) + fallback browser
+//   Non modifica pagamenti/chiusure: solo accoda contenuto testuale.
+// =============================
+
+async function enqueueCassaPrint(payload) {
+  try {
+    const res = await fetch("/api/print-jobs", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 401) {
+      return { routed: false, needsAuth: true, warning: "Accedi a Ristoword per usare la coda stampa sul server." };
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { routed: false, warning: data.error || data.message || `HTTP ${res.status}` };
+    }
+    return data;
+  } catch (e) {
+    return { routed: false, warning: String(e.message || e) };
+  }
+}
+
+/**
+ * Prova accodamento; se ok (stampante configurata) mostra messaggio e termina.
+ * Altrimenti esegue browserPrintFn() come prima (stampa/PDF locale).
+ */
+async function runCassaPrintWithFallback(opts) {
+  const {
+    eventType,
+    department = "cassa",
+    documentTitle,
+    content,
+    sourceModule = "cassa",
+    relatedTable,
+    relatedOrderId,
+    browserPrintFn,
+  } = opts;
+
+  const result = await enqueueCassaPrint({
+    eventType,
+    department,
+    documentTitle: documentTitle || "Stampa cassa",
+    content: content || "",
+    sourceModule,
+    relatedTable: relatedTable != null ? String(relatedTable) : "",
+    relatedOrderId: relatedOrderId || null,
+  });
+
+  if (result && result.routed && result.device) {
+    let msg = `Stampa messa in coda: ${result.device.name} (${result.device.department || department}).`;
+    if (result.warning) msg += `\n${result.warning}`;
+    msg += "\n\nMonitora: Hardware → Coda stampa.";
+    alert(msg);
+    return;
+  }
+
+  if (result && result.needsAuth) {
+    alert(`${result.warning}\n\nSi procede con la stampa dal browser.`);
+  } else if (result && result.warning) {
+    console.warn("[stampa]", result.warning);
+  }
+
+  if (typeof browserPrintFn === "function") browserPrintFn();
+}
+
 function safeJsonParse(raw, fallback) {
   try {
     const parsed = JSON.parse(raw);
@@ -266,6 +336,64 @@ function getCurrentBillData() {
     coversTotal: orders.reduce((acc, o) => acc + (Number(o.covers) || 0), 0),
     orderIds: orders.map((o) => o.id),
   };
+}
+
+function buildTableBillPlainText() {
+  const bill = getCurrentBillData();
+  const lines = [];
+  lines.push("=== PRECONTO / CONTO TAVOLO ===");
+  lines.push(`Tavolo: ${selectedTable ?? "-"}`);
+  lines.push(`Data: ${todayISO()}  ${new Date().toLocaleTimeString("it-IT")}`);
+  lines.push("");
+  if (!bill.itemsFlat.length) {
+    lines.push("(nessuna riga)");
+  } else {
+    for (const it of bill.itemsFlat) {
+      const qty = Number(it.qty) || 1;
+      const price = Number(it.price);
+      const row = Number.isFinite(price) ? qty * price : 0;
+      lines.push(`${qty}x ${it.name || "-"}  ${toMoney(row)}`);
+    }
+  }
+  lines.push("");
+  lines.push(`Subtotale:      ${toMoney(bill.subtotal)}`);
+  if (bill.discountAmount > 0) lines.push(`Sconti:         ${toMoney(bill.discountAmount)}`);
+  lines.push(`IVA (${bill.vatPerc}%):   ${toMoney(bill.vatAmount)}`);
+  lines.push(`TOTALE FINALE:  ${toMoney(bill.finalTotal)}`);
+  lines.push("");
+  lines.push("Scontrino non fiscale — RISTOWORD");
+  return lines.join("\n");
+}
+
+async function printTableBill() {
+  if (!selectedTable || !groupedByTable.has(selectedTable)) {
+    alert("Seleziona prima un tavolo.");
+    return;
+  }
+  const plain = buildTableBillPlainText();
+  await runCassaPrintWithFallback({
+    eventType: "receipt_prebill",
+    department: "cassa",
+    documentTitle: `Preconto tavolo ${selectedTable}`,
+    content: plain,
+    sourceModule: "cassa",
+    relatedTable: String(selectedTable),
+    browserPrintFn() {
+      const tmp = document.createElement("div");
+      tmp.className = "print-area";
+      const h2 = document.createElement("h2");
+      h2.textContent = `RISTOWORD – Conto tavolo ${selectedTable}`;
+      const pre = document.createElement("pre");
+      pre.style.whiteSpace = "pre-wrap";
+      pre.style.fontFamily = "system-ui, sans-serif";
+      pre.textContent = plain;
+      tmp.appendChild(h2);
+      tmp.appendChild(pre);
+      document.body.appendChild(tmp);
+      window.print();
+      tmp.remove();
+    },
+  });
 }
 
 // =============================
@@ -1058,6 +1186,10 @@ function setupBillInteractions() {
     );
   });
 
+  document.getElementById("btn-print-table-bill")?.addEventListener("click", () => {
+    void printTableBill();
+  });
+
   btnClose?.addEventListener("click", async () => {
     if (!selectedTable || !groupedByTable.has(selectedTable)) {
       alert("Seleziona prima un tavolo da chiudere.");
@@ -1345,15 +1477,26 @@ function shoppingToPlainText() {
   return lines.join("\n");
 }
 
-function printShopping() {
+async function printShopping() {
+  const plain = shoppingToPlainText();
   const area = document.getElementById("shopping-print-area");
   if (!area) return;
-  const text = shoppingToPlainText().replace(/\n/g, "<br/>");
-  area.innerHTML = `
+
+  await runCassaPrintWithFallback({
+    eventType: "shopping_list_print",
+    department: "cassa",
+    documentTitle: "Lista spesa",
+    content: plain,
+    sourceModule: "cassa",
+    browserPrintFn() {
+      const text = plain.replace(/\n/g, "<br/>");
+      area.innerHTML = `
     <h2>RISTOWORD – Lista Spesa</h2>
     <div style="font-size:12px;line-height:1.4">${text}</div>
   `;
-  window.print();
+      window.print();
+    },
+  });
 }
 
 // =============================
@@ -1528,7 +1671,23 @@ function compareReport(dateISO) {
   };
 }
 
-function exportReportPrint() {
+function buildReportPlainText(dateISO) {
+  const c = compareReport(dateISO);
+  const fmt = (r) =>
+    r
+      ? `Incasso ${toMoney(r.revenue || 0)} • Coperti ${r.covers || 0} • Food ${toMoney(r.food || 0)} • Staff ${toMoney(r.staff || 0)}`
+      : "(nessun dato)";
+  const lines = [];
+  lines.push("=== REPORT GIORNALIERO (cassa) ===");
+  lines.push(`Data: ${dateISO}`);
+  lines.push("");
+  lines.push(`Oggi: ${fmt(c.base)}`);
+  lines.push(`Settimana scorsa: ${fmt(c.week)}`);
+  lines.push(`Anno prima: ${fmt(c.year)}`);
+  return lines.join("\n");
+}
+
+async function exportReportPrint() {
   const dateISO = document.getElementById("report-date")?.value || todayISO();
   const c = compareReport(dateISO);
 
@@ -1548,12 +1707,23 @@ function exportReportPrint() {
     </div>
   `;
 
-  const tmp = document.createElement("div");
-  tmp.className = "print-area";
-  tmp.innerHTML = html;
-  document.body.appendChild(tmp);
-  window.print();
-  tmp.remove();
+  const plain = buildReportPlainText(dateISO);
+
+  await runCassaPrintWithFallback({
+    eventType: "closure_report_print",
+    department: "cassa",
+    documentTitle: `Report ${dateISO}`,
+    content: plain,
+    sourceModule: "cassa",
+    browserPrintFn() {
+      const tmp = document.createElement("div");
+      tmp.className = "print-area";
+      tmp.innerHTML = html;
+      document.body.appendChild(tmp);
+      window.print();
+      tmp.remove();
+    },
+  });
 }
 
 // =============================
@@ -1740,15 +1910,70 @@ function buildInvoicePrintHTML(invNumber, dateISO) {
   `;
 }
 
-function printInvoice() {
+function buildInvoicePlainText(invNumber, dateISO) {
+  const restName = document.getElementById("inv-rest-name")?.value || "";
+  const restAddr = document.getElementById("inv-rest-addr")?.value || "";
+  const restVat = document.getElementById("inv-rest-vat")?.value || "";
+  const restPec = document.getElementById("inv-rest-pec")?.value || "";
+
+  const cliName = document.getElementById("inv-cli-name")?.value || "";
+  const cliAddr = document.getElementById("inv-cli-addr")?.value || "";
+  const cliVat = document.getElementById("inv-cli-vat")?.value || "";
+
+  const lines = buildInvoiceFromSelectedTable();
+  const bill = getCurrentBillData();
+  const subtotal = lines.reduce((acc, l) => acc + l.unitPrice * l.qty, 0);
+  const vatAmount = bill.vatAmount;
+  const total = subtotal + vatAmount;
+
+  const out = [];
+  out.push(`FATTURA ${invNumber}`);
+  out.push(`Data: ${dateISO}  Tavolo: ${selectedTable ?? "-"}`);
+  out.push("");
+  out.push("Ristorante:");
+  out.push(restName);
+  out.push(restAddr);
+  out.push(`P.IVA: ${restVat}  SDI/PEC: ${restPec}`);
+  out.push("");
+  out.push("Cliente:");
+  out.push(cliName);
+  out.push(cliAddr);
+  out.push(`P.IVA/CF: ${cliVat}`);
+  out.push("");
+  out.push("Righe:");
+  if (!lines.length) out.push("(nessuna riga)");
+  else {
+    lines.forEach((l) => {
+      out.push(`${l.qty}x ${l.name}  ${toMoney(l.unitPrice)} → ${toMoney(l.unitPrice * l.qty)}`);
+    });
+  }
+  out.push("");
+  out.push(`Imponibile: ${toMoney(subtotal)}`);
+  out.push(`IVA (${bill.vatPerc}%): ${toMoney(vatAmount)}`);
+  out.push(`TOTALE: ${toMoney(total)}`);
+  return out.join("\n");
+}
+
+async function printInvoice() {
   const invNumber = `RW-${Date.now()}`;
   const dateISO = todayISO();
+  const plain = buildInvoicePlainText(invNumber, dateISO);
 
   const area = document.getElementById("invoice-print-area");
   if (!area) return;
 
-  area.innerHTML = buildInvoicePrintHTML(invNumber, dateISO);
-  window.print();
+  await runCassaPrintWithFallback({
+    eventType: "invoice_print",
+    department: "cassa",
+    documentTitle: `Fattura ${invNumber}`,
+    content: plain,
+    sourceModule: "cassa",
+    relatedTable: selectedTable ? String(selectedTable) : "",
+    browserPrintFn() {
+      area.innerHTML = buildInvoicePrintHTML(invNumber, dateISO);
+      window.print();
+    },
+  });
 }
 
 function saveInvoiceToHistory() {
@@ -2527,7 +2752,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (mgrVal) mgrVal.textContent = sess ? sess.name : "—";
       if (btnLogin) btnLogin.style.display = sess ? "none" : "";
       if (btnLogout) btnLogout.style.display = sess ? "" : "none";
-      if (btnZ) btnZ.style.display = isManagerAuthorizedForZ(sess) ? "" : "none";
+      // Chiusura Z: sempre visibile; senza autorizzazione manager cassa/supervisor è solo "bloccata" (tooltip + click)
+      if (btnZ) {
+        btnZ.style.display = "";
+        const okZ = isManagerAuthorizedForZ(sess);
+        btnZ.classList.toggle("rw-z-locked", !okZ);
+        btnZ.title = okZ
+          ? "Chiusura definitiva della giornata (Z)"
+          : "Richiede login Manager come responsabile cassa (Cash Manager) o Supervisor — usa il pulsante «Login» accanto a Manager.";
+      }
       if (sess) document.getElementById("rw-cassa-manager-chip")?.classList.add("logged-in");
       else document.getElementById("rw-cassa-manager-chip")?.classList.remove("logged-in");
 
@@ -2576,6 +2809,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.getElementById("rw-btn-z-closure")?.addEventListener("click", () => {
+      const sess = RW_StaffAccess.getCurrentSession();
+      if (!isManagerAuthorizedForZ(sess)) {
+        alert(
+          "La Chiusura Z è riservata al responsabile cassa o al supervisor.\n\n" +
+            "1) Clicca «Login» nel riquadro Manager e accedi (es. utente risto_cash_manager / ruolo Cash Manager, oppure Supervisor).\n" +
+            "2) Poi riprova «Chiusura Z»."
+        );
+        return;
+      }
       openModal("modal-z-report");
     });
 

@@ -1,6 +1,7 @@
 // change-password.js – Primo accesso (solo nuova password) o cambio password (attuale + nuova)
 
 const form = document.getElementById("change-form");
+const successPanel = document.getElementById("success-panel");
 const messageBox = document.getElementById("change-message");
 const btnSubmit = document.getElementById("btn-submit");
 const fieldCurrent = document.getElementById("field-current");
@@ -75,10 +76,15 @@ form.addEventListener("submit", async (event) => {
       return;
     }
 
-    showMessage("Password aggiornata. Reindirizzamento...", "success");
+    showMessage("Password aggiornata.", "success");
+    if (form) form.style.display = "none";
+    if (successPanel) successPanel.style.display = "block";
+    // Fallback: dopo 12s porta alla dashboard se non si clicca
     setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 800);
+      if (successPanel && successPanel.style.display !== "none") {
+        window.location.href = "/";
+      }
+    }, 12000);
   } catch (err) {
     console.error("Errore cambio password:", err);
     showMessage("Errore di connessione. Riprova.", "error");

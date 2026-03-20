@@ -51,6 +51,8 @@ body{
 .topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 
 .shift-actions{display:flex;align-items:center;gap:8px}
+/* Chiusura Z visibile ma non attiva finché non c’è login manager autorizzato */
+#rw-btn-z-closure.rw-z-locked{opacity:.55;cursor:not-allowed}
 
 /* CHIP */
 .chip{

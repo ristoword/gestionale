@@ -61,6 +61,7 @@
           <span class="chip-value" id="kpi-total-sim">€ 0.00</span>
         </div>
         <button class="btn ghost" id="btn-refresh-orders">Aggiorna</button>
+        <a class="btn ghost" href="/hardware/hardware.html" target="_blank" rel="noopener" title="Installa stampanti, dispositivi e percorsi di stampa">Hardware / Stampa</a>
       </div>
     </header>
 
@@ -247,11 +248,14 @@
 
                 <div class="form-actions">
                   <button class="btn ghost" type="button" id="btn-simulate-bill">Simula chiusura</button>
+                  <button class="btn ghost" type="button" id="btn-print-table-bill" title="Invia in coda stampa (Hardware) o stampa browser">Stampa conto</button>
+                  <a class="btn ghost" href="/hardware/hardware.html" target="_blank" rel="noopener" title="Configura stampanti termiche / cassa">Stampanti</a>
                   <button class="btn primary" type="button" id="btn-close-table">Chiudi tavolo</button>
                 </div>
 
                 <div class="label-soft tiny">
-                  Simulazione e fattura sono strumenti di demo/gestione interna. Per fiscali reali serve integrazione registratore/ERP.
+                  Simulazione e fattura sono strumenti di demo/gestione interna. Per scontrini fiscali serve registratore; per collegare stampanti e dispositivi apri
+                  <a href="/hardware/hardware.html" target="_blank" rel="noopener">Hardware / Stampa</a>.
                 </div>
               </div>
             </article>
@@ -486,10 +490,14 @@
         <div class="modal-title">Fattura</div>
         <div class="modal-actions">
           <button class="btn ghost" type="button" id="btn-invoice-print">Stampa / PDF</button>
+          <a class="btn ghost" href="/hardware/hardware.html" target="_blank" rel="noopener" title="Configura stampanti e dispositivi">Stampanti</a>
           <button class="btn-xs danger" type="button" id="btn-invoice-close">Chiudi</button>
         </div>
       </div>
       <div class="modal-body">
+        <div class="label-soft tiny" style="margin-bottom:10px;">
+          «Stampa / PDF» prova prima la <strong>coda stampa</strong> (stampanti configurate in Hardware); se non disponibile, usa la stampante del browser. <a href="/hardware/hardware.html" target="_blank" rel="noopener">Hardware / Stampa</a>.
+        </div>
         <div class="two-cols-tight">
           <div>
             <div class="section-title">Dati ristorante</div>
@@ -756,11 +764,12 @@
         <div class="modal-title">Lista spesa</div>
         <div class="modal-actions">
           <button class="btn ghost" type="button" id="btn-shopping-print">Stampa / PDF</button>
+          <a class="btn ghost" href="/hardware/hardware.html" target="_blank" rel="noopener" title="Configura stampanti e dispositivi">Stampanti</a>
           <button class="btn-xs danger" type="button" id="btn-shopping-close">Chiudi</button>
         </div>
       </div>
       <div class="modal-body">
-        <div class="label-soft tiny">Generata da: prodotti sotto soglia + appunti manuali.</div>
+        <div class="label-soft tiny">Generata da: prodotti sotto soglia + appunti manuali. Per stampanti termiche: <a href="/hardware/hardware.html" target="_blank" rel="noopener">Hardware / Stampa</a>.</div>
         <div class="form-grid" style="margin-top:10px;">
           <label class="full">
             Appunti manuali

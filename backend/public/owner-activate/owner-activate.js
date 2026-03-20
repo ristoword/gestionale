@@ -82,7 +82,11 @@ inputEmail.value = getInitialEmail();
 
 formVerify.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const licenseCode = inputLicense.value.trim();
+  // Normalizza spazi invisibili / doppi spazi (stesso criterio del backend)
+  const licenseCode = String(inputLicense.value || "")
+    .trim()
+    .replace(/[\u00A0\u2000-\u200B\uFEFF]/g, " ")
+    .replace(/\s+/g, " ");
   if (!licenseCode) {
     showMessage("Inserisci un codice di attivazione valido.", "error");
     return;

@@ -12,7 +12,14 @@ const BCRYPT_ROUNDS = 10;
 const MIN_PASSWORD_LENGTH = 8;
 
 function validateLicenseForActivation(license) {
-  if (!license) return { ok: false, status: "invalid", message: "Codice non trovato" };
+  if (!license) {
+    return {
+      ok: false,
+      status: "invalid",
+      message:
+        "Codice non trovato. Usa il codice completo dall’email o dalla conferma pagamento, oppure verifica di essere sullo stesso ambiente (stesso server) in cui è stata creata la licenza.",
+    };
+  }
   if (license.status === "used") return { ok: false, status: "used", message: "Licenza già utilizzata" };
   if (license.status && license.status !== "active" && license.status !== "grace") {
     return { ok: false, status: license.status, message: "Licenza non attiva" };

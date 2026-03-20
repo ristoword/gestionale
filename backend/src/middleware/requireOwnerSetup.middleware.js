@@ -1,6 +1,7 @@
 // backend/src/middleware/requireOwnerSetup.middleware.js
 // Redirect to /dev-access/dashboard se ownerSetupCompleted !== true.
-// Blocca TUTTI gli utenti (owner, staff) dall'accesso ai moduli operativi finché l'owner non completa il setup.
+// L'**owner** può sempre accedere ai moduli (esplora app prima di creare staff / completare wizard).
+// Staff e altri ruoli restano bloccati finché l'owner non marca il setup come completato.
 
 const { isOwnerSetupComplete } = require("../config/ownerSetup");
 const { getTenantIdFromRequest } = require("../context/tenantContext");
@@ -57,13 +58,18 @@ async function requireOwnerSetup(req, res, next) {
   const sessionUser = req.session?.user;
   if (!sessionUser) return next();
 
+  // Owner: può usare dashboard, sala, cassa, ecc. anche senza aver ancora completato il wizard / creato dipendenti
+  if (String(sessionUser.role || "").toLowerCase() === "owner") {
+    return next();
+  }
+
   const restaurantId = getTenantIdFromRequest(req);
   if (!restaurantId) return next();
 
   const complete = await isOwnerSetupComplete(restaurantId);
   if (complete) return next();
 
-  // ownerSetupCompleted !== true: redirect pulito (nessun 403 per evitare errori Safari)
+  // Staff / supervisor / altri: finché l'owner non completa il setup, solo console dev-access
   return res.redirect(OWNER_CONSOLE_PATH);
 }
 

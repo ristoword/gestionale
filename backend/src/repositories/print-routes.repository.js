@@ -10,6 +10,7 @@ const EVENT_TYPES = [
   "order_ticket_bar",
   "order_ticket_kitchen",
   "order_ticket_pizzeria",
+  "invoice_print",
   "receipt_prebill",
   "receipt_final",
   "inventory_label",

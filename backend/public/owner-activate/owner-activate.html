@@ -29,7 +29,11 @@
         <form id="oa-form-verify" class="login-form">
           <div class="field">
             <label for="oa-license">Codice di attivazione</label>
-            <input type="text" id="oa-license" placeholder="Es. XXX-YYYY" required autocomplete="off" />
+            <input type="text" id="oa-license" placeholder="Es. BAIA-VERDE-XXXX-YYYY" required autocomplete="off" spellcheck="false" />
+            <p class="subtitle" style="margin-top:8px;font-size:12px;opacity:0.85;line-height:1.4;">
+              Inserisci il codice <strong>completo</strong> come nell’email o nella pagina di conferma pagamento (nessuno spazio in più all’inizio o fine).
+              Se hai appena pagato, attendi qualche secondo e riprova oppure usa il link ricevuto per email.
+            </p>
           </div>
           <button type="submit" class="btn-login" id="oa-btn-verify">
             Verifica codice

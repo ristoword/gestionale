@@ -16,6 +16,8 @@ ensureTenantMigration();
 //  MIDDLEWARE DI BASE
 // =======================
 app.use(express.json());
+const { corsOptional } = require("./middleware/corsOptional.middleware");
+app.use(corsOptional);
 app.use(sessionMiddleware);
 
 // Tenant context for multi-tenant data isolation (resolves restaurantId from session)

@@ -72,6 +72,11 @@ async function mockCompleteCheckout({ sessionId, outcome = "paid" } = {}) {
     ownerActivateUrl,
     emailSent,
     emailError,
+    /** Scadenza licenza (ISO) dopo sync Stripe */
+    expiresAt: webhookResult?.expiresAt || null,
+    /** Piano e tenant per display su GS */
+    plan: session?.plan || null,
+    restaurantId: session?.restaurantId || null,
     nextStep:
       "Apri il link ownerActivateUrl (o controlla email) e completa l'attivazione con codice + password.",
   };

@@ -60,6 +60,38 @@ async function verifyCode(req, res) {
   });
 }
 
+/**
+ * GET /api/licenses/validate?code=...
+ * Stessa logica di POST /verify-code (per GS, curl, link diretti).
+ */
+async function validateCodeQuery(req, res) {
+  const raw = req.query?.code ?? req.query?.licenseCode ?? "";
+  const licenseCode = typeof raw === "string" ? raw.trim() : String(raw || "").trim();
+  if (!licenseCode) {
+    return res.status(400).json({
+      ok: false,
+      status: "invalid",
+      message: "Parametro code mancante (es. ?code=RSTW-...)",
+    });
+  }
+
+  const license = findByActivationCode(licenseCode);
+  const validation = validateLicenseForActivation(license);
+  if (!validation.ok) {
+    return res.status(validation.status === "used" ? 409 : 400).json({
+      ok: false,
+      status: validation.status,
+      message: validation.message,
+    });
+  }
+
+  return res.json({
+    ok: true,
+    restaurantId: license.restaurantId,
+    message: "Codice valido. Procedi con la creazione dell'accesso.",
+  });
+}
+
 // POST /api/licenses/complete-activation – crea owner, marca licenza, auto-login
 async function completeActivation(req, res) {
   const { licenseCode, email, password, confirmPassword } = req.body || {};
@@ -300,5 +332,6 @@ module.exports = {
   getStatus,
   deactivateLicense,
   verifyCode,
+  validateCodeQuery,
   completeActivation,
 };

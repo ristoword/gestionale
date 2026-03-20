@@ -1,30 +1,48 @@
-# Integrazione Gestione Semplificata (GS) → Ristoword (trial / Stripe)
+# Integrazione Gestione Semplificata (GS) ↔ Ristoword (Stripe trial / licenza)
 
-Documento di riferimento per completare il lato **GS**: cosa fa già il backend Ristoword e cosa deve fare il gestionale.
-
-## Principio
-
-- **Il codice di attivazione lo genera Ristoword** al momento in cui il pagamento risulta confermato (webhook / flusso mock).
-- GS **non** deve inventare il codice: chiama le API Ristoword, poi mostra al cliente **codice + link** (e/o si affida all’email inviata da Ristoword se SMTP è configurato).
-
-## Variabili ambiente su Ristoword (`.env` in `backend/`)
-
-| Variabile | Ruolo |
-|-----------|--------|
-| `APP_URL` | URL pubblico senza slash finale (es. `https://app.tuodominio.it`) — link assoluti nelle email |
-| `SMTP_*` | Se impostate, Ristoword invia email con codice + link a `/owner-activate` |
-| `SUPER_ADMIN_*` | Solo dashboard manutentore, non per i clienti trial |
-
-Dettagli anche in `backend/.env.example`.
+Contratto unico tra **GS** (frontend/gestionale) e **Ristoword** (questo backend).  
+**Il codice di attivazione lo genera solo Ristoword** dopo pagamento confermato (`syncLicenseFromPaidSession`).
 
 ---
 
-## 1) Avvio checkout (dopo registrazione utente su GS)
+## Sincronizzazione (tabella)
 
-**`POST {APP_URL}/api/checkout`**  
-`Content-Type: application/json`
+| Fase | Chi | Azione |
+|------|-----|--------|
+| 1 | GS | Registrazione utente / scelta `restaurantId` stabile (tenant) |
+| 2 | GS → RW | `POST /api/checkout` con `restaurantId`, `mode: "trial"`, `customerEmail` |
+| 3 | Cliente | Pagamento Stripe (reale o simulato lato vostro processo) |
+| 4 | GS → RW | `POST /api/checkout/mock/complete` `{ sessionId, outcome: "paid" }` **(mock)** oppure in prod solo webhook Stripe su RW |
+| 5 | RW | Scrive `licenses.json` + `data/tenants/{id}/license.json`, genera `activationCode`, `expiresAt` (14gg trial / 30gg subscription), email opzionale |
+| 6 | GS | Mostra `activationCode`, `ownerActivateUrl`, `expiresAt` (se `emailSent === false` **non** dire solo “controlla la posta”) |
+| 7 | Cliente | `/owner-activate` → password → onboarding owner |
 
-Body consigliato:
+---
+
+## Variabili Ristoword (`backend/.env`)
+
+| Variabile | Ruolo |
+|-----------|--------|
+| `APP_URL` | URL pubblico senza `/` finale — link assoluti nelle email (`https://app.tuodominio.it`) |
+| `SMTP_*` | Email con codice + link (opzionale ma consigliato in prod) |
+| `CORS_ALLOWED_ORIGINS` | Origini GS separate da virgola, es. `http://localhost:5173,https://gs.tuodominio.it` — **necessario** se il browser GS non è same-origin con l’API |
+| `SUPER_ADMIN_*` | Solo manutenzione, **non** per il flusso trial clienti |
+
+---
+
+## Variabili consigliate su GS
+
+| Variabile (esempio) | Valore |
+|---------------------|--------|
+| `VITE_RISTOWORD_API_URL` / `NEXT_PUBLIC_RISTOWORD_API_URL` | Base API: `http://localhost:3000` (dev) o `https://api.tuodominio.it` (prod) |
+
+Tutte le chiamate: `{API_URL}/api/checkout`, ecc.
+
+---
+
+## 1) Avvio checkout
+
+**`POST {API_URL}/api/checkout`** · `Content-Type: application/json`
 
 ```json
 {
@@ -36,34 +54,19 @@ Body consigliato:
 }
 ```
 
-- **`restaurantId`** (alias accettato: `tenantId`): stesso identificativo che userete per quel locale in tutto il flusso; deve essere **stabile** (non cambiare tra trial e abbonamento).
-- **`mode`**: `"trial"` → scadenza licenza 14 giorni; `"subscription"` → 30 giorni (default progetto).
-- **`customerEmail`**: accettati anche `email` o `adminEmail` — **importante** per l’email automatica da Ristoword.
-- **`customerName`** (opzionale): usato nell’email.
+- `restaurantId` (alias `tenantId`): **stabile** nel tempo.
+- `mode`: `"trial"` → scadenza **14 giorni**; `"subscription"` → **30 giorni** (logica in `stripeLicenseSync.service.js`).
+- `customerEmail`: anche `email` o `adminEmail`.
 
-**Risposta (esempio):**
+**Risposta:** `sessionId`, `restaurantId`, `mode`, `customerEmail`, …
 
-```json
-{
-  "ok": true,
-  "sessionId": "cs_...",
-  "status": "created",
-  "restaurantId": "ID_TENANT_UNIVOCO_GS",
-  "mode": "trial",
-  "customerEmail": "cliente@email.it"
-}
-```
-
-GS deve **salvare `sessionId`** per lo step successivo (o passarlo alla pagina di ritorno da Stripe).
+GS deve **conservare `sessionId`** fino al post-pagamento.
 
 ---
 
-## 2) Dopo pagamento Stripe (confermato)
+## 2) Post-pagamento (mock attuale)
 
-Oggi nel repo il checkout è integrato come **mock** lato Ristoword (stesso contratto API utile finché non agganciate Stripe reale sullo stesso endpoint webhook interno).
-
-**`POST {APP_URL}/api/checkout/mock/complete`**  
-`Content-Type: application/json`
+**`POST {API_URL}/api/checkout/mock/complete`**
 
 ```json
 {
@@ -72,51 +75,93 @@ Oggi nel repo il checkout è integrato come **mock** lato Ristoword (stesso cont
 }
 ```
 
-- Con **`outcome": "paid"`** il backend:
-  - elabora subito l’evento (come un webhook),
-  - crea/aggiorna la licenza in `licenses.json` con **`activationCode`** e **`expiresAt`**,
-  - aggiorna `data/tenants/{restaurantId}/license.json`,
-  - se SMTP ok → invia email al `customerEmail` della sessione con codice + link.
+**Risposta (campi da usare in UI):**
 
-**Risposta (campi utili per GS):**
+| Campo | Note |
+|-------|------|
+| `activationCode` | Da mostrare sempre se presente |
+| `ownerActivateUrl` | Link con `code` + `email` in query |
+| `expiresAt` | ISO scadenza licenza |
+| `restaurantId`, `plan`, `mode` | Display / supporto |
+| `emailSent` / `emailError` | Se errore SMTP, UI deve mostrare codice + link |
 
-| Campo | Uso su GS |
-|-------|-----------|
-| `activationCode` | Mostrare in pagina “Pagamento riuscito” (sempre presente se OK) |
-| `ownerActivateUrl` | Link diretto (già con `code` e `email` in query dove possibile) |
-| `emailSent` | `true` se l’email è partita |
-| `emailError` | Se non partita (es. SMTP non configurato): **obbligatorio** mostrare codice + link in pagina |
-| `nextStep` | Testo guida per UX |
-
-Quando passerete a **Stripe reale**, dovrete chiamare (o far chiamare a Stripe) l’equivalente elaborazione webhook che oggi è attaccata allo stesso `syncLicenseFromPaidSession` — il contratto verso GS resta: **codice + URL in risposta o via email**.
+In **produzione con Stripe reale**, questo endpoint mock può non essere esposto: l’equivalente è il **webhook** che chiama la stessa `syncLicenseFromPaidSession` (stesso file licenza / stesso codice).
 
 ---
 
-## 3) Lato cliente Ristoword (dopo GS)
+## 3) Verifica codice (QA / GS)
 
-1. Cliente apre **`/owner-activate`** (o `ownerActivateUrl` restituito dall’API).
-2. Inserisce **codice**, poi **email + password** (flusso già in UI).
-3. Redirect a onboarding owner (`/dev-access/dashboard` nel setup attuale): personale, permessi, licenza, ecc.
+- **`GET /api/licenses/validate?code=...`**
+- **`POST /api/licenses/verify-code`** body `{ "licenseCode": "..." }`
 
----
-
-## Checklist GS
-
-- [ ] Chiamare `POST /api/checkout` con `restaurantId` stabile + `customerEmail` + `mode: "trial"`.
-- [ ] Dopo successo Stripe, chiamare `POST /api/checkout/mock/complete` con `sessionId` e `outcome: "paid"` **oppure**, in produzione, fare in modo che il webhook Stripe su Ristoword esegua la stessa logica senza questo endpoint mock.
-- [ ] Pagina successo: mostrare **`activationCode`** e bottone/link a **`ownerActivateUrl`**; se `emailSent === false`, non dire “controlla la posta” senza alternative.
-- [ ] Opzionale: redirect browser a `ownerActivateUrl` automaticamente.
+Risposta ok: `{ "ok": true, "restaurantId": "...", "message": "..." }`.
 
 ---
 
-## File codice rilevanti (Ristoword)
+## 4) Esempio `fetch` da browser (GS)
 
-- `backend/src/stripe/checkout.service.js` — avvio sessione, completamento + webhook automatico
-- `backend/src/stripe/stripeLicenseSync.service.js` — generazione codice, scadenze, mirror tenant, trigger email
-- `backend/src/controllers/checkout.controller.js` — body/risposta HTTP
-- `backend/src/service/mail.service.js` — `sendRistowordActivationEmail`, `buildOwnerActivateLink`
-- `backend/public/owner-activate/` — UI attivazione owner
+```javascript
+const API = import.meta.env.VITE_RISTOWORD_API_URL || "http://localhost:3000";
+
+export async function startRistowordTrial({ restaurantId, email, name }) {
+  const r = await fetch(`${API}/api/checkout`, {
+    method: "POST",
+    credentials: "omit",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      restaurantId,
+      mode: "trial",
+      customerEmail: email,
+      customerName: name,
+    }),
+  });
+  return r.json();
+}
+
+export async function completeRistowordAfterPayment(sessionId) {
+  const r = await fetch(`${API}/api/checkout/mock/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, outcome: "paid" }),
+  });
+  return r.json();
+}
+```
+
+Configurate **`CORS_ALLOWED_ORIGINS`** sul backend con l’origine del dev server GS (es. `http://localhost:5173`).
 
 ---
 
-*Ultimo aggiornamento: integrazione trial GS documentata per passare allo sviluppo lato Gestione Semplificata.*
+## 5) Script verifica locale (Ristoword)
+
+Con server avviato (`npm start` in `backend/`):
+
+```bash
+chmod +x scripts/verify-gs-ristoword-flow.sh
+RISTOWORD_URL=http://localhost:3000 ./scripts/verify-gs-ristoword-flow.sh
+```
+
+Esegue checkout → mock complete → validate.
+
+---
+
+## 6) Cliente finale (Ristoword UI)
+
+1. `/owner-activate` (o `ownerActivateUrl`)
+2. `POST /api/licenses/complete-activation` (già usato dalla pagina)
+3. Redirect onboarding owner (`/dev-access/dashboard` nel setup attuale)
+
+---
+
+## File codice rilevanti
+
+- `backend/src/middleware/corsOptional.middleware.js` — CORS per GS
+- `backend/src/stripe/checkout.service.js` — sessione + post-pagamento
+- `backend/src/stripe/stripeLicenseSync.service.js` — codice, scadenza, email, mirror tenant
+- `backend/src/controllers/checkout.controller.js` — JSON HTTP
+- `backend/src/controllers/license.controller.js` — `validateCodeQuery`, verify, complete
+- `backend/scripts/verify-gs-ristoword-flow.sh` — smoke test
+
+---
+
+*Aggiorna questo file se cambiate endpoint o durata trial.*

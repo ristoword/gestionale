@@ -3,15 +3,18 @@ description: Integrazione trial Gestione Semplificata (GS) con backend Ristoword
 globs:
   - backend/src/stripe/**/*
   - backend/src/controllers/checkout.controller.js
+  - backend/src/middleware/corsOptional.middleware.js
   - backend/docs/INTEGRATION_GS_TRIAL.md
 ---
 
 # GS → Ristoword (trial)
 
-- **Fonte di verità**: `backend/docs/INTEGRATION_GS_TRIAL.md` (API, payload, checklist).
-- Il **codice attivazione** è generato da Ristoword in `stripeLicenseSync` dopo pagamento confermato; GS non inventa il codice.
-- Flusso API: `POST /api/checkout` (`restaurantId`, `mode: trial`, `customerEmail`) → dopo Stripe `POST /api/checkout/mock/complete` (`sessionId`, `outcome: paid`) finché non c’è webhook Stripe reale sulla stessa logica.
-- Risposta post-pagamento: usare `activationCode`, `ownerActivateUrl`, `emailSent` / `emailError` per UX su GS.
-- Cliente finale: `/owner-activate` poi onboarding owner.
+- **Fonte di verità**: `backend/docs/INTEGRATION_GS_TRIAL.md` (tabella sync, API, CORS, snippet fetch).
+- **Codice attivazione**: solo Ristoword (`stripeLicenseSync` dopo pagamento confermato).
+- API: `POST /api/checkout` → `POST /api/checkout/mock/complete` (mock) o webhook Stripe in prod.
+- Risposta `mock/complete`: anche `expiresAt`, `restaurantId`, `plan`, `mode`.
+- **CORS**: `CORS_ALLOWED_ORIGINS` su Ristoword se GS è su altra origine (es. `http://localhost:5173`).
+- Verifica codice: `GET /api/licenses/validate?code=` o `POST /verify-code`.
+- Script smoke: `backend/scripts/verify-gs-ristoword-flow.sh`.
 
-Quando si modifica il flusso pagamento/licenza, aggiornare anche `INTEGRATION_GS_TRIAL.md`.
+Aggiornare `INTEGRATION_GS_TRIAL.md` se si cambiano endpoint o durata trial.

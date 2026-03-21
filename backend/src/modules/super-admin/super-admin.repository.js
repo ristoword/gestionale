@@ -29,6 +29,7 @@ const AUTH_FILE = path.join(DATA_DIR, "auth.json");
 const SESSIONS_FILE = path.join(DATA_DIR, "sessions.json");
 const STRIPE_CONFIG_FILE = path.join(DATA_DIR, "stripe-config.json");
 const SUPPORT_FILE = path.join(DATA_DIR, "support-notes.json");
+const CONSOLE_CONTACTS_FILE = path.join(DATA_DIR, "console-contacts.json");
 
 let authCache = { state: null, atMs: 0 };
 let sessionsCache = { list: null, atMs: 0 };
@@ -187,6 +188,45 @@ async function appendSupportNote({ restaurantId, createdBy, note }) {
   const next = { notes: list.slice(-200) };
   writeSupportRaw(next);
   return entry;
+}
+
+function readConsoleContactsRaw() {
+  return safeReadJson(CONSOLE_CONTACTS_FILE, { contacts: [] });
+}
+
+function writeConsoleContactsRaw(next) {
+  ensureDir();
+  atomicWriteJson(CONSOLE_CONTACTS_FILE, next);
+}
+
+async function listConsoleContacts() {
+  const raw = readConsoleContactsRaw();
+  const list = Array.isArray(raw.contacts) ? raw.contacts : [];
+  return list.slice().reverse();
+}
+
+const CONSOLE_CATEGORIES = new Set(["assistenza", "info", "amministrazione", "altro"]);
+
+async function appendConsoleContact({ email, category, note }) {
+  const em = String(email || "").trim().toLowerCase();
+  if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+    return { ok: false, error: "email_non_valida" };
+  }
+  const cat = CONSOLE_CATEGORIES.has(String(category || "").toLowerCase())
+    ? String(category).toLowerCase()
+    : "altro";
+  const raw = readConsoleContactsRaw();
+  const list = Array.isArray(raw.contacts) ? raw.contacts : [];
+  const entry = {
+    id: crypto.randomUUID ? crypto.randomUUID() : sha256Hex(nowIso() + Math.random()),
+    email: em,
+    category: cat,
+    note: String(note || "").slice(0, 1000),
+    createdAt: nowIso(),
+  };
+  list.push(entry);
+  writeConsoleContactsRaw({ contacts: list.slice(-500) });
+  return { ok: true, contact: entry };
 }
 
 async function verifySessionToken(token) {
@@ -348,5 +388,8 @@ module.exports = {
   listStripeMaskedConfig,
   // Support
   appendSupportNote,
+  // Console contatti (email rubrica interna SA)
+  listConsoleContacts,
+  appendConsoleContact,
 };
 

@@ -1,4 +1,7 @@
-// Owner activation – two-step flow: verify code → create password
+// 1) GS validate — 2) POST /api/owner/complete-activation (sessione Ristoword)
+
+const GS_VALIDATE_URL = "https://www.gestionesemplificata.com/api/licenses/validate";
+
 const step1 = document.getElementById("oa-step1");
 const step2 = document.getElementById("oa-step2");
 const messageBox = document.getElementById("oa-message");
@@ -12,6 +15,7 @@ const inputConfirm = document.getElementById("oa-confirm");
 const btnVerify = document.getElementById("oa-btn-verify");
 const btnCreate = document.getElementById("oa-btn-create");
 const linkBack = document.getElementById("oa-back");
+const linkLoginWrap = document.getElementById("oa-link-login-wrap");
 
 function showMessage(text, type = "") {
   messageBox.textContent = text || "";
@@ -24,42 +28,11 @@ function getInitialLicenseCode() {
   return params.get("licenseCode") || params.get("code") || "";
 }
 
-function getInitialEmail() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("email") || "";
-}
-
-// Step 1: verifica codice
-async function verifyCode(licenseCode) {
-  const res = await fetch("/api/licenses/verify-code", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ licenseCode }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) {
-    const status = (data && data.status) || "error";
-    const msg = (data && data.message) || "Errore durante la verifica.";
-    return { ok: false, status, message: msg };
-  }
-  return data;
-}
-
-// Step 2: completa attivazione
-async function completeActivation(payload) {
-  const res = await fetch("/api/licenses/complete-activation", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) {
-    const msg = (data && data.message) || "Errore durante l'attivazione.";
-    return { ok: false, message: msg };
-  }
-  return data;
+function gsSaysValid(data) {
+  if (!data || typeof data !== "object") return false;
+  if (data.data && data.data.valid === true) return true;
+  if (data.valid === true) return true;
+  return false;
 }
 
 function goToStep2(licenseCode) {
@@ -67,6 +40,7 @@ function goToStep2(licenseCode) {
   inputLicenseHidden.value = licenseCode;
   step1.style.display = "none";
   step2.style.display = "block";
+  if (linkLoginWrap) linkLoginWrap.style.display = "none";
   inputEmail.focus();
 }
 
@@ -74,19 +48,21 @@ function goToStep1() {
   showMessage("");
   step2.style.display = "none";
   step1.style.display = "block";
+  if (linkLoginWrap) linkLoginWrap.style.display = "";
   inputLicense.focus();
 }
 
 inputLicense.value = getInitialLicenseCode();
-inputEmail.value = getInitialEmail();
+if (getInitialEmail()) inputEmail.value = getInitialEmail();
+
+function getInitialEmail() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("email") || "";
+}
 
 formVerify.addEventListener("submit", async (e) => {
   e.preventDefault();
-  // Normalizza spazi invisibili / doppi spazi (stesso criterio del backend)
-  const licenseCode = String(inputLicense.value || "")
-    .trim()
-    .replace(/[\u00A0\u2000-\u200B\uFEFF]/g, " ")
-    .replace(/\s+/g, " ");
+  const licenseCode = String(inputLicense.value || "").trim();
   if (!licenseCode) {
     showMessage("Inserisci un codice di attivazione valido.", "error");
     return;
@@ -96,29 +72,27 @@ formVerify.addEventListener("submit", async (e) => {
   showMessage("Verifica codice in corso...");
 
   try {
-    const result = await verifyCode(licenseCode);
+    const res = await fetch(GS_VALIDATE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        code: licenseCode.trim(),
+      }),
+    });
 
-    if (!result.ok) {
-      switch (result.status) {
-        case "invalid":
-          showMessage("Codice non trovato.", "error");
-          break;
-        case "used":
-          showMessage("Licenza già utilizzata.", "error");
-          break;
-        case "expired":
-          showMessage("Licenza scaduta.", "error");
-          break;
-        default:
-          showMessage(result.message || "Codice non valido.", "error");
-      }
-      return;
+    const data = await res.json().catch(() => ({}));
+    console.log("RISPOSTA GS:", data);
+
+    if (gsSaysValid(data)) {
+      showMessage("Codice valido. Crea la tua password per completare l'attivazione.", "success");
+      goToStep2(licenseCode);
+    } else {
+      showMessage("Codice non valido.", "error");
     }
-
-    showMessage("Codice valido. Crea la tua password per completare l'attivazione.", "success");
-    goToStep2(licenseCode);
   } catch (err) {
-    console.error("Errore verify-code:", err);
+    console.error(err);
     showMessage("Errore di connessione durante la verifica.", "error");
   } finally {
     btnVerify.disabled = false;
@@ -153,25 +127,31 @@ formPassword.addEventListener("submit", async (e) => {
   showMessage("Creazione accesso in corso...");
 
   try {
-    const result = await completeActivation({
-      licenseCode,
-      email,
-      password,
-      confirmPassword,
+    const res = await fetch("/api/owner/complete-activation", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: licenseCode.trim(),
+        email,
+        password,
+      }),
     });
+    const data = await res.json().catch(() => ({}));
+    console.log("RISPOSTA RW:", data);
 
-    if (!result.ok) {
-      showMessage(result.message || "Errore durante l'attivazione.", "error");
+    if (!res.ok || !data.success) {
+      showMessage(data.message || "Errore durante l'attivazione.", "error");
       return;
     }
 
     showMessage("Attivazione completata. Reindirizzamento...", "success");
-    const redirectTo = result.redirectTo || "/dev-access/dashboard";
+    const redirectTo = data.redirectTo || "/dev-access/dashboard";
     setTimeout(() => {
       window.location.href = redirectTo;
-    }, 800);
+    }, 600);
   } catch (err) {
-    console.error("Errore complete-activation:", err);
+    console.error(err);
     showMessage("Errore di connessione durante l'attivazione.", "error");
   } finally {
     btnCreate.disabled = false;

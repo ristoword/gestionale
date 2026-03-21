@@ -14,6 +14,10 @@ const stripeMockRepository = require("../../stripe/stripeMock.repository");
 
 const maintenanceService = require("../system/maintenance.service");
 const superAdminRepository = require("./super-admin.repository");
+const gsCodesMirror = require("../../repositories/gsCodesMirror.repository");
+const bcrypt = require("bcrypt");
+
+const BCRYPT_USER_ROUNDS = 10;
 
 function normalizeTenantId(id) {
   const rid = id == null ? "" : String(id).trim();
@@ -182,7 +186,17 @@ async function listCrossTenantCustomers({ q } = {}) {
         const full = `${c.name || ""} ${c.surname || ""}`.toLowerCase();
         const phone = String(c.phone || "");
         const email = String(c.email || "");
-        if (!full.includes(query) && !phone.includes(query) && !email.includes(query)) continue;
+        const nat = String(c.nationality || c.nazione || "");
+        const vat = String(c.vat || c.partitaIva || "");
+        if (
+          !full.includes(query) &&
+          !phone.includes(query) &&
+          !email.includes(query) &&
+          !nat.includes(query) &&
+          !vat.includes(query)
+        ) {
+          continue;
+        }
       }
       out.push({
         restaurantId: tid,
@@ -191,6 +205,10 @@ async function listCrossTenantCustomers({ q } = {}) {
         surname: c.surname || "",
         phone: c.phone || "",
         email: c.email || "",
+        nationality: c.nationality || c.nazione || "",
+        vat: c.vat || c.partitaIva || c.piva || c.partita_iva || "",
+        fiscalCode: c.fiscalCode || c.codiceFiscale || c.cf || "",
+        address: c.address || c.indirizzo || "",
         category: c.category || "normal",
         notes: c.notes || "",
         createdAt: c.createdAt || null,
@@ -601,6 +619,86 @@ async function apiGetPayments() {
   };
 }
 
+function randomPlainPassword(len = 18) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!#%&*";
+  const n = Math.min(Math.max(parseInt(len, 10) || 18, 12), 64);
+  const buf = crypto.randomBytes(n);
+  let s = "";
+  for (let i = 0; i < n; i += 1) s += chars[buf[i] % chars.length];
+  return s;
+}
+
+function sanitizeUserForConsole(u) {
+  if (!u || typeof u !== "object") return null;
+  const { password: _pw, ...rest } = u;
+  return rest;
+}
+
+async function apiGetGsMirrorConsole() {
+  const state = gsCodesMirror.readState();
+  const stats = gsCodesMirror.computeStats();
+  const codes = (state.codes || []).slice().sort((a, b) => {
+    const ta = new Date(b.rwSyncedAt || b.activatedAt || 0).getTime();
+    const tb = new Date(a.rwSyncedAt || a.activatedAt || 0).getTime();
+    return ta - tb;
+  });
+  return {
+    ok: true,
+    stats,
+    importedAt: state.importedAt,
+    lastSyncFromGsAt: state.lastSyncFromGsAt,
+    lastNotifyToGsAt: state.lastNotifyToGsAt,
+    codes,
+  };
+}
+
+async function apiPostGenerateGsCodes({ count }) {
+  const n = Number(count);
+  if (!Number.isFinite(n) || n < 1 || n > 25) {
+    return { ok: false, error: "count_invalido", message: "Usa un numero tra 1 e 25" };
+  }
+  const { added, count: gen } = gsCodesMirror.generateLocalCodes(Math.floor(n));
+  return { ok: true, generated: gen, codes: added, stats: gsCodesMirror.computeStats() };
+}
+
+async function apiGetConsoleContacts() {
+  const contacts = await superAdminRepository.listConsoleContacts();
+  return { ok: true, contacts };
+}
+
+async function apiPostConsoleContact(body = {}) {
+  return superAdminRepository.appendConsoleContact({
+    email: body.email,
+    category: body.category,
+    note: body.note,
+  });
+}
+
+async function apiGetConsoleUsers() {
+  const users = await usersRepository.readUsers();
+  const list = Array.isArray(users) ? users : [];
+  const safe = list.map((u) => sanitizeUserForConsole(u)).filter(Boolean);
+  return { ok: true, users: safe };
+}
+
+async function apiPostResetUserPassword({ userId, forceMustChange } = {}) {
+  const id = String(userId || "").trim();
+  if (!id) return { ok: false, error: "userId_obbligatorio" };
+  const user = usersRepository.findById(id);
+  if (!user) return { ok: false, error: "utente_non_trovato" };
+  const plain = randomPlainPassword(18);
+  const hash = await bcrypt.hash(plain, BCRYPT_USER_ROUNDS);
+  const mustChange = forceMustChange !== false;
+  usersRepository.setUserPassword(id, hash, { mustChangePassword: mustChange });
+  return {
+    ok: true,
+    userId: id,
+    username: user.username,
+    temporaryPassword: plain,
+    mustChangePassword: mustChange,
+  };
+}
+
 module.exports = {
   // Dashboard data
   getSystemStatusForAdmin,
@@ -624,5 +722,13 @@ module.exports = {
   apiBlockCustomer,
   apiUnblockCustomer,
   apiForceLogoutCustomer,
+
+  // Console avanzata (codici mirror, contatti, utenti)
+  apiGetGsMirrorConsole,
+  apiPostGenerateGsCodes,
+  apiGetConsoleContacts,
+  apiPostConsoleContact,
+  apiGetConsoleUsers,
+  apiPostResetUserPassword,
 };
 

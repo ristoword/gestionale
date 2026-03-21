@@ -24,24 +24,19 @@
 
       <div id="oa-message" class="login-message"></div>
 
-      <!-- Step 1: Verifica codice -->
       <div id="oa-step1">
         <form id="oa-form-verify" class="login-form">
           <div class="field">
             <label for="oa-license">Codice di attivazione</label>
-            <input type="text" id="oa-license" placeholder="Es. BAIA-VERDE-XXXX-YYYY" required autocomplete="off" spellcheck="false" />
+            <input type="text" id="oa-license" placeholder="Codice licenza" required autocomplete="off" spellcheck="false" />
             <p class="subtitle" style="margin-top:8px;font-size:12px;opacity:0.85;line-height:1.4;">
-              Inserisci il codice <strong>completo</strong> come nell’email o nella pagina di conferma pagamento (nessuno spazio in più all’inizio o fine).
-              Se hai appena pagato, attendi qualche secondo e riprova oppure usa il link ricevuto per email.
+              Verifica tramite Gestione Semplificata (POST JSON).
             </p>
           </div>
-          <button type="submit" class="btn-login" id="oa-btn-verify">
-            Verifica codice
-          </button>
+          <button type="submit" class="btn-login" id="oa-btn-verify">Verifica codice</button>
         </form>
       </div>
 
-      <!-- Step 2: Crea password owner -->
       <div id="oa-step2" style="display:none;">
         <form id="oa-form-password" class="login-form">
           <input type="hidden" id="oa-license-hidden" />
@@ -57,14 +52,16 @@
             <label for="oa-confirm">Conferma password</label>
             <input type="password" id="oa-confirm" placeholder="Ripeti password" required minlength="8" autocomplete="new-password" />
           </div>
-          <button type="submit" class="btn-login" id="oa-btn-create">
-            Crea accesso owner
-          </button>
+          <button type="submit" class="btn-login" id="oa-btn-create">Crea accesso owner</button>
         </form>
         <p class="oa-back-link">
           <a href="#" id="oa-back">← Cambia codice</a>
         </p>
       </div>
+
+      <p class="oa-back-link" id="oa-link-login-wrap">
+        <a href="/login/login.html">← Torna al login</a>
+      </p>
     </div>
   </div>
 

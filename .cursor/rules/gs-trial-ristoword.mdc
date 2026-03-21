@@ -3,20 +3,26 @@ description: Integrazione Gestione Semplificata (GS) ↔ Ristoword — Stripe, t
 globs:
   - backend/src/stripe/**/*
   - backend/src/controllers/checkout.controller.js
+  - backend/src/controllers/owner.controller.js
   - backend/src/controllers/license.controller.js
   - backend/src/middleware/corsOptional.middleware.js
   - backend/docs/INTEGRATION_GS_TRIAL.md
+  - backend/docs/SESSION_HANDOFF.md
+  - backend/docs/GS_BATCH_CODES.md
+  - backend/src/repositories/gsCodesMirror.repository.js
 ---
 
 # GS ↔ Ristoword — regole per l’AI
 
+- **Ripresa sessione**: `backend/docs/SESSION_HANDOFF.md` (flusso owner GS → `/api/owner/complete-activation`, file toccati).
 - **Documento unico**: `backend/docs/INTEGRATION_GS_TRIAL.md` (tabella API, env, esempi fetch, **Memorandum operativo** chi fa cosa).
 - **Chi genera il codice**: solo **Ristoword** (`syncLicenseFromPaidSession` in `stripeLicenseSync.service.js`) dopo evento **pagato** (webhook o `mock/complete`).
 - **Stripe**: incassa il cliente; RW riceve solo evento/sessione pagata, non i dati carta.
-- **Permessi “owner”**: `POST /api/licenses/complete-activation` + pagine `/owner-activate`; staff successivi via RW (non GS) salvo integrazioni dedicate.
+- **Permessi “owner”**: `POST /api/owner/complete-activation` (dopo validate GS) + `/owner-activate`; **non** più `/api/licenses/*` esposto.
 - **Flusso API**: `POST /api/checkout` → conservare `sessionId` → `POST /api/checkout/mock/complete` (dev) **oppure** webhook in prod.
+- **Validazione codice (UI RW):** solo `POST https://www.gestionesemplificata.com/api/licenses/validate` con `{ "code": "..." }` — **nessun** `/api/licenses` su Ristoword (rimosso).
 - **CORS**: `CORS_ALLOWED_ORIGINS` sul backend RW per origine GS (browser). Header consentiti include `Authorization`, `X-Onboarding-Key` (vedi `corsOptional.middleware.js`).
-- **Middleware**: `/api/checkout`, `/api/stripe`, `/api/licenses` sono già esclusi da blocchi licenza/setup — non rompere questi path.
+- **Middleware `requireLicense`:** non legge file locali; non bloccare di nuovo l’app con `license.json`.
 - **Smoke test**: `backend/scripts/verify-gs-ristoword-flow.sh`.
 
 Modifiche a trial/checkout/licenza: aggiornare sempre `INTEGRATION_GS_TRIAL.md` e questo rule se cambiano contratti.

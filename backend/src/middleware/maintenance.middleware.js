@@ -14,6 +14,7 @@ function isSuperAdminPath(pathname) {
     pathname === "/dashboard/super-admin-login" ||
     pathname === "/super-admin-dashboard" ||
     pathname === "/super-admin-change-password" ||
+    pathname === "/super-admin-console" ||
     pathname.startsWith("/super-admin/js") ||
     pathname.startsWith("/super-admin/") ||
     pathname.startsWith("/api/super-admin")

@@ -25,7 +25,7 @@ function shouldSkip(pathname) {
   if (p.startsWith("/change-password")) return true;
   if (p.startsWith("/setup")) return true;
   if (p.startsWith("/license")) return true;
-  if (p.startsWith("/api/setup") || p.startsWith("/api/checkout") || p.startsWith("/api/stripe")) return true;
+  if (p.startsWith("/api/setup") || p.startsWith("/api/checkout") || p.startsWith("/api/stripe") || p.startsWith("/api/owner")) return true;
   return false;
 }
 

@@ -1,4 +1,6 @@
-// License activation page
+// Pagina licenza — validazione solo tramite API Gestione Semplificata (POST JSON).
+const GS_VALIDATE_URL = "https://www.gestionesemplificata.com/api/licenses/validate";
+
 const form = document.getElementById("license-form");
 const messageEl = document.getElementById("license-message");
 const btnActivate = document.getElementById("btn-activate");
@@ -15,37 +17,40 @@ if (params.get("expired") === "1") {
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const restaurantName = document.getElementById("restaurantName").value.trim();
   const licenseCode = document.getElementById("licenseCode").value.trim();
 
-  if (!restaurantName || !licenseCode) {
-    showMessage("Compila tutti i campi.", "error");
+  if (!licenseCode) {
+    showMessage("Inserisci il codice licenza.", "error");
     return;
   }
 
   btnActivate.disabled = true;
-  showMessage("Attivazione in corso...");
+  showMessage("Verifica in corso...");
 
   try {
-    const res = await fetch("/api/licenses/activate", {
+    const res = await fetch(GS_VALIDATE_URL, {
       method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: licenseCode, restaurantName }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        code: licenseCode.trim(),
+      }),
     });
     const data = await res.json().catch(() => ({}));
+    console.log("RISPOSTA GS:", data);
 
-    if (!res.ok) {
-      showMessage(data.error || "Attivazione fallita.", "error");
+    if (data.valid) {
+      showMessage("Accesso consentito. Reindirizzamento al login...", "success");
+      setTimeout(() => {
+        window.location.href = "/login/login.html";
+      }, 1500);
+    } else {
+      showMessage("Codice non valido.", "error");
       btnActivate.disabled = false;
-      return;
     }
-
-    showMessage("Licenza attivata. Reindirizzamento al login...", "success");
-    setTimeout(() => {
-      window.location.href = "/login/login.html";
-    }, 1500);
   } catch (err) {
+    console.error(err);
     showMessage("Errore di rete. Riprova.", "error");
     btnActivate.disabled = false;
   }

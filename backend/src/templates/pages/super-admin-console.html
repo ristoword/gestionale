@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Super Admin — Console</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      :root {
+        --bg: #0b0f19;
+        --card: #111827;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --primary: #3b82f6;
+        --border: rgba(255, 255, 255, 0.12);
+        --danger: #ef4444;
+        --ok: #22c55e;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 22px auto;
+        padding: 0 16px 48px;
+      }
+      .topbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .btn {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        border-radius: 12px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-weight: 800;
+        font-size: 12px;
+      }
+      .btn.primary {
+        background: rgba(59, 130, 246, 0.25);
+        border-color: rgba(59, 130, 246, 0.6);
+      }
+      .btn.small {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .tab {
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        cursor: pointer;
+        font-weight: 800;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .tab.active {
+        color: var(--text);
+        border-color: rgba(59, 130, 246, 0.55);
+        background: rgba(59, 130, 246, 0.15);
+      }
+      .panel {
+        display: none;
+      }
+      .panel.active {
+        display: block;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+      .kpi {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .kpi div {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .kpi .k {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .kpi .v {
+        font-weight: 900;
+        font-size: 18px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th,
+      td {
+        border-top: 1px solid var(--border);
+        padding: 8px 6px;
+        text-align: left;
+        vertical-align: top;
+        color: var(--muted);
+      }
+      th {
+        color: var(--text);
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+        outline: none;
+      }
+      label {
+        display: block;
+        margin: 10px 0 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+        padding: 16px;
+      }
+      .modal-backdrop.open {
+        display: flex;
+      }
+      .modal {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        max-width: 520px;
+        width: 100%;
+        max-height: 90vh;
+        overflow: auto;
+        padding: 18px;
+      }
+      .modal h3 {
+        margin: 0 0 12px;
+        font-size: 16px;
+      }
+      .field-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .field-row:last-child {
+        border-bottom: none;
+      }
+      .field-label {
+        font-size: 12px;
+        color: var(--muted);
+        min-width: 110px;
+      }
+      .field-val {
+        font-size: 13px;
+        word-break: break-word;
+        text-align: right;
+        flex: 1;
+      }
+      .hidden-val {
+        letter-spacing: 2px;
+        color: var(--muted);
+      }
+      .pill {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.06);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      a.nav {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <div>
+          <div style="font-weight: 950; font-size: 18px">Console Super Admin</div>
+          <div class="muted">URL privata — non linkata nel sito pubblico. Solo cookie super-admin.</div>
+        </div>
+        <div class="row">
+          <a class="nav" href="/super-admin-dashboard">← Dashboard SA</a>
+          <button class="btn" type="button" id="sa-console-logout">Logout</button>
+        </div>
+      </div>
+
+      <div class="tabs" id="sa-console-tabs">
+        <button type="button" class="tab active" data-panel="codes">Codici trial (mirror GS)</button>
+        <button type="button" class="tab" data-panel="contacts">Email / rubrica</button>
+        <button type="button" class="tab" data-panel="users">Utenti registrati</button>
+        <button type="button" class="tab" data-panel="customers">Clienti (schede)</button>
+      </div>
+
+      <section class="panel active" id="panel-codes">
+        <div class="card">
+          <h2>Statistiche codici</h2>
+          <div class="kpi" id="gs-kpi"></div>
+          <p class="muted" id="gs-meta"></p>
+          <div class="row" style="margin-top: 12px">
+            <button type="button" class="btn primary" id="btn-gen-1">Genera 1 codice</button>
+            <button type="button" class="btn primary" id="btn-gen-25">Genera 25 codici</button>
+            <button type="button" class="btn" id="btn-refresh-codes">Aggiorna</button>
+          </div>
+          <p class="muted" id="gs-gen-msg" style="margin-top: 10px"></p>
+        </div>
+        <div class="card">
+          <h2>Elenco codici (generati / disponibili / usati)</h2>
+          <p class="muted">Stato: <strong>available</strong> = rimasti; <strong>used</strong> = usati. Altri stati come da mirror GS.</p>
+          <div style="overflow-x: auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Codice</th>
+                  <th>Stato</th>
+                  <th>Email</th>
+                  <th>Fonte</th>
+                  <th>Agg.</th>
+                </tr>
+              </thead>
+              <tbody id="gs-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-contacts">
+        <div class="card">
+          <h2>Aggiungi email (assistenza, info, amministrazione…)</h2>
+          <label>Email</label>
+          <input type="email" id="contact-email" placeholder="nome@dominio.it" />
+          <label>Categoria</label>
+          <select id="contact-cat">
+            <option value="assistenza">Assistenza</option>
+            <option value="info">Info</option>
+            <option value="amministrazione">Amministrazione</option>
+            <option value="altro">Altro</option>
+          </select>
+          <label>Note (opzionale)</label>
+          <textarea id="contact-note" rows="2" placeholder="Riferimento interno…"></textarea>
+          <div class="row" style="margin-top: 12px">
+            <button type="button" class="btn primary" id="btn-contact-add">Salva contatto</button>
+          </div>
+          <p class="muted" id="contact-msg"></p>
+        </div>
+        <div class="card">
+          <h2>Contatti salvati</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Categoria</th>
+                <th>Nota</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody id="contacts-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-users">
+        <div class="card">
+          <h2>Account utenti</h2>
+          <p class="muted">Reset password: viene generata una password temporanea mostrata una sola volta. L’utente dovrà cambiarla al login se richiesto.</p>
+          <div class="row" style="margin-bottom: 10px">
+            <button type="button" class="btn" id="btn-refresh-users">Aggiorna elenco</button>
+          </div>
+          <div style="overflow-x: auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Username</th>
+                  <th>Ruolo</th>
+                  <th>Tenant</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody id="users-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-customers">
+        <div class="card">
+          <h2>Clienti (customers.json cross-tenant)</h2>
+          <label>Cerca</label>
+          <input type="search" id="cust-q" placeholder="nome, email, telefono…" />
+          <div class="row" style="margin-top: 10px">
+            <button type="button" class="btn primary" id="btn-cust-search">Cerca</button>
+            <button type="button" class="btn" id="btn-cust-refresh">Tutti</button>
+          </div>
+          <div style="overflow-x: auto; margin-top: 14px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Dettagli</th>
+                </tr>
+              </thead>
+              <tbody id="cust-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="modal-user" aria-hidden="true">
+      <div class="modal">
+        <h3 id="modal-user-title">Utente</h3>
+        <div id="modal-user-fields"></div>
+        <div class="row" style="margin-top: 14px; justify-content: flex-end">
+          <button type="button" class="btn" id="modal-user-close">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="modal-cust" aria-hidden="true">
+      <div class="modal">
+        <h3 id="modal-cust-title">Cliente</h3>
+        <div id="modal-cust-fields"></div>
+        <div class="row" style="margin-top: 14px; justify-content: flex-end">
+          <button type="button" class="btn" id="modal-cust-close">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="modal-pwd" aria-hidden="true">
+      <div class="modal">
+        <h3>Password temporanea</h3>
+        <p class="muted">Copia e comunica al cliente in modo sicuro. Non sarà più mostrata.</p>
+        <p class="mono" id="modal-pwd-text" style="font-size: 15px; word-break: break-all"></p>
+        <div class="row" style="margin-top: 14px; justify-content: flex-end">
+          <button type="button" class="btn primary" id="modal-pwd-copy">Copia</button>
+          <button type="button" class="btn" id="modal-pwd-close">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/super-admin/js/super-admin-console.js"></script>
+  </body>
+</html>

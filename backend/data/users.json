@@ -81,6 +81,78 @@
       "is_active": true,
       "restaurantId": "baia-verde",
       "createdAt": "2026-03-16T00:00:00.000Z"
+    },
+    {
+      "id": "11",
+      "name": "Paolo",
+      "surname": "Basile",
+      "username": "Direttore",
+      "password": "$2b$10$W/rLEpgd2Szv2tjbLRTHXu2toCAfia51zop0gQNwo56W2zk5oumSq",
+      "role": "supervisor",
+      "is_active": true,
+      "restaurantId": "default",
+      "mustChangePassword": true,
+      "leaveBalances": {
+        "ferieMaturate": 0,
+        "ferieUsate": 0,
+        "permessiUsati": 0,
+        "malattiaGiorni": 0
+      },
+      "createdAt": "2026-03-20T23:14:16.178Z"
+    },
+    {
+      "id": "12",
+      "name": "Paolo",
+      "surname": "Basile F",
+      "username": "Chef",
+      "password": "$2b$10$a2dqzNMiKF6QCwpV0VDwfu.B5Et.mBJjJ/jZ4cF/whFws.o1eAHtG",
+      "role": "cucina",
+      "is_active": true,
+      "restaurantId": "default",
+      "mustChangePassword": true,
+      "leaveBalances": {
+        "ferieMaturate": 0,
+        "ferieUsate": 0,
+        "permessiUsati": 0,
+        "malattiaGiorni": 0
+      },
+      "createdAt": "2026-03-20T23:15:18.003Z"
+    },
+    {
+      "id": "13",
+      "name": "Paolo E",
+      "surname": "Basile E",
+      "username": "Manager Cassa",
+      "password": "$2b$10$40x.zNCqQDUBL3m.C51hL.ExjD1pkWYfN9UytM12Xc31irQh8RgHG",
+      "role": "cassa",
+      "is_active": true,
+      "restaurantId": "default",
+      "mustChangePassword": true,
+      "leaveBalances": {
+        "ferieMaturate": 0,
+        "ferieUsate": 0,
+        "permessiUsati": 0,
+        "malattiaGiorni": 0
+      },
+      "createdAt": "2026-03-20T23:16:06.477Z"
+    },
+    {
+      "id": "14",
+      "name": "Paolo C",
+      "surname": "Basile y",
+      "username": "Cash_manager",
+      "password": "$2b$10$gwfnbJaJ6.X3.KTsuDdei.qT6f1uFbfwgHCm6HdE7jW9pKJQTFkT6",
+      "role": "cassa",
+      "is_active": true,
+      "restaurantId": "default",
+      "mustChangePassword": true,
+      "leaveBalances": {
+        "ferieMaturate": 0,
+        "ferieUsate": 0,
+        "permessiUsati": 0,
+        "malattiaGiorni": 0
+      },
+      "createdAt": "2026-03-20T23:18:50.347Z"
     }
   ]
 }

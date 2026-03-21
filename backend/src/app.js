@@ -211,13 +211,7 @@ try {
   console.warn("menu.routes non trovato:", e.message);
 }
 
-// LICENSE (no auth – for activation flow)
-try {
-  const licenseRouter = require("./routes/license.routes");
-  app.use("/api/licenses", licenseRouter);
-} catch (e) {
-  console.warn("license.routes non trovato (ok se non ancora creato)");
-}
+// LICENSE API Ristoword rimossa: la validazione licenza avviene solo via API Gestione Semplificata (vedi owner-activate).
 
 // SETUP (no auth – for first-time configuration)
 try {
@@ -233,6 +227,14 @@ try {
   app.use("/api/checkout", checkoutRouter);
 } catch (e) {
   console.warn("checkout.routes non trovato (ok se non ancora creato)");
+}
+
+// OWNER — attivazione dopo validazione GS (POST /api/owner/complete-activation)
+try {
+  const ownerRoutes = require("./routes/owner.routes");
+  app.use("/api/owner", ownerRoutes);
+} catch (e) {
+  console.warn("owner.routes non trovato (ok se non ancora creato):", e.message);
 }
 
 // STRIPE WEBHOOK (mock)

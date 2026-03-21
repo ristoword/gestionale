@@ -34,8 +34,9 @@ if [ -z "$CODE" ]; then
   exit 1
 fi
 
-echo "3) GET /api/licenses/validate?code=..."
-VAL=$(curl -sS -G "$BASE/api/licenses/validate" --data-urlencode "code=$CODE")
-echo "$VAL"
+echo "3) POST Gestione Semplificata /api/licenses/validate (stesso codice)..."
+curl -sS -X POST "https://www.gestionesemplificata.com/api/licenses/validate" \
+  -H "Content-Type: application/json" \
+  -d "{\"code\":\"$CODE\"}" || true
 echo ""
-echo "OK: flusso GS ↔ Ristoword (mock) completato."
+echo "OK: checkout mock RW completato; validazione codice solo su GS."

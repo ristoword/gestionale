@@ -102,6 +102,7 @@ async function createUser(userData) {
     name: userData.name != null ? String(userData.name).trim() : "",
     surname: userData.surname != null ? String(userData.surname).trim() : "",
     username: userData.username,
+    email: userData.email != null ? String(userData.email).trim() : undefined,
     password: userData.password,
     role: userData.role || "staff",
     is_active: userData.is_active !== false,
@@ -141,12 +142,16 @@ function findOwnerByRestaurantId(restaurantId) {
   return readUsers().find((u) => u.role === "owner" && String(u.restaurantId || "").trim() === rid) || null;
 }
 
-function setUserPassword(userId, hashedPassword) {
+function setUserPassword(userId, hashedPassword, opts = {}) {
   const users = readUsers();
   const idx = users.findIndex((x) => String(x.id) === String(userId));
   if (idx === -1) return false;
   users[idx].password = hashedPassword;
-  users[idx].mustChangePassword = false;
+  if (opts && Object.prototype.hasOwnProperty.call(opts, "mustChangePassword")) {
+    users[idx].mustChangePassword = opts.mustChangePassword === true;
+  } else {
+    users[idx].mustChangePassword = false;
+  }
   writeUsers(users);
   return true;
 }

@@ -35,6 +35,13 @@ exports.getSuperAdminDashboardPage = (req, res) => {
   res.sendFile(htmlPath("super-admin-dashboard.html"));
 };
 
+/** Console avanzata (solo super-admin): URL non linkata pubblicamente. */
+exports.getSuperAdminConsolePage = (req, res) => {
+  const mustChange = !!req.superAdmin?.mustChangePassword;
+  if (mustChange) return res.redirect("/super-admin-change-password");
+  res.sendFile(htmlPath("super-admin-console.html"));
+};
+
 exports.apiLogin = async (req, res) => {
   const body = req.body || {};
   const username = body.username;
@@ -180,6 +187,45 @@ exports.apiLicenseMarkTrusted = async (req, res) => {
 
 exports.apiGetPayments = async (req, res) => {
   const result = await superAdminService.apiGetPayments();
+  return res.json(result);
+};
+
+exports.apiGetGsMirrorConsole = async (req, res) => {
+  const result = await superAdminService.apiGetGsMirrorConsole();
+  return res.json(result);
+};
+
+exports.apiPostGenerateGsCodes = async (req, res) => {
+  const body = req.body || {};
+  const result = await superAdminService.apiPostGenerateGsCodes({ count: body.count });
+  if (!result.ok) return res.status(400).json(result);
+  return res.json(result);
+};
+
+exports.apiGetConsoleContacts = async (req, res) => {
+  const result = await superAdminService.apiGetConsoleContacts();
+  return res.json(result);
+};
+
+exports.apiPostConsoleContact = async (req, res) => {
+  const body = req.body || {};
+  const result = await superAdminService.apiPostConsoleContact(body);
+  if (!result.ok) return res.status(400).json(result);
+  return res.json(result);
+};
+
+exports.apiGetConsoleUsers = async (req, res) => {
+  const result = await superAdminService.apiGetConsoleUsers();
+  return res.json(result);
+};
+
+exports.apiPostResetUserPassword = async (req, res) => {
+  const body = req.body || {};
+  const result = await superAdminService.apiPostResetUserPassword({
+    userId: body.userId,
+    forceMustChange: body.forceMustChange,
+  });
+  if (!result.ok) return res.status(400).json(result);
   return res.json(result);
 };
 

@@ -9,6 +9,7 @@ const router = express.Router();
 router.get("/super-admin-login", superAdminController.getSuperAdminLoginPage);
 router.get("/super-admin-change-password", requireSuperAdmin, superAdminController.getSuperAdminChangePasswordPage);
 router.get("/super-admin-dashboard", requireSuperAdmin, superAdminController.getSuperAdminDashboardPage);
+router.get("/super-admin-console", requireSuperAdmin, superAdminController.getSuperAdminConsolePage);
 
 // Auth APIs
 router.post("/api/super-admin/login", superAdminController.apiLogin);
@@ -38,6 +39,14 @@ router.post("/api/super-admin/license/mark-trusted", requireSuperAdmin, superAdm
 
 // Optional admin update: stripe/config values (masked on output)
 router.post("/api/super-admin/system-status", requireSuperAdmin, superAdminController.apiPostSystemStatus);
+
+// Console avanzata (codici GS mirror, rubrica email, reset password utenti)
+router.get("/api/super-admin/console/gs-codes", requireSuperAdmin, superAdminController.apiGetGsMirrorConsole);
+router.post("/api/super-admin/console/gs-codes/generate", requireSuperAdmin, superAdminController.apiPostGenerateGsCodes);
+router.get("/api/super-admin/console/contacts", requireSuperAdmin, superAdminController.apiGetConsoleContacts);
+router.post("/api/super-admin/console/contacts", requireSuperAdmin, superAdminController.apiPostConsoleContact);
+router.get("/api/super-admin/console/users", requireSuperAdmin, superAdminController.apiGetConsoleUsers);
+router.post("/api/super-admin/console/reset-password", requireSuperAdmin, superAdminController.apiPostResetUserPassword);
 
 module.exports = router;
 

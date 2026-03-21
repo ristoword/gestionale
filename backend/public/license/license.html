@@ -21,20 +21,12 @@
 
       <form id="license-form" class="login-form">
         <div class="field">
-          <label for="restaurantName">Nome ristorante</label>
-          <input type="text" id="restaurantName" placeholder="Es. Ristorante La Focaccia" required />
-        </div>
-        <div class="field">
           <label for="licenseCode">Codice licenza</label>
-          <input type="text" id="licenseCode" placeholder="Es. DEMO-TRIAL" required />
+          <input type="text" id="licenseCode" placeholder="Codice" required autocomplete="off" spellcheck="false" />
         </div>
-        <button type="submit" class="btn-login" id="btn-activate">Attiva licenza</button>
+        <p class="subtitle" style="font-size:12px;opacity:0.85;">Verifica tramite Gestione Semplificata (POST JSON).</p>
+        <button type="submit" class="btn-login" id="btn-activate">Verifica codice</button>
       </form>
-
-      <div class="demo-box">
-        <div class="demo-title">Demo</div>
-        <div class="demo-row">Codice: <strong>DEMO-TRIAL</strong> (30 giorni)</div>
-      </div>
     </div>
   </div>
   <script src="license.js"></script>

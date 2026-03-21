@@ -1,7 +1,16 @@
 # Integrazione Gestione Semplificata (GS) ↔ Ristoword (Stripe trial / licenza)
 
-Contratto unico tra **GS** (frontend/gestionale) e **Ristoword** (questo backend).  
-**Il codice di attivazione lo genera solo Ristoword** dopo pagamento confermato (`syncLicenseFromPaidSession`).
+## Stato attuale (validazione licenza)
+
+- **Validazione codice licenza (UI Ristoword):** solo tramite **`POST https://www.gestionesemplificata.com/api/licenses/validate`** con body JSON `{ "code": "..." }` — vedi `/owner-activate` e `/license/license.html`.
+- **API interne Ristoword `/api/licenses/*`:** **rimosse** dal server (non più esposte).
+- **Middleware `requireLicense`:** non legge più file locali; non blocca l’app per `license.json`.
+- **Checkout Stripe (mock) / sync file:** possono ancora scrivere dati interni di fatturazione; la **verifica** del codice per l’utente è solo GS.
+
+---
+
+Contratto tra **GS** (frontend/gestionale) e **Ristoword** (questo backend).  
+Il codice operativo post-pagamento può ancora essere generato lato Ristoword in fase sync Stripe (`syncLicenseFromPaidSession`); la **validazione** in pagina avviene su GS.
 
 ---
 
@@ -15,18 +24,18 @@ Contratto unico tra **GS** (frontend/gestionale) e **Ristoword** (questo backend
 | 4 | **GS → Ristoword** | Dopo pagamento OK: in **dev/test** `POST /api/checkout/mock/complete` con `sessionId`, `outcome: "paid"`. In **produzione** l’equivalente è il **webhook** Stripe verso RW che elabora l’evento (stessa `syncLicenseFromPaidSession`). |
 | 5 | **Ristoword** | Scrive licenza tenant (`licenses.json`, `data/tenants/{id}/license.json`), genera **`activationCode`**, **`expiresAt`**, opzionale **email** (`SMTP_*`, `APP_URL`). |
 | 6 | **GS** | Mostra all’utente `activationCode`, `ownerActivateUrl`, `expiresAt`. Se `emailSent === false` o errore SMTP, **mostrare sempre il codice in UI** (non solo “controlla la posta”). |
-| 7 | **Cliente** | Apre `ownerActivateUrl` o `/owner-activate` → `POST /api/licenses/complete-activation` crea **account owner** (email + password) → permessi “owner” sul tenant. |
+| 7 | **Cliente** | Apre `/owner-activate` → **POST JSON** a GS `validate` con `{ code }` — nessuna API licenza su Ristoword. Creazione account owner va definita su GS / altro flusso concordato. |
 | 8 | **Cliente** | Login operativo: `/login/login.html` — staff creati dall’owner in **Owner console** / gestione utenti. |
 
 **Chi “accetta i dati” e chi “dà i permessi”**
 
 - **Stripe**: incassa il pagamento; titolare dei dati carta/PSD2 è il flusso Stripe Checkout / Customer Portal configurato sul **conto Stripe** collegato al prodotto.
-- **Ristoword**: **non** riceve PAN carta; riceve solo **sessione pagata** (mock o webhook). È lui che **scrive la licenza** e **genera il codice**; è lui che, su `complete-activation`, **crea l’utente owner** nel proprio DB/sessioni.
+- **Ristoword**: **non** riceve PAN carta; riceve solo **sessione pagata** (mock o webhook). Può ancora **scrivere dati sync** e generare codice post-pagamento; la **validazione codice in UI** è su **GS**. Creazione utente owner non passa più da `/api/licenses/complete-activation` (rimosso).
 - **Gestione Semplificata**: orchestrazione UI e chiamate API verso RW; **non** deve generare codici licenza autonomamente; usa le risposte RW.
 - **Permessi applicativi** (sala, cassa, …): li assegna l’**owner** dopo login, tramite Ristoword (staff API), non GS direttamente — salvo integrazioni future esplicite.
 
-**Middleware RW (nessuna modifica necessaria per GS)**  
-`requireLicense` e `requireSetup` **saltano** già `/api/checkout`, `/api/stripe`, `/api/licenses` (vedi `requireLicense.middleware.js`, `requireSetup.middleware.js`). Le API trial restano raggiungibili anche se l’istanza non è ancora “attivata” globalmente.
+**Middleware RW**  
+`requireLicense` **non** legge più file licenza locale (non blocca per `license.json`). `requireSetup` continua a saltare `/api/checkout`, `/api/stripe`, ecc.
 
 ---
 
@@ -41,15 +50,14 @@ Configurazione su GS: `VITE_RISTOWORD_API_URL` / `NEXT_PUBLIC_RISTOWORD_API_URL`
 |--------|------|--------|
 | `POST` | `{API}/api/checkout` | Avvio checkout: body `restaurantId`, `mode: "trial"`, `customerEmail`, … → risposta con **`sessionId`**. |
 | `POST` | `{API}/api/checkout/mock/complete` | Dopo pagamento (mock/dev): body `sessionId`, `outcome: "paid"` → risposta con **`activationCode`**, **`ownerActivateUrl`**, **`expiresAt`**, `emailSent`, … |
-| `GET` | `{API}/api/licenses/validate?code=CODICE` | Verifica codice senza body (curl / browser). |
-| `POST` | `{API}/api/licenses/verify-code` | Verifica codice: body `{ "licenseCode": "..." }` (stesso uso della UI owner-activate). |
-| `POST` | `{API}/api/licenses/complete-activation` | Crea account owner: body `licenseCode`, `email`, `password`, `confirmPassword`. |
+| ~~`GET`~~ | ~~`{API}/api/licenses/validate`~~ | **Rimosso** (non usare GET su Ristoword per validate). |
+| ~~`POST`~~ | ~~`{API}/api/licenses/*`~~ | **Rimosso.** Usare solo l’API GS `POST https://www.gestionesemplificata.com/api/licenses/validate` con `{ "code": "..." }`. |
 
 ### Pagine web (browser cliente)
 
 | Path | Ruolo |
 |------|--------|
-| `{API}/owner-activate` | Attivazione owner: codice + email + password. Query supportate: `?code=...&email=...` (come da `ownerActivateUrl`). |
+| `{API}/owner-activate` | Verifica codice con **POST** a GS (`validate`). Opzionale precompilazione campo da query `?code=` / `?licenseCode=`. |
 | `{API}/dev-access/dashboard` | Dopo attivazione completata (redirect attuale; onboarding owner). |
 | `{API}/login/login.html` | Login operativo dopo che l’owner ha creato l’accesso. |
 
@@ -88,7 +96,7 @@ Configurazione su GS: `VITE_RISTOWORD_API_URL` / `NEXT_PUBLIC_RISTOWORD_API_URL`
 | 4 | GS → RW | `POST /api/checkout/mock/complete` `{ sessionId, outcome: "paid" }` **(mock)** oppure in prod solo webhook Stripe su RW |
 | 5 | RW | Scrive `licenses.json` + `data/tenants/{id}/license.json`, genera `activationCode`, `expiresAt` (14gg trial / 30gg subscription), email opzionale |
 | 6 | GS | Mostra `activationCode`, `ownerActivateUrl`, `expiresAt` (se `emailSent === false` **non** dire solo “controlla la posta”) |
-| 7 | Cliente | `/owner-activate` → password → onboarding owner |
+| 7 | Cliente | `/owner-activate` → validazione codice su GS (nessun `complete-activation` su RW) |
 
 ---
 

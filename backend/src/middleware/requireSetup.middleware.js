@@ -3,10 +3,10 @@ const { isSetupComplete } = require("../config/setup");
 
 const SKIP_PATHS = [
   "/login", "/license", "/setup", "/owner-activate",
-  "/super-admin-login", "/dashboard/super-admin-login", "/super-admin-dashboard", "/super-admin-change-password", "/super-admin",
+  "/super-admin-login", "/dashboard/super-admin-login", "/super-admin-dashboard", "/super-admin-change-password", "/super-admin-console", "/super-admin",
   "/owner-console",
   "/api/auth", "/api/license", "/api/setup", "/api/licenses", "/api/super-admin",
-  "/api/checkout", "/api/stripe",
+  "/api/checkout", "/api/stripe", "/api/owner",
   "/api/system/health", "/api/health",
   "/qr", "/api/qr",
   "/api/menu/active",

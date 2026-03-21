@@ -111,7 +111,13 @@
       $("gs-gen-msg").textContent = out.message || out.error || "Errore";
       return;
     }
-    $("gs-gen-msg").textContent = `Generati ${out.generated} codici.`;
+    let msg = `Generati ${out.generated} codici.`;
+    if (out.gsSync) {
+      if (out.gsSync.skipped) msg += ` GS: non configurato (${out.gsSync.reason || "GS_CODES_UPSERT_URL"}).`;
+      else if (out.gsSync.ok) msg += " GS: batch sincronizzato.";
+      else msg += ` GS: errore sync — ${out.gsSync.error || out.gsSync.status || "vedi log"}.`;
+    }
+    $("gs-gen-msg").textContent = msg;
     renderGsKpi(out.stats);
     await loadGsCodes();
   }

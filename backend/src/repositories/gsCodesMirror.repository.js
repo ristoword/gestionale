@@ -171,6 +171,30 @@ function generateLocalCodes(count, { prefix = "RW" } = {}) {
   return { added, count: added.length };
 }
 
+/**
+ * Prende il primo codice `available` dal mirror (dopo pagamento Stripe) e lo marca `assigned`.
+ * @returns {{ code: string, row: object } | null}
+ */
+function claimAvailableForStripe({ assignedEmail, expiresAt } = {}) {
+  const state = readState();
+  const codes = Array.isArray(state.codes) ? [...state.codes] : [];
+  const idx = codes.findIndex((x) => String(x.status || "").toLowerCase() === "available");
+  if (idx === -1) return null;
+
+  const now = new Date().toISOString();
+  codes[idx] = {
+    ...codes[idx],
+    status: "assigned",
+    assignedEmail: assignedEmail != null ? String(assignedEmail).trim() : codes[idx].assignedEmail,
+    expiresAt: expiresAt != null ? expiresAt : codes[idx].expiresAt,
+    rwSyncedAt: now,
+  };
+  state.codes = codes;
+  state.lastStripePoolClaimAt = now;
+  writeState(state);
+  return { code: codes[idx].code, row: codes[idx] };
+}
+
 module.exports = {
   readState,
   upsertBatch,
@@ -180,4 +204,5 @@ module.exports = {
   touchNotifyToGs,
   normalizeCode,
   generateLocalCodes,
+  claimAvailableForStripe,
 };

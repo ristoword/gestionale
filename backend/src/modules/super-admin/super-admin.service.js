@@ -15,6 +15,7 @@ const stripeMockRepository = require("../../stripe/stripeMock.repository");
 const maintenanceService = require("../system/maintenance.service");
 const superAdminRepository = require("./super-admin.repository");
 const gsCodesMirror = require("../../repositories/gsCodesMirror.repository");
+const { pushCodesBatchToGs } = require("../../service/gsMasterSync.service");
 const bcrypt = require("bcrypt");
 
 const BCRYPT_USER_ROUNDS = 10;
@@ -658,7 +659,19 @@ async function apiPostGenerateGsCodes({ count }) {
     return { ok: false, error: "count_invalido", message: "Usa un numero tra 1 e 25" };
   }
   const { added, count: gen } = gsCodesMirror.generateLocalCodes(Math.floor(n));
-  return { ok: true, generated: gen, codes: added, stats: gsCodesMirror.computeStats() };
+  let gsSync = null;
+  try {
+    gsSync = await pushCodesBatchToGs(added);
+  } catch (e) {
+    gsSync = { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+  return {
+    ok: true,
+    generated: gen,
+    codes: added,
+    stats: gsCodesMirror.computeStats(),
+    gsSync,
+  };
 }
 
 async function apiGetConsoleContacts() {

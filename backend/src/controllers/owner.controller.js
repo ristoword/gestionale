@@ -7,7 +7,8 @@ const gsCodesMirror = require("../repositories/gsCodesMirror.repository");
 const { notifyGsCodeActivated } = require("../service/gsMasterSync.service");
 const { writeTenantLicenseMirror } = require("../stripe/stripeLicenseSync.service");
 
-const GS_VALIDATE_URL = "https://www.gestionesemplificata.com/api/licenses/validate";
+const GS_VALIDATE_URL =
+  String(process.env.GS_VALIDATE_URL || "").trim() || "https://www.gestionesemplificata.com/api/licenses/validate";
 const BCRYPT_ROUNDS = 10;
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -29,6 +30,24 @@ function gsPayloadSaysValid(data) {
   if (data.valid === true) return true;
   if (data.data && typeof data.data === "object" && data.data.valid === true) return true;
   return false;
+}
+
+/**
+ * Se GS_VALIDATE_USE_MIRROR=true: accetta codici presenti nel mirror RW (assigned → email deve coincidere).
+ * Utile per test senza GS; in produzione lasciare false e usare validate reale + push batch.
+ */
+function mirrorAllowsActivation(codeNorm, emailVal) {
+  if (String(process.env.GS_VALIDATE_USE_MIRROR || "").toLowerCase() !== "true") return false;
+  const row = gsCodesMirror.findByCode(codeNorm);
+  if (!row) return false;
+  const st = String(row.status || "").toLowerCase();
+  if (st === "used" || st === "expired") return false;
+  if (st === "assigned") {
+    const em = String(row.assignedEmail || "").trim().toLowerCase();
+    const want = String(emailVal || "").trim().toLowerCase();
+    if (em && want && em !== want) return false;
+  }
+  return true;
 }
 
 async function validateCodeWithGs(code) {
@@ -65,8 +84,15 @@ async function completeActivation(req, res) {
     });
   }
 
-  const gs = await validateCodeWithGs(codeNorm);
-  if (!gsPayloadSaysValid(gs.data)) {
+  let gs = { httpOk: false, data: {} };
+  try {
+    gs = await validateCodeWithGs(codeNorm);
+  } catch (e) {
+    console.warn("[owner] validate GS:", e && e.message ? e.message : e);
+  }
+  const gsOk = gsPayloadSaysValid(gs.data);
+  const mirrorOk = !gsOk && mirrorAllowsActivation(codeNorm, emailVal);
+  if (!gsOk && !mirrorOk) {
     return res.status(400).json({
       success: false,
       message: "Codice non valido o non confermato da Gestione Semplificata.",

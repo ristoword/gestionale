@@ -92,6 +92,23 @@ Quando un utente completa l’attivazione su RW, il backend RW chiama (se config
 
 ---
 
+## 2.5 Ristoword → GS (push batch + riserva Stripe)
+
+Per provare **pagamento → codice dal pool (scala dai 25)** e **Genera codici** che aggiornano **anche** GS, implementare su GS due endpoint (o uno unificato) e impostare le env su Ristoword:
+
+| Env RW | Quando | Body tipico |
+|--------|--------|-------------|
+| `GS_CODES_UPSERT_URL` | Dopo **Genera 1/25** in Super Admin Console | `{ "source":"ristoword", "codes":[{ "code","status","assignedEmail","expiresAt","source" }, ...] }` header `X-RW-Sync-Secret` |
+| `GS_CODES_RESERVE_URL` | Dopo **Stripe pagato** (codice preso dal mirror e marcato `assigned`) | `{ "code","assignedEmail","expiresAt","status":"assigned","source":"ristoword-stripe","reservedAt" }` |
+
+Segreto: stesso `GS_RW_SHARED_SECRET` o `GS_RW_SYNC_SECRET` usato per import e webhook.
+
+**Stripe (mock o reale)**: `syncLicenseFromPaidSession` usa `claimAvailableForStripe`: primo codice `available` → `assigned` + email; se il pool è vuoto, genera un codice RW come prima (fallback).
+
+**Validate**: resta `POST` verso GS (`GS_VALIDATE_URL`). Per test **solo locale** senza GS: `GS_VALIDATE_USE_MIRROR=true` — accetta codici presenti nel mirror (`assigned` richiede stessa email).
+
+---
+
 ## 3. Ristoword — sync GS → RW (import mirror)
 
 **Non** sostituisce la validazione live su GS (`POST validate` resta il gate).
@@ -156,7 +173,8 @@ Se `GS_WEBHOOK_ACTIVATION_URL` è vuota, RW salta la notify (log: skipped) senza
 | File | Ruolo |
 |------|--------|
 | `src/repositories/gsCodesMirror.repository.js` | Persistenza mirror `data/gs-codes-mirror.json` |
-| `src/service/gsMasterSync.service.js` | POST notify verso GS |
+| `src/service/gsMasterSync.service.js` | POST notify, push batch, riserva Stripe |
+| `src/stripe/stripeLicenseSync.service.js` | Prelievo codice dal pool dopo pagamento |
 | `src/controllers/gsSync.controller.js` | Import + stats (segreto) |
 | `src/routes/owner.routes.js` | Route `gs-import-codes`, `gs-mirror-stats` |
 | `src/controllers/owner.controller.js` | Mirror `used` + notify dopo attivazione |

@@ -6,6 +6,8 @@ const { getLicense, saveLicense } = require("../config/license");
 const paths = require("../config/paths");
 const licensesRepository = require("../repositories/licenses.repository");
 const mailService = require("../service/mail.service");
+const gsCodesMirror = require("../repositories/gsCodesMirror.repository");
+const { notifyGsStripeReserved } = require("../service/gsMasterSync.service");
 
 function normalizeTenantId(id) {
   return String(id || "").trim();
@@ -65,25 +67,44 @@ async function syncLicenseFromPaidSession({
   const mode = session?.mode || event?.mode || "subscription";
   const nowIso = new Date().toISOString();
   const expiresAt = computeExpiresAt({ mode });
+  const customerEmail = session?.customerEmail || null;
+
+  function pickActivationCodeFromPoolOrGenerate() {
+    const claimed = gsCodesMirror.claimAvailableForStripe({
+      assignedEmail: customerEmail,
+      expiresAt,
+    });
+    if (claimed && claimed.code) {
+      return { code: claimed.code, fromPool: true };
+    }
+    return { code: generateActivationCode(rid, event?.id || session?.id), fromPool: false };
+  }
 
   // Ensure tenant activation code exists (owner activation uses it).
+  // Preferisci un codice dal pool mirror (batch GS/RW) così scala dai "25" e resta allineato a validate.
   let tenantLicense = await licensesRepository.findByRestaurantId(rid);
+  let poolClaimed = false;
+
   if (!tenantLicense) {
-    const activationCode = generateActivationCode(rid, event?.id || session?.id);
+    const picked = pickActivationCodeFromPoolOrGenerate();
+    poolClaimed = picked.fromPool;
     tenantLicense = licensesRepository.create({
       restaurantId: rid,
       plan,
       status: "active",
-      activationCode,
+      activationCode: picked.code,
       expiresAt,
       source: source || "stripe_webhook",
       createdAt: nowIso,
       updatedAt: nowIso,
     });
   } else {
-    const nextActivationCode = tenantLicense.activationCode
-      ? tenantLicense.activationCode
-      : generateActivationCode(rid, event?.id || session?.id);
+    let nextActivationCode = tenantLicense.activationCode;
+    if (!nextActivationCode) {
+      const picked = pickActivationCodeFromPoolOrGenerate();
+      nextActivationCode = picked.code;
+      poolClaimed = picked.fromPool;
+    }
 
     tenantLicense = licensesRepository.updateLicense({
       restaurantId: rid,
@@ -95,6 +116,18 @@ async function syncLicenseFromPaidSession({
       updatedAt: nowIso,
       // Note: owner activation = transition active->used happens only via owner-activate endpoint.
     });
+  }
+
+  const act = tenantLicense?.activationCode || null;
+  if (poolClaimed && act) {
+    try {
+      const r = await notifyGsStripeReserved({ code: act, email: customerEmail, expiresAt });
+      if (!r.ok && !r.skipped) {
+        console.warn("[stripeLicenseSync] GS reserve notify:", r);
+      }
+    } catch (e) {
+      console.warn("[stripeLicenseSync] GS reserve notify error:", e && e.message ? e.message : e);
+    }
   }
 
   writeTenantLicenseMirror({
@@ -126,7 +159,6 @@ async function syncLicenseFromPaidSession({
   const activationCode = tenantLicense.activationCode || null;
   let emailSent = false;
   let emailError = null;
-  const customerEmail = session?.customerEmail || null;
   const customerName = session?.customerName || null;
 
   if (customerEmail && activationCode) {
@@ -150,6 +182,7 @@ async function syncLicenseFromPaidSession({
     tenantLicense,
     expiresAt,
     activationCode,
+    poolClaimed,
     emailSent,
     emailError,
     ownerActivateUrl: mailService.buildOwnerActivateLink(activationCode, customerEmail),

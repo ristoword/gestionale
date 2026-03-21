@@ -60,6 +60,7 @@ async function mockCompleteCheckout(req, res) {
       mode: result?.session?.mode || null,
       expiresAt: result?.expiresAt || null,
       activationCode: result?.activationCode || null,
+      poolClaimed: !!result?.poolClaimed,
       ownerActivateUrl: result?.ownerActivateUrl || null,
       emailSent: !!result?.emailSent,
       emailError: result?.emailError || null,

@@ -69,6 +69,8 @@ async function mockCompleteCheckout({ sessionId, outcome = "paid" } = {}) {
     event,
     webhook: webhookResult,
     activationCode,
+    /** true se il codice è stato preso dal pool batch (mirror) invece che generato random */
+    poolClaimed: !!webhookResult?.poolClaimed,
     ownerActivateUrl,
     emailSent,
     emailError,

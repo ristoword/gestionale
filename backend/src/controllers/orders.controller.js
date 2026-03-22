@@ -1,6 +1,7 @@
 // backend/src/controllers/orders.controller.js
 const ordersService = require("../service/orders.service");
 const logger = require("../utils/logger");
+const { orderHasFoodInventoryItems } = require("../utils/orderInventoryHelpers");
 
 // IMPORTANT CORE PROTECTION
 // This controller serves /api/orders for Sala, Cucina, Pizzeria, Cassa, Supervisor.
@@ -140,21 +141,20 @@ async function setStatus(req, res, next) {
 
     const isFinalState = ["servito", "chiuso"].includes(String(status || "").toLowerCase());
 
-    // Validate kitchen stock BEFORE changing status when closing/serving
+    // Inventory check before final status: warn only — never block servito/chiuso
     if (isFinalState) {
       const inventoryService = getInventoryServiceSafe();
-      // If inventory integration is unavailable, we skip stock validation but still allow status change.
       if (inventoryService) {
-        const order = await ordersService.getOrderById(id);
-        if (order && Array.isArray(order.items) && order.items.length > 0) {
-          const validation = await inventoryService.validateOrderConsumption(order);
-          if (!validation.valid) {
-            return res.status(400).json({
-              error: validation.error || "Stock cucina insufficiente per completare l'ordine",
-              blocked: true,
-              failures: validation.failures || [],
-            });
+        try {
+          const order = await ordersService.getOrderById(id);
+          if (order && Array.isArray(order.items) && order.items.length > 0 && orderHasFoodInventoryItems(order)) {
+            const check = await inventoryService.validateOrderConsumption(order);
+            if (!check.valid) {
+              console.warn("Inventory warning:", check);
+            }
           }
+        } catch (invErr) {
+          console.warn("Inventory warning (validateOrderConsumption):", invErr?.message || invErr);
         }
       }
     }
@@ -192,9 +192,22 @@ async function setStatus(req, res, next) {
   }
 }
 
+async function patchActiveCourse(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { activeCourse } = req.body || {};
+    const updated = await ordersService.setActiveCourse(id, activeCourse);
+    await broadcastOrderUpdates();
+    res.json({ success: true, order: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listOrders,
   listOrdersHistory,
   createOrder,
   setStatus,
+  patchActiveCourse,
 };

@@ -258,6 +258,50 @@ body {
   font-weight: 600;
 }
 
+/* Corsi / marce (activeCourse) */
+.kds-course-block {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+}
+
+.kds-course-active {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.18);
+}
+
+.kds-course-future {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.14);
+}
+
+/* Corsi già marciati (course < activeCourse) */
+.kds-course-past {
+  border-color: #4b5563;
+  background: rgba(75, 85, 99, 0.12);
+  opacity: 0.92;
+}
+
+.kds-course-title {
+  font-weight: 800;
+  font-size: 16px;
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+
+.kds-course-line {
+  font-size: 17px;
+  color: var(--text-soft);
+  margin-bottom: 2px;
+}
+
+.kds-item-note {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 /* Badge stato */
 
 .order-status-badge {

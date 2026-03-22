@@ -29,7 +29,8 @@
           <span class="kpi-label">Valore</span>
           <span class="kpi-value" id="kpi-value">€ 0.00</span>
         </div>
-        <button class="btn ghost" id="btn-refresh">Aggiorna</button>
+        <button class="btn ghost" id="btn-refresh" type="button">Aggiorna</button>
+        <button class="btn ghost" id="btn-to-cucina" type="button" title="Apri modulo Cucina">Torna in cucina</button>
       </div>
     </header>
 
@@ -251,6 +252,33 @@
 
     </main>
 
+  </div>
+
+  <!-- MODALE RETTIFICA RICEVUTA (CARICO) -->
+  <div class="modal-overlay" id="modal-edit-load">
+    <div class="modal">
+      <header class="modal-header">
+        <h3>Modifica ricevuta merce</h3>
+        <button type="button" class="modal-close" id="modal-edit-load-close">&times;</button>
+      </header>
+      <div class="modal-body">
+        <p class="modal-product" id="edit-load-product">—</p>
+        <p class="modal-hint" id="edit-load-route" style="font-size:12px;color:var(--text-soft);"></p>
+        <label>
+          Quantità registrata
+          <input type="number" id="edit-load-qty" step="0.01" min="0.01" />
+          <span class="modal-unit" id="edit-load-unit">kg</span>
+        </label>
+        <label>
+          Nota ricevuta
+          <input type="text" id="edit-load-note" placeholder="Note" />
+        </label>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn ghost" id="modal-edit-load-cancel">Annulla</button>
+        <button type="button" class="btn primary" id="modal-edit-load-confirm">Salva modifiche</button>
+      </footer>
+    </div>
   </div>
 
   <!-- MODALE RIENTRO AL CENTRALE -->

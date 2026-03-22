@@ -226,10 +226,75 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Email operativa magazzino → fornitore (Reply-To = email operatore se indicata).
+ */
+async function sendSupplierEmail(options) {
+  const {
+    fromName,
+    fromEmail,
+    toName,
+    toEmail,
+    subject,
+    text,
+    html,
+  } = options || {};
+
+  const to = String(toEmail || "").trim();
+  if (!to) {
+    return { sent: false, error: "recipient_missing" };
+  }
+  if (!nodemailer) {
+    return { sent: false, error: "nodemailer_not_installed" };
+  }
+  if (!isConfigured()) {
+    return { sent: false, error: "smtp_not_configured" };
+  }
+
+  const subj = String(subject || "").trim() || "Ordine / nota magazzino";
+  const bodyText = String(text || "").trim() || "(nessun testo)";
+  const bodyHtml =
+    html ||
+    `<pre style="font-family:system-ui,sans-serif;white-space:pre-wrap;">${escapeHtml(bodyText)}</pre>`;
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+  });
+
+  const replyTo = String(fromEmail || "").trim() || undefined;
+  const fromNameSafe = String(fromName || "").replace(/"/g, "").trim();
+  const fromHeader = fromNameSafe
+    ? `"${fromNameSafe}" <${SMTP_FROM}>`
+    : SMTP_FROM;
+  const toAddr = toName ? `"${String(toName).replace(/"/g, "")}" <${to}>` : to;
+
+  try {
+    await transporter.sendMail({
+      from: fromHeader,
+      to: toAddr,
+      replyTo,
+      subject: subj,
+      text: bodyText,
+      html: bodyHtml,
+    });
+    return { sent: true };
+  } catch (err) {
+    console.error("[Mail] sendSupplierEmail failed:", err.message);
+    return { sent: false, error: err.message };
+  }
+}
+
 module.exports = {
   isConfigured,
   sendWelcomeEmail,
   sendRistowordActivationEmail,
+  sendSupplierEmail,
   getLoginUrl,
   getAppBaseUrl,
   buildOwnerActivateLink,

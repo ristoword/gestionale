@@ -42,7 +42,7 @@
     <!-- CONTENUTO PRINCIPALE -->
     <main class="main">
 
-      <!-- COLONNA SINISTRA: NUOVO ORDINE + FILTRI + PIATTI -->
+      <!-- COLONNA SINISTRA: INVARIATA -->
       <section class="left-column">
         <!-- NUOVO ORDINE BASE -->
         <article class="card">
@@ -92,7 +92,6 @@
           </div>
         </article>
 
-        <!-- MENU DEL GIORNO (sola lettura) -->
         <article class="card" id="daily-menu-sala-card">
           <header class="card-header">
             <h2>Menu del Giorno</h2>
@@ -105,7 +104,6 @@
           </div>
         </article>
 
-        <!-- SEZIONE PIATTI / BEVANDE -->
         <article class="card">
           <header class="card-header">
             <h2>Piatti e bevande</h2>
@@ -114,7 +112,6 @@
             </p>
           </header>
           <div class="card-body form-grid">
-            <!-- BLOCCO MENU UFFICIALE -->
             <label class="full">
               Categoria menù
               <select id="menu-category">
@@ -146,10 +143,8 @@
               </button>
             </div>
 
-            <!-- SEPARATORE -->
             <div class="full" style="border-top:1px solid #2b3140;margin:8px 0;"></div>
 
-            <!-- BLOCCO FUORI MENU -->
             <label class="full">
               Piatto fuori menù
               <input type="text" id="custom-name" placeholder="Es. Piatto del giorno, fuori carta..." />
@@ -181,11 +176,9 @@
               </button>
             </div>
 
-            <!-- RIEPILOGO PIATTI -->
             <div class="full">
-              <h3 style="font-size:12px;margin:6px 0 4px;">Piatti nell'ordine</h3>
+              <h3 style="font-size:12px;margin:6px 0 4px;">Piatti nell'ordine (corso attivo)</h3>
               <div id="selected-items" class="selected-items-box">
-                <!-- popolato da sala.js -->
               </div>
             </div>
 
@@ -197,7 +190,6 @@
           </div>
         </article>
 
-        <!-- FILTRI -->
         <article class="card">
           <header class="card-header">
             <h2>Filtri</h2>
@@ -239,33 +231,38 @@
         </article>
       </section>
 
-      <!-- COLONNA DESTRA: TAVOLI + ORDINI -->
-      <section class="right-column">
-
-        <!-- GRIGLIA TAVOLI -->
-        <article class="card">
-          <header class="card-header">
-            <h2>Mappa tavoli attivi</h2>
-            <p>Tavoli con ordini aperti o in attesa conto</p>
+      <!-- COLONNA DESTRA: MAPPA TAVOLI FULL -->
+      <section class="right-column sala-map-column">
+        <article class="card sala-floor-card">
+          <header class="card-header sala-floor-header">
+            <div>
+              <h2>Mappa sala</h2>
+              <p>Tavoli touch • trascina per posizionare • clic per azioni</p>
+            </div>
+            <div class="sala-floor-toolbar">
+              <button type="button" class="btn ghost sala-tb-btn" id="btn-floor-add-table" title="Aggiungi tavolo">+ Tavolo</button>
+              <button type="button" class="btn ghost sala-tb-btn" id="btn-floor-remove-table" title="Rimuovi ultimo tavolo">− Tavolo</button>
+              <button type="button" class="btn ghost sala-tb-btn" id="btn-floor-reset-layout" title="Riposiziona tutti i tavoli in griglia">Reset layout</button>
+            </div>
           </header>
-          <div class="card-body">
-            <div id="tables-grid" class="tables-grid"></div>
+          <div class="card-body sala-floor-body">
+            <div id="sala-floor" class="sala-floor" aria-label="Mappa tavoli sala">
+              <!-- tavoli generati da JS -->
+            </div>
           </div>
         </article>
-
-        <!-- LISTA ORDINI -->
-        <article class="card">
-          <header class="card-header">
-            <h2>Ordini</h2>
-            <p>Lista ordini con stato, piatti e azioni rapide</p>
-          </header>
-          <div class="card-body orders-list" id="orders-list">
-            <!-- popolato da sala.js -->
-          </div>
-        </article>
-
       </section>
     </main>
+  </div>
+
+  <!-- POPUP TAVOLO -->
+  <div id="sala-popup-backdrop" class="sala-popup-backdrop" aria-hidden="true"></div>
+  <div id="sala-popup" class="sala-popup" role="dialog" aria-modal="true" aria-hidden="true">
+    <header class="sala-popup-head">
+      <h2 id="sala-popup-title">Tavolo</h2>
+      <button type="button" class="sala-popup-close" id="sala-popup-close" aria-label="Chiudi">&times;</button>
+    </header>
+    <div class="sala-popup-body" id="sala-popup-body"></div>
   </div>
 
   <script src="/shared/auth-guard.js" data-allowed-roles="owner,sala"></script>

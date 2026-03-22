@@ -31,8 +31,29 @@ function getRecentTransfers(limit = 100) {
   return list.slice(0, Math.min(limit, list.length));
 }
 
+function getById(id) {
+  const list = readTransfers();
+  return list.find((t) => String(t.id) === String(id)) || null;
+}
+
+function updateTransfer(id, patch) {
+  const list = readTransfers();
+  const idx = list.findIndex((t) => String(t.id) === String(id));
+  if (idx === -1) return null;
+  const next = {
+    ...list[idx],
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  list[idx] = next;
+  atomicWriteJson(getDataPath(), list);
+  return next;
+}
+
 module.exports = {
   addTransfer,
   getRecentTransfers,
+  getById,
+  updateTransfer,
   readTransfers,
 };

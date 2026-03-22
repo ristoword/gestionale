@@ -14,6 +14,9 @@ router.get("/history", asyncHandler(OrdersController.listOrdersHistory));
 // creazione ordine (Sala)
 router.post("/", asyncHandler(OrdersController.createOrder));
 
+// marcia / corso attivo (Sala)
+router.patch("/:id/active-course", asyncHandler(OrdersController.patchActiveCourse));
+
 // cambio stato ordine (Sala, Cucina)
 router.patch("/:id/status", asyncHandler(OrdersController.setStatus));
 

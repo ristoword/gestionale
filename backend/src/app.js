@@ -12,6 +12,16 @@ app.set("trust proxy", 1);
 // Ensure default tenant has data (migrate from legacy data/ if needed)
 ensureTenantMigration();
 
+// Stripe webhook MUST use raw body (signature verification). Mounted before express.json().
+try {
+  const expressRaw = require("express").raw({ type: "application/json" });
+  const asyncHandler = require("./utils/asyncHandler");
+  const { handleStripeWebhook } = require("./controllers/stripeWebhook.controller");
+  app.post("/api/stripe/webhook", expressRaw, asyncHandler(handleStripeWebhook));
+} catch (e) {
+  console.warn("stripe webhook mount failed:", e.message);
+}
+
 // =======================
 //  MIDDLEWARE DI BASE
 // =======================
@@ -87,6 +97,7 @@ const { requireSetup } = require("./middleware/requireSetup.middleware");
 const { requireAuth } = require("./middleware/requireAuth.middleware");
 const { requireRole } = require("./middleware/requireRole.middleware");
 const { requirePageAuth } = require("./middleware/requirePageAuth.middleware");
+const { requireQrOrderSecret } = require("./middleware/requireQrOrderSecret.middleware");
 const { requireMustChangePassword } = require("./middleware/requireMustChangePassword.middleware");
 const { requireOwnerSetup } = require("./middleware/requireOwnerSetup.middleware");
 
@@ -118,7 +129,7 @@ try {
 }
 
 const ROLES_ALL = ["owner", "sala", "cucina", "cassa"];
-const ROLES_ORDERS = ["owner", "sala", "cucina", "cassa"];
+const ROLES_ORDERS = ["owner", "sala", "cucina", "cassa", "supervisor"];
 const ROLES_MENU = ["owner", "sala", "cassa", "supervisor"];
 const ROLES_PAYMENTS = ["owner", "cassa"];
 const ROLES_REPORTS = ["owner", "sala", "cucina", "cassa"];
@@ -186,7 +197,7 @@ try {
   const ordersRouter = require("./routes/orders.routes");
   const OrdersController = require("./controllers/orders.controller");
   const asyncHandler = require("./utils/asyncHandler");
-  app.post("/api/qr/orders", asyncHandler(OrdersController.createOrder));
+  app.post("/api/qr/orders", requireQrOrderSecret, asyncHandler(OrdersController.createOrder));
   app.use("/api/orders", requireAuth, requireRole(ROLES_ORDERS), ordersRouter);
 } catch (e) {
   console.warn("orders.routes non trovato:", e.message);
@@ -205,7 +216,8 @@ try {
 try {
   const menuRouter = require("./routes/menu.routes");
   const MenuController = require("./controllers/menu.controller");
-  app.get("/api/menu/active", (req, res, next) => MenuController.listActiveMenu(req, res).catch(next));
+  // listActiveMenu è sincrona (non ritorna Promise): non usare .catch su undefined
+  app.get("/api/menu/active", (req, res, next) => MenuController.listActiveMenu(req, res, next));
   app.use("/api/menu", requireAuth, requireRole(ROLES_MENU), menuRouter);
 } catch (e) {
   console.warn("menu.routes non trovato:", e.message);
@@ -237,7 +249,7 @@ try {
   console.warn("owner.routes non trovato (ok se non ancora creato):", e.message);
 }
 
-// STRIPE WEBHOOK (mock)
+// STRIPE – POST /api/stripe/webhook è registrato sopra (raw body). Qui solo route ausiliarie.
 try {
   const stripeWebhookRouter = require("./routes/stripe-webhook.routes");
   app.use("/api/stripe", stripeWebhookRouter);

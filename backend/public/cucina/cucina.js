@@ -133,11 +133,22 @@ async function updateOrderStatus(id, status) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
   });
-  if (!res.ok) {
+  const contentType = res.headers.get("content-type") || "";
+  let data;
+  if (contentType.includes("application/json")) {
+    data = await res.json();
+  } else {
     const text = await res.text();
-    throw new Error("Errore cambio stato: " + text);
+    data = { message: text };
   }
-  return await res.json();
+  if (!res.ok) {
+    const msg =
+      (data && typeof data.message === "string" && data.message) ||
+      (data && typeof data.error === "string" && data.error !== "true" && data.error) ||
+      "Errore cambio stato";
+    throw new Error(msg);
+  }
+  return data;
 }
 
 // =======================================
@@ -176,6 +187,39 @@ async function renderKpi(orders) {
   }
 }
 
+function buildCourseBlocksHtml(order) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const activeCourse = Number(order.activeCourse) >= 1 ? Number(order.activeCourse) : 1;
+  const byCourse = new Map();
+  items.forEach((i) => {
+    const cn = Number(i.course) >= 1 ? Number(i.course) : 1;
+    if (!byCourse.has(cn)) byCourse.set(cn, []);
+    byCourse.get(cn).push(i);
+  });
+  const nums = [...byCourse.keys()].sort((a, b) => a - b);
+  if (!nums.length) {
+    return `<span style="font-size:14px;color:#b7bccd;">Dettaglio piatti non disponibile</span>`;
+  }
+  return nums
+    .map((cn) => {
+      let courseCls = "kds-course-future";
+      if (cn === activeCourse) courseCls = "kds-course-active";
+      else if (cn < activeCourse) courseCls = "kds-course-past";
+      const cls = `kds-course-block ${courseCls}`;
+      const rows = byCourse
+        .get(cn)
+        .map((i) => {
+          const note = i.note
+            ? ` <span class="kds-item-note">${escapeHtml(String(i.note))}</span>`
+            : "";
+          return `<div class="kds-course-line">${escapeHtml(i.name || "-")} x${i.qty ?? 1}${note}</div>`;
+        })
+        .join("");
+      return `<div class="${cls}"><div class="kds-course-title">Corso ${cn}</div>${rows}</div>`;
+    })
+    .join("");
+}
+
 function createOrderCard(order) {
   const card = document.createElement("div");
   card.className = "order-card";
@@ -187,9 +231,7 @@ function createOrderCard(order) {
 
   const timeStr = formatTime(order.createdAt);
 
-  const itemsHtml = Array.isArray(order.items) && order.items.length
-    ? order.items.map((i) => `${i.name} x${i.qty}`).join("<br>")
-    : `<span style="font-size:14px;color:#b7bccd;">Dettaglio piatti non disponibile</span>`;
+  const itemsHtml = buildCourseBlocksHtml(order);
 
   const statusClass = `status-${order.status || "in_preparazione"}`;
 
@@ -228,7 +270,10 @@ function createOrderCard(order) {
       await loadAndRenderOrders();
     } catch (e) {
       console.error(e);
-      alert("Errore nel cambio stato.");
+      alert(e.message || "Errore nel cambio stato.");
+      try {
+        await loadAndRenderOrders();
+      } catch (_) {}
     }
   });
 
@@ -238,7 +283,10 @@ function createOrderCard(order) {
       await loadAndRenderOrders();
     } catch (e) {
       console.error(e);
-      alert("Errore nel cambio stato.");
+      alert(e.message || "Errore nel cambio stato.");
+      try {
+        await loadAndRenderOrders();
+      } catch (_) {}
     }
   });
 
@@ -248,7 +296,10 @@ function createOrderCard(order) {
       await loadAndRenderOrders();
     } catch (e) {
       console.error(e);
-      alert("Errore nel cambio stato.");
+      alert(e.message || "Errore nel cambio stato.");
+      try {
+        await loadAndRenderOrders();
+      } catch (_) {}
     }
   });
 
@@ -260,7 +311,10 @@ function createOrderCard(order) {
       await loadAndRenderOrders();
     } catch (e) {
       console.error(e);
-      alert("Errore nel cambio stato.");
+      alert(e.message || "Errore nel cambio stato.");
+      try {
+        await loadAndRenderOrders();
+      } catch (_) {}
     }
   });
 

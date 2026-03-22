@@ -171,6 +171,8 @@ function renderDepartmentList(dept) {
   attachDepartmentListeners(listEl, dept);
 }
 
+let editLoadTransferId = null;
+
 function renderTransfersList() {
   const listEl = document.getElementById("transfers-list");
   if (!transfersCache.length) {
@@ -204,18 +206,67 @@ function renderTransfersList() {
         : isLoad
         ? `→ ${deptLabel(t.to)}`
         : `da Centrale → ${deptLabel(t.to)}`;
+      const editBtn = isLoad
+        ? ` <button type="button" class="btn small btn-edit-load" data-tid="${escapeHtml(String(t.id))}">Modifica</button>`
+        : "";
       return `
         <div class="transfer-row ${isReturn ? "transfer-row-return" : ""}">
           <div class="transfer-main">
             ${badge}
             <strong>${escapeHtml(t.productName || "?")}</strong>
             <span class="transfer-qty">${t.quantity} ${escapeHtml(t.unit || "un")}</span>
-            <span class="transfer-route">${routeText}</span>
+            <span class="transfer-route">${routeText}</span>${editBtn}
           </div>
           <div class="transfer-meta">${timeStr}${op}${note}</div>
         </div>`;
     })
     .join("");
+
+  listEl.querySelectorAll(".btn-edit-load").forEach((btn) => {
+    btn.addEventListener("click", () => openEditLoadModal(btn.getAttribute("data-tid")));
+  });
+}
+
+function findTransferById(id) {
+  return transfersCache.find((t) => String(t.id) === String(id)) || null;
+}
+
+function openEditLoadModal(transferId) {
+  const t = findTransferById(transferId);
+  if (!t || t.type !== "load") return;
+  editLoadTransferId = transferId;
+  document.getElementById("edit-load-product").textContent = t.productName || "—";
+  const deptLabel = DEPT_LABELS[t.to] || t.to || "?";
+  document.getElementById("edit-load-route").textContent = `Destinazione: ${deptLabel}`;
+  document.getElementById("edit-load-unit").textContent = t.unit || "un";
+  document.getElementById("edit-load-qty").value = String(t.quantity ?? "");
+  document.getElementById("edit-load-note").value = t.note ? String(t.note) : "";
+  document.getElementById("modal-edit-load").classList.add("open");
+}
+
+function closeEditLoadModal() {
+  document.getElementById("modal-edit-load")?.classList.remove("open");
+  editLoadTransferId = null;
+}
+
+async function confirmEditLoad() {
+  if (!editLoadTransferId) return;
+  const qty = parseFloat(document.getElementById("edit-load-qty").value);
+  const note = document.getElementById("edit-load-note").value.trim();
+  if (!qty || qty <= 0) {
+    alert("Inserisci una quantità valida.");
+    return;
+  }
+  try {
+    await fetchJSON(`/api/inventory/transfers/${encodeURIComponent(editLoadTransferId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ quantity: qty, note }),
+    });
+    closeEditLoadModal();
+    await loadAll();
+  } catch (err) {
+    alert(err.message || "Errore salvataggio");
+  }
 }
 
 function escapeHtml(s) {
@@ -698,6 +749,11 @@ function initMagazzino() {
     loadAll();
   });
 
+  document.getElementById("btn-to-cucina")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    window.location.href = "/cucina/cucina.html";
+  });
+
   document.getElementById("search-input").addEventListener("input", () => {
     renderCurrentTab();
   });
@@ -723,6 +779,78 @@ function initMagazzino() {
   document.getElementById("modal-return-confirm").addEventListener("click", confirmReturn);
   document.getElementById("modal-return").addEventListener("click", (e) => {
     if (e.target.id === "modal-return") closeReturnModal();
+  });
+
+  document.getElementById("modal-edit-load-close")?.addEventListener("click", closeEditLoadModal);
+  document.getElementById("modal-edit-load-cancel")?.addEventListener("click", closeEditLoadModal);
+  document.getElementById("modal-edit-load-confirm")?.addEventListener("click", confirmEditLoad);
+  document.getElementById("modal-edit-load")?.addEventListener("click", (e) => {
+    if (e.target.id === "modal-edit-load") closeEditLoadModal();
+  });
+
+  document.getElementById("btn-email-prefill")?.addEventListener("click", () => {
+    const loads = (transfersCache || []).filter((t) => t.type === "load").slice(0, 15);
+    const lines = loads.map((t) => {
+      const dest = DEPT_LABELS[t.to] || t.to || "";
+      return `- ${t.productName || "?"} — ${t.quantity} ${t.unit || ""} → ${dest}${t.note ? ` (${t.note})` : ""}`;
+    });
+    const body = lines.length
+      ? `Nota ordine / ultimi carichi:\n\n${lines.join("\n")}`
+      : "Nessun carico recente in elenco. Compila manualmente.";
+    const msg = document.getElementById("email-message");
+    if (msg) msg.value = body;
+    const sub = document.getElementById("email-subject");
+    if (sub && !sub.value.trim()) sub.value = "Ordine materie prime";
+    const st = document.getElementById("email-send-status");
+    if (st) {
+      st.textContent = lines.length ? "Testo precompilato dagli ultimi carichi." : "Nessun carico in storico.";
+      st.className = "receive-status info";
+    }
+  });
+
+  document.getElementById("btn-email-send")?.addEventListener("click", async () => {
+    const statusEl = document.getElementById("email-send-status");
+    const payload = {
+      fromName: document.getElementById("email-from-name")?.value?.trim(),
+      fromEmail: document.getElementById("email-from-email")?.value?.trim(),
+      toName: document.getElementById("email-to-name")?.value?.trim(),
+      toEmail: document.getElementById("email-to-email")?.value?.trim(),
+      subject: document.getElementById("email-subject")?.value?.trim(),
+      message: document.getElementById("email-message")?.value?.trim(),
+    };
+    if (!payload.toEmail) {
+      if (statusEl) {
+        statusEl.textContent = "Inserisci l'email del fornitore.";
+        statusEl.className = "receive-status error";
+      }
+      return;
+    }
+    if (!payload.message) {
+      if (statusEl) {
+        statusEl.textContent = "Inserisci il messaggio.";
+        statusEl.className = "receive-status error";
+      }
+      return;
+    }
+    try {
+      if (statusEl) {
+        statusEl.textContent = "Invio in corso...";
+        statusEl.className = "receive-status info";
+      }
+      await fetchJSON("/api/inventory/email-supplier", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (statusEl) {
+        statusEl.textContent = "Email inviata correttamente.";
+        statusEl.className = "receive-status success";
+      }
+    } catch (err) {
+      if (statusEl) {
+        statusEl.textContent = err.message || "Errore invio email.";
+        statusEl.className = "receive-status error";
+      }
+    }
   });
 
   initVoice();

@@ -66,6 +66,35 @@ body {
   color: white;
 }
 
+.card-header-spaced {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.small-print {
+  font-size: 12px;
+  margin: 0 0 8px;
+  grid-column: 1 / -1;
+}
+
+.supplier-email-form textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--text);
+  font: inherit;
+}
+
+.transfer-row .btn-edit-load {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 /* TAB NAVIGATION */
 .mag-tabs {
   display: flex;

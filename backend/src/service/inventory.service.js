@@ -4,6 +4,7 @@
 
 const inventoryRepository = require("../repositories/inventory.repository");
 const logger = require("../utils/logger");
+const orderInventoryHelpers = require("../utils/orderInventoryHelpers");
 const recipesRepository = require("../repositories/recipes.repository");
 const stockMovementsRepository = require("../repositories/stock-movements.repository");
 const orderFoodCostsRepository = require("../repositories/order-food-costs.repository");
@@ -115,7 +116,13 @@ function validateRecipeConsumption(recipe, servedQty) {
 async function validateOrderConsumption(order) {
   if (!order || !order.id) return { valid: false, error: "Ordine non valido", failures: [] };
 
-  const items = Array.isArray(order.items) ? order.items : [];
+  // Bar / bevande: no kitchen recipe stock gate (food-only lines are validated).
+  const foodOrder = orderInventoryHelpers.filterOrderItemsForInventory(order);
+  const items = Array.isArray(foodOrder.items) ? foodOrder.items : [];
+  if (items.length === 0) {
+    return { valid: true, error: null, failures: [] };
+  }
+
   const allFailures = [];
 
   for (const item of items) {
@@ -313,7 +320,7 @@ async function onOrderFinalized(order) {
     };
   }
 
-  for (const item of items) {
+  for (const item of foodItems) {
     const itemName = String(item.name || "").trim();
     const servedQty = Number(item.qty) || 1;
     const recipeId = item.recipeId || item.recipe_id || null;

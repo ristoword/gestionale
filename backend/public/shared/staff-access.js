@@ -238,8 +238,8 @@
               <input type="text" id="rw-manager-username" placeholder="Es. cash_manager" autocomplete="username" />
             </div>
             <div class="field">
-              <label>Password / PIN</label>
-              <input type="password" id="rw-manager-password" placeholder="PIN" autocomplete="current-password" />
+              <label>Password</label>
+              <input type="password" id="rw-manager-password" placeholder="Password" autocomplete="current-password" />
             </div>
             <div class="field">
               <label>Ruolo</label>

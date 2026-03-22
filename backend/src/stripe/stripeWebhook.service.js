@@ -1,8 +1,89 @@
 const stripeMockRepository = require("./stripeMock.repository");
+const stripeLiveWebhookDedup = require("./stripeLiveWebhookDedup");
 const { syncLicenseFromPaidSession } = require("./stripeLicenseSync.service");
 
 function normalizeRestaurantId(id) {
   return String(id || "").trim();
+}
+
+/**
+ * After Stripe signature verification: process mock store or live checkout.session.completed.
+ * @param {object} event – Stripe.Event
+ */
+async function processVerifiedStripeEvent(event) {
+  const id = String(event.id || "").trim();
+  if (!id) throw new Error("eventId_obbligatorio");
+
+  const state = stripeMockRepository.readState();
+  const mockEvent = (state.events || []).find((e) => String(e.id) === id) || null;
+  if (mockEvent) {
+    return processWebhookEvent({ eventId: id });
+  }
+
+  if (event.type === "checkout.session.completed") {
+    if (stripeLiveWebhookDedup.hasProcessedStripeEvent(id)) {
+      return {
+        processed: true,
+        skipped: true,
+        duplicate: true,
+        eventId: id,
+        source: "stripe_live",
+      };
+    }
+
+    const session = event.data && event.data.object;
+    if (!session) throw new Error("session_non_trovata");
+
+    const meta = session.metadata && typeof session.metadata === "object" ? session.metadata : {};
+    const rid =
+      meta.restaurantId ||
+      meta.tenantId ||
+      session.client_reference_id ||
+      null;
+    if (!rid) {
+      throw new Error("stripe_session_missing_restaurant_metadata");
+    }
+
+    const paid = String(session.payment_status || "").toLowerCase() === "paid";
+    if (!paid) {
+      return { processed: true, skipped: true, reason: "not_paid", eventId: id };
+    }
+
+    const modeFromMeta = String(meta.mode || "").toLowerCase();
+    const syntheticSession = {
+      id: session.id,
+      restaurantId: String(rid).trim(),
+      plan: meta.plan || "ristoword_pro",
+      mode: modeFromMeta === "trial" ? "trial" : "subscription",
+      customerEmail: session.customer_email || (session.customer_details && session.customer_details.email) || null,
+      customerName: (session.customer_details && session.customer_details.name) || null,
+    };
+
+    const syntheticEvent = {
+      id: event.id,
+      restaurantId: syntheticSession.restaurantId,
+      sessionId: session.id,
+      paymentStatus: "paid",
+    };
+
+    const paidMeta = await syncLicenseFromPaidSession({
+      session: syntheticSession,
+      event: syntheticEvent,
+      restaurantName: syntheticSession.customerName || syntheticSession.restaurantId,
+      source: "stripe_webhook",
+    });
+
+    stripeLiveWebhookDedup.markStripeEventProcessed(id);
+
+    return {
+      processed: true,
+      eventId: id,
+      source: "stripe_live",
+      ...paidMeta,
+    };
+  }
+
+  throw new Error("event_non_trovato");
 }
 
 async function processWebhookEvent({ eventId } = {}) {
@@ -77,6 +158,7 @@ function getWebhookStatus() {
 
 module.exports = {
   processWebhookEvent,
+  processVerifiedStripeEvent,
   syncPendingWebhooks,
   getWebhookStatus,
 };

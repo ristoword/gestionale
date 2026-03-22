@@ -65,19 +65,33 @@ async function listOrdersByDate(dateStr) {
   });
 }
 
+function normalizeItemCourse(it) {
+  const c = Number(it && it.course);
+  const course = Number.isFinite(c) && c >= 1 ? Math.floor(c) : 1;
+  return { ...it, course };
+}
+
 async function createOrder(payload) {
+  const body = payload || {};
   const orders = await ordersRepository.getAllOrders();
   const id = ordersRepository.getNextId(orders);
   const now = new Date().toISOString();
 
+  const rawItems = Array.isArray(body.items) ? body.items : [];
+  const items = rawItems.map(normalizeItemCourse);
+
+  const ac = Number(body.activeCourse);
+  const activeCourse = Number.isFinite(ac) && ac >= 1 ? Math.floor(ac) : 1;
+
   const newOrder = {
     id,
-    table: payload.table ?? null,
-    covers: payload.covers ?? null,
-    area: payload.area || "sala",
-    waiter: payload.waiter || "",
-    notes: payload.notes || "",
-    items: Array.isArray(payload.items) ? payload.items : [],
+    table: body.table ?? null,
+    covers: body.covers ?? null,
+    area: body.area || "sala",
+    waiter: body.waiter || "",
+    notes: body.notes || "",
+    items,
+    activeCourse,
     status: "in_attesa",
     createdAt: now,
     updatedAt: now,
@@ -104,6 +118,26 @@ async function setStatus(id, status) {
   return target;
 }
 
+async function setActiveCourse(id, activeCourse) {
+  const n = Number(activeCourse);
+  if (!Number.isFinite(n) || n < 1) {
+    const err = new Error("activeCourse deve essere un numero intero >= 1");
+    err.status = 400;
+    throw err;
+  }
+  const orders = await ordersRepository.getAllOrders();
+  const target = orders.find((o) => String(o.id) === String(id));
+  if (!target) {
+    const err = new Error("Ordine non trovato");
+    err.status = 404;
+    throw err;
+  }
+  target.activeCourse = Math.floor(n);
+  target.updatedAt = new Date().toISOString();
+  ordersRepository.saveAllOrders(orders);
+  return target;
+}
+
 /**
  * Try to mark order as inventory-processed. Returns true if we marked it (caller should deduct),
  * false if already marked (idempotent – do not deduct again).
@@ -126,6 +160,7 @@ module.exports = {
   listOrdersByDate,
   createOrder,
   setStatus,
+  setActiveCourse,
   tryMarkOrderInventoryProcessed,
   getOrderDateStr,
 };

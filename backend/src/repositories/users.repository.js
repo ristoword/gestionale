@@ -34,6 +34,7 @@ async function findByCredentials(username, password) {
   const user = users.find((x) => x.is_active !== false && normalizeUsername(x.username) === u);
   if (!user) return null;
 
+  // Solo user.password (bcrypt o plain legacy). Eventuale campo legacy `pin` nel JSON non va usato per l’auth.
   const stored = user.password || "";
   if (isBcryptHash(stored)) {
     const match = await bcrypt.compare(p, stored);

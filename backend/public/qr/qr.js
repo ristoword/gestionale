@@ -126,6 +126,11 @@
     return div.innerHTML;
   }
 
+  function getQrOrderKeyFromMeta() {
+    const meta = document.querySelector('meta[name="rw-qr-order-key"]');
+    return meta ? String(meta.getAttribute("content") || "").trim() : "";
+  }
+
   function addToCart(id) {
     const item = menuItems.find((i) => i.id === id);
     if (!item) return;
@@ -231,9 +236,13 @@
     const btn = $("btn-send");
     if (btn) btn.disabled = true;
 
+    const headers = { "Content-Type": "application/json" };
+    const qrKey = getQrOrderKeyFromMeta();
+    if (qrKey) headers["X-QR-Order-Key"] = qrKey;
+
     fetch(ORDERS_API, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload),
     })
       .then((r) => {

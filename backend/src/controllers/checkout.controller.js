@@ -16,18 +16,24 @@ async function startCheckout(req, res) {
   const mode = body.mode || body.checkoutMode || "subscription";
   const customerEmail = body.customerEmail || body.email || body.adminEmail || null;
   const customerName = body.customerName || body.name || null;
+  const billingPeriod = body.billingPeriod || body.interval || "monthly";
+  const licenseCode = body.licenseCode || body.activationCode || null;
 
   try {
-    const { sessionId, session } = await checkoutService.startCheckout({
+    const { sessionId, session, url, checkoutMode } = await checkoutService.startCheckout({
       restaurantId,
       plan,
       mode,
       customerEmail,
       customerName,
+      billingPeriod,
+      licenseCode,
     });
     return res.json({
       ok: true,
       sessionId,
+      checkoutMode: checkoutMode || "mock",
+      url: url || null,
       status: session.status,
       restaurantId: session.restaurantId,
       mode: session.mode,

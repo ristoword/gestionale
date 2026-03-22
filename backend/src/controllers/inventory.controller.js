@@ -2,6 +2,7 @@ const inventoryRepository = require("../repositories/inventory.repository");
 const inventoryTransfersRepository = require("../repositories/inventory-transfers.repository");
 const stockMovementsRepository = require("../repositories/stock-movements.repository");
 const tenantContext = require("../context/tenantContext");
+const mailService = require("../service/mail.service");
 
 // GET /api/inventory/value – total warehouse value (central stock × unit cost)
 exports.getInventoryValue = async (req, res) => {
@@ -366,3 +367,84 @@ function parseVoiceReceiving(text) {
     destinationWarehouse: destination,
   };
 }
+
+/** PATCH /api/inventory/transfers/:transferId — rettifica quantità/note di una ricevuta (tipo load) */
+exports.patchLoadTransfer = async (req, res) => {
+  const transferId = req.params.transferId;
+  const transfer = inventoryTransfersRepository.getById(transferId);
+  if (!transfer) {
+    return res.status(404).json({ error: "Movimento non trovato" });
+  }
+  if (String(transfer.type) !== "load") {
+    return res.status(400).json({ error: "Modifica disponibile solo per ricevute merce (carico)" });
+  }
+
+  const { quantity, note } = req.body || {};
+  const dest = String(transfer.to || "").trim().toLowerCase();
+  if (!dest) {
+    return res.status(400).json({ error: "Destinazione mancante nel movimento" });
+  }
+
+  const productId = transfer.productId;
+  const oldQty = Number(transfer.quantity) || 0;
+
+  if (quantity === undefined && note !== undefined) {
+    const updated = inventoryTransfersRepository.updateTransfer(transferId, {
+      note: String(note),
+    });
+    return res.json({ success: true, transfer: updated });
+  }
+
+  const newQty = quantity != null ? Number(quantity) : oldQty;
+  if (!Number.isFinite(newQty) || newQty <= 0) {
+    return res.status(400).json({ error: "Quantità obbligatoria e maggiore di zero" });
+  }
+
+  const delta = newQty - oldQty;
+  if (delta !== 0) {
+    const result = inventoryRepository.adjustLoadCorrection(productId, dest, delta);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+  }
+
+  const patch = { quantity: newQty };
+  if (note !== undefined) patch.note = String(note);
+  const updated = inventoryTransfersRepository.updateTransfer(transferId, patch);
+  res.json({ success: true, transfer: updated });
+};
+
+/** POST /api/inventory/email-supplier — invio email da magazzino (SMTP se configurato) */
+exports.emailSupplier = async (req, res) => {
+  const body = req.body || {};
+  const fromName = String(body.fromName || "").trim();
+  const fromEmail = String(body.fromEmail || "").trim();
+  const toName = String(body.toName || "").trim();
+  const toEmail = String(body.toEmail || "").trim();
+  const subject = String(body.subject || "").trim() || "Magazzino – nota ordine";
+  const text = String(body.message != null ? body.message : body.body || "").trim();
+
+  if (!toEmail) {
+    return res.status(400).json({ error: "Email fornitore obbligatoria" });
+  }
+  if (!text) {
+    return res.status(400).json({ error: "Messaggio obbligatorio" });
+  }
+
+  const result = await mailService.sendSupplierEmail({
+    fromName: fromName || undefined,
+    fromEmail: fromEmail || undefined,
+    toName: toName || undefined,
+    toEmail,
+    subject,
+    text,
+  });
+
+  if (!result.sent) {
+    const err = result.error || "invio_fallito";
+    const status = err === "smtp_not_configured" ? 503 : 400;
+    return res.status(status).json({ error: err, sent: false, hint: err === "smtp_not_configured" ? "Configura SMTP_HOST, SMTP_USER, SMTP_PASS sul server" : undefined });
+  }
+
+  res.json({ success: true, sent: true });
+};

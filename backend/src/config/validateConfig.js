@@ -117,6 +117,31 @@ function validateSuperAdmin() {
   }
 }
 
+function validateStripeCheckout() {
+  const sk = process.env.STRIPE_SECRET_KEY && String(process.env.STRIPE_SECRET_KEY).trim();
+  if (!sk) return;
+  const pm = process.env.STRIPE_PRICE_RISTOWORD_MONTHLY && String(process.env.STRIPE_PRICE_RISTOWORD_MONTHLY).trim();
+  const pa = process.env.STRIPE_PRICE_RISTOWORD_ANNUAL && String(process.env.STRIPE_PRICE_RISTOWORD_ANNUAL).trim();
+  if (!pm && !pa) {
+    console.warn(
+      "[CONFIG][STRIPE] STRIPE_SECRET_KEY presente ma nessun STRIPE_PRICE_RISTOWORD_MONTHLY/ANNUAL; checkout resta in modalità mock."
+    );
+    return;
+  }
+  const hasUrl =
+    (process.env.STRIPE_CHECKOUT_SUCCESS_URL && process.env.STRIPE_CHECKOUT_CANCEL_URL) ||
+    (process.env.PUBLIC_APP_URL && String(process.env.PUBLIC_APP_URL).trim());
+  if (!hasUrl) {
+    console.warn(
+      "[CONFIG][STRIPE] Checkout live: imposta PUBLIC_APP_URL oppure STRIPE_CHECKOUT_SUCCESS_URL e STRIPE_CHECKOUT_CANCEL_URL."
+    );
+  }
+  const wh = process.env.STRIPE_WEBHOOK_SECRET && String(process.env.STRIPE_WEBHOOK_SECRET).trim();
+  if (!wh) {
+    console.warn("[CONFIG][STRIPE] STRIPE_WEBHOOK_SECRET mancante: POST /api/stripe/webhook risponderà 503.");
+  }
+}
+
 function validateConfig() {
   // Order matters: fail-fast on mandatory session,
   // then only warnings for optional integrations.
@@ -126,6 +151,7 @@ function validateConfig() {
   validateLicenseAndOnboarding();
   validateAppUrl();
   validateSuperAdmin();
+  validateStripeCheckout();
 }
 
 module.exports = {

@@ -77,6 +77,13 @@ function createCheckoutSession({ restaurantId, plan, mode, customerEmail, custom
     processedAt: null,
     customerEmail: email || null,
     customerName: name || null,
+    // Parità con Checkout Stripe (metadata + client_reference_id)
+    metadata: {
+      restaurantId: rid,
+      plan: plan || "ristoword_pro",
+      mode: mode || "subscription",
+    },
+    client_reference_id: rid,
   };
 
   state.sessions.push(session);

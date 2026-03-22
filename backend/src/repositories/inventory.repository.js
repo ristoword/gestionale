@@ -402,6 +402,63 @@ function load(productId, destinationWarehouse, quantity, options = {}) {
   };
 }
 
+/**
+ * Corregge quantità già caricata in una ricevuta (delta = nuovaQty - vecchiaQty).
+ * Usato solo per rettifiche su movimenti tipo "load" già registrati.
+ */
+function adjustLoadCorrection(productId, destinationWarehouse, deltaQty) {
+  const dest = String(destinationWarehouse || "").trim().toLowerCase();
+  const validDestinations = ["central", ...DEPARTMENTS];
+  if (!validDestinations.includes(dest)) {
+    return { success: false, error: "Destinazione non valida" };
+  }
+  const delta = Number(deltaQty);
+  if (!Number.isFinite(delta) || delta === 0) {
+    return { success: false, error: "Variazione quantità non valida" };
+  }
+
+  const inventory = readInventory();
+  const index = inventory.findIndex((item) => String(item.id) === String(productId));
+  if (index === -1) return { success: false, error: "Prodotto non trovato" };
+
+  const item = inventory[index];
+  if (dest === "central") {
+    const before = Number(item.central ?? item.quantity) || 0;
+    const after = before + delta;
+    if (after < 0) {
+      return {
+        success: false,
+        error: `Quantità insufficiente in centrale per la rettifica. Disponibile: ${before}`,
+      };
+    }
+    inventory[index] = normalizeItem({
+      ...item,
+      quantity: after,
+      central: after,
+      stock: after,
+      updatedAt: new Date().toISOString(),
+    });
+  } else {
+    const stocks = { ...(item.stocks || {}) };
+    const before = Number(stocks[dest]) || 0;
+    const after = before + delta;
+    if (after < 0) {
+      return {
+        success: false,
+        error: `Quantità insufficiente nel reparto per la rettifica. Disponibile: ${before}`,
+      };
+    }
+    stocks[dest] = after;
+    inventory[index] = normalizeItem({
+      ...item,
+      stocks,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  writeInventory(inventory);
+  return { success: true, item: inventory[index] };
+}
+
 function returnToCentral(productId, fromDepartment, quantity, note, operator) {
   if (!DEPARTMENTS.includes(fromDepartment)) {
     return { success: false, error: "Reparto non valido" };
@@ -474,6 +531,7 @@ module.exports = {
   remove,
   adjustQuantity,
   load,
+  adjustLoadCorrection,
   transfer,
   returnToCentral,
   readInventory,

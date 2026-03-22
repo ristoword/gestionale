@@ -335,9 +335,44 @@ function getPrimaryOpenOrderForTable(tableNum) {
     .sort((a, b) => {
       const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return tb - ta;
+      /* Ordine più vecchio = comanda principale (marcia / corsi coerenti) */
+      return ta - tb;
     });
   return list[0] || null;
+}
+
+/**
+ * Dopo invio ordine la bozza locale è vuota o ha un solo corso:
+ * ricostruisce corsi e voci dall'ordine sul server così popup / menù tornano allineati.
+ */
+function syncCourseDraftFromPrimaryOrder(tableNum) {
+  const o = getPrimaryOpenOrderForTable(tableNum);
+  if (!o || !Array.isArray(o.items) || o.items.length === 0) return;
+
+  const byN = new Map();
+  o.items.forEach((it) => {
+    const n = Number(it.course) >= 1 ? Math.floor(Number(it.course)) : 1;
+    if (!byN.has(n)) byN.set(n, []);
+    byN.get(n).push({
+      name: it.name,
+      qty: it.qty,
+      category: it.category || null,
+      area: it.area,
+      price: it.price != null ? Number(it.price) : null,
+      note: it.note || null,
+    });
+  });
+  const nums = [...byN.keys()].sort((a, b) => a - b);
+  const d = ensureCourseDraft(tableNum);
+  d.courses = nums.map((n) => ({
+    id: `sync_${tableNum}_${n}`,
+    n,
+    items: byN.get(n),
+  }));
+  const ac = Number(o.activeCourse) >= 1 ? Math.floor(Number(o.activeCourse)) : 1;
+  const match = d.courses.find((c) => c.n === ac);
+  d.activeCourseId = match ? match.id : d.courses[0].id;
+  saveCourseDrafts();
 }
 
 async function apiSetStatus(id, status) {
@@ -471,6 +506,9 @@ function computeTableStateClass(tableNum) {
     }
     if (orders.some((o) => o.status === "in_preparazione")) {
       return { cls: "tbl-work", label: "In lavorazione" };
+    }
+    if (orders.some((o) => o.status === "servito")) {
+      return { cls: "tbl-served", label: "In servizio" };
     }
     return { cls: "tbl-open", label: "Aperto" };
   }
@@ -633,18 +671,25 @@ function openTablePopup(tableNum) {
   const hasOrders = orders.length > 0;
   const f = getFlags(tableNum);
 
+  if (hasOrders) {
+    syncCourseDraftFromPrimaryOrder(tableNum);
+  }
+
   if (!hasOrders && !f.reserved) {
     body.innerHTML = buildPopupFree(tableNum);
   } else if (!hasOrders && f.reserved) {
     body.innerHTML = buildPopupReservedFree(tableNum);
   } else {
-    body.innerHTML = buildPopupOccupied(tableNum, orders);
+    body.innerHTML = buildPopupOccupied(tableNum);
   }
 
   back.classList.add("open");
   back.setAttribute("aria-hidden", "false");
   pop.classList.add("open");
   pop.setAttribute("aria-hidden", "false");
+
+  /* Allinea pannello sinistro (piatti per corso) dopo sync da server */
+  renderSelectedItems();
 }
 
 function initPopupUiOnce() {
@@ -909,9 +954,22 @@ function buildPopupReservedFree(tableNum) {
   `;
 }
 
-function buildPopupOccupied(tableNum, orders) {
+function buildPopupOccupied(tableNum) {
+  const po = getPrimaryOpenOrderForTable(tableNum);
+  const ac =
+    po && Number(po.activeCourse) >= 1 ? Math.floor(Number(po.activeCourse)) : 1;
+  const maxC = (() => {
+    let m = 1;
+    if (po && Array.isArray(po.items)) {
+      po.items.forEach((it) => {
+        const n = Number(it.course) >= 1 ? Math.floor(Number(it.course)) : 1;
+        if (n > m) m = n;
+      });
+    }
+    return m;
+  })();
   return `
-    <p class="sala-popup-hint">Comanda attiva — usa il menù a sinistra (corso attivo evidenziato in rosso).</p>
+    <p class="sala-popup-hint">Comanda attiva — <strong>Marca corso (server): ${ac}</strong>${maxC > 1 ? ` / fino a corso ${maxC}` : ""}. Il corso attivo è evidenziato sotto; usa <strong>Marcia prossima portata</strong> per il corso successivo.</p>
     <div class="sala-popup-actions">
       <button type="button" class="sala-popup-btn food" data-act="order-food">Prendi ordine (cucina / food)</button>
       <button type="button" class="sala-popup-btn bar" data-act="order-bar">Aggiungi bevande (bar)</button>

@@ -7,6 +7,9 @@ const ORDERS_API = "/api/orders";
 const LS_RECIPES_KEY = "ristoword_cucina_recipes";
 const LS_HACCP_KEY = "ristoword_cucina_haccp";
 const LS_SHOPPING_KEY = "ristoword_cucina_shopping";
+const LS_SUPPLIER_EMAIL = "ristoword_cucina_supplier_email";
+const LS_SUPPLIER_SUBJECT = "ristoword_cucina_supplier_subject";
+const LS_SUPPLIER_AUTO = "ristoword_cucina_supplier_auto_email";
 const LS_SHIFTS_KEY = "ristoword_cucina_turni";
 const LS_VOICE_NOTES_KEY = "ristoword_cucina_voice_notes";
 
@@ -200,7 +203,7 @@ function buildCourseBlocksHtml(order) {
   if (!nums.length) {
     return `<span style="font-size:14px;color:#b7bccd;">Dettaglio piatti non disponibile</span>`;
   }
-  return nums
+  const blocks = nums
     .map((cn) => {
       let courseCls = "kds-course-future";
       if (cn === activeCourse) courseCls = "kds-course-active";
@@ -218,6 +221,10 @@ function buildCourseBlocksHtml(order) {
       return `<div class="${cls}"><div class="kds-course-title">Corso ${cn}</div>${rows}</div>`;
     })
     .join("");
+  return `
+    <div class="kds-marca-hint">Marca corso (sala): <strong>${activeCourse}</strong> · blocchi separati per ogni uscita</div>
+    <div class="kds-courses-wrap">${blocks}</div>
+  `;
 }
 
 function createOrderCard(order) {
@@ -788,6 +795,180 @@ function saveShoppingToStorage() {
   localStorage.setItem(LS_SHOPPING_KEY, JSON.stringify(shoppingItems));
 }
 
+function buildShoppingEmailBody() {
+  const lines = [];
+  lines.push("LISTA SPESA — RistoWord (Cucina)");
+  lines.push("Data: " + new Date().toLocaleString("it-IT"));
+  lines.push("");
+  const items = Array.isArray(shoppingItems) ? shoppingItems : [];
+  if (!items.length) return "";
+  items.forEach((t) => lines.push("- " + String(t)));
+  return lines.join("\n");
+}
+
+function setSupplierEmailStatus(msg, type) {
+  const el = document.getElementById("supplier-email-status");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.classList.remove("ok", "err");
+  if (type === "ok") el.classList.add("ok");
+  else if (type === "err") el.classList.add("err");
+}
+
+function persistSupplierEmailPrefs() {
+  try {
+    const em = document.getElementById("supplier-email-to")?.value?.trim() || "";
+    const sub = document.getElementById("supplier-email-subject")?.value?.trim() || "";
+    const auto = document.getElementById("supplier-email-after-add")?.checked === true;
+    localStorage.setItem(LS_SUPPLIER_EMAIL, em);
+    localStorage.setItem(LS_SUPPLIER_SUBJECT, sub);
+    localStorage.setItem(LS_SUPPLIER_AUTO, auto ? "1" : "0");
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function loadSupplierEmailPrefs() {
+  try {
+    const em = localStorage.getItem(LS_SUPPLIER_EMAIL) || "";
+    const sub = localStorage.getItem(LS_SUPPLIER_SUBJECT) || "";
+    const auto = localStorage.getItem(LS_SUPPLIER_AUTO) === "1";
+    const elEm = document.getElementById("supplier-email-to");
+    const elSub = document.getElementById("supplier-email-subject");
+    const elAuto = document.getElementById("supplier-email-after-add");
+    if (elEm) elEm.value = em;
+    if (elSub) elSub.value = sub;
+    if (elAuto) elAuto.checked = auto;
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+async function sendSupplierShoppingEmail(options = {}) {
+  const { silent } = options;
+  const to = document.getElementById("supplier-email-to")?.value?.trim();
+  const subject =
+    document.getElementById("supplier-email-subject")?.value?.trim() ||
+    "Ordine lista spesa — Cucina";
+  const message = buildShoppingEmailBody();
+
+  if (!to) {
+    const msg = "Inserisci l'email del fornitore.";
+    setSupplierEmailStatus(msg, "err");
+    if (!silent) window.alert(msg);
+    return { ok: false };
+  }
+  if (!shoppingItems || !shoppingItems.length) {
+    const msg = "La lista spesa è vuota. Aggiungi voci prima di inviare.";
+    setSupplierEmailStatus(msg, "err");
+    if (!silent) window.alert(msg);
+    return { ok: false };
+  }
+
+  if (!silent) {
+    setSupplierEmailStatus("Invio in corso...", "");
+  }
+
+  try {
+    const res = await fetch("/api/inventory/email-supplier", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        toEmail: to,
+        subject,
+        message,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = data.error || data.message || `HTTP ${res.status}`;
+      const hint =
+        res.status === 503
+          ? "Configura l’email in Console owner (/owner-console) o SMTP sul server."
+          : data.hint || "";
+      const msg = "Invio non riuscito: " + err + (hint ? " — " + hint : "");
+      setSupplierEmailStatus(msg, "err");
+      if (!silent) window.alert(msg);
+      return { ok: false };
+    }
+    setSupplierEmailStatus(
+      silent ? "Lista inviata al fornitore." : "Email inviata al fornitore correttamente.",
+      "ok"
+    );
+    return { ok: true };
+  } catch (e) {
+    const msg = "Errore: " + (e && e.message ? e.message : String(e));
+    setSupplierEmailStatus(msg, "err");
+    if (!silent) window.alert(msg);
+    return { ok: false };
+  }
+}
+
+function startEditShoppingItem(idx, divEl) {
+  if (!Array.isArray(shoppingItems) || idx < 0 || idx >= shoppingItems.length) return;
+  const current = String(shoppingItems[idx] ?? "");
+  divEl.innerHTML = "";
+  const wrap = document.createElement("div");
+  wrap.className = "shopping-item-edit";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "shopping-item-input";
+  input.value = current;
+  input.setAttribute("aria-label", "Modifica voce lista spesa");
+
+  const btnRow = document.createElement("div");
+  btnRow.className = "shopping-item-edit-actions";
+
+  const btnSave = document.createElement("button");
+  btnSave.type = "button";
+  btnSave.className = "btn-xs success";
+  btnSave.textContent = "Salva";
+
+  const btnCancel = document.createElement("button");
+  btnCancel.type = "button";
+  btnCancel.className = "btn-xs ghost";
+  btnCancel.textContent = "Annulla";
+
+  const save = () => {
+    const v = input.value.trim();
+    if (!v) {
+      window.alert(
+        "Il testo non può essere vuoto. Usa «Elimina» (X) per rimuovere la voce."
+      );
+      return;
+    }
+    shoppingItems[idx] = v;
+    saveShoppingToStorage();
+    renderShoppingList();
+  };
+
+  btnSave.addEventListener("click", save);
+  btnCancel.addEventListener("click", () => {
+    renderShoppingList();
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      save();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      renderShoppingList();
+    }
+  });
+
+  btnRow.appendChild(btnSave);
+  btnRow.appendChild(btnCancel);
+  wrap.appendChild(input);
+  wrap.appendChild(btnRow);
+  divEl.appendChild(wrap);
+  input.focus();
+  input.select();
+}
+
 function renderShoppingList() {
   const container = document.getElementById("shopping-list");
   if (!container) return;
@@ -804,18 +985,33 @@ function renderShoppingList() {
   items.forEach((txt, idx) => {
     const div = document.createElement("div");
     div.className = "shopping-item";
-    div.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <span>${txt}</span>
-        <button data-index="${idx}" class="btn-xs danger">X</button>
-      </div>
-    `;
-    container.appendChild(div);
-  });
 
-  container.querySelectorAll("button.btn-xs.danger").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.dataset.index);
+    const row = document.createElement("div");
+    row.className = "shopping-item-row";
+
+    const span = document.createElement("span");
+    span.className = "shopping-item-text";
+    span.textContent = txt;
+
+    const actions = document.createElement("div");
+    actions.className = "shopping-item-actions";
+
+    const btnEdit = document.createElement("button");
+    btnEdit.type = "button";
+    btnEdit.className = "btn-xs";
+    btnEdit.textContent = "Modifica";
+    btnEdit.setAttribute("aria-label", "Modifica voce");
+
+    const btnDel = document.createElement("button");
+    btnDel.type = "button";
+    btnDel.className = "btn-xs danger";
+    btnDel.textContent = "X";
+    btnDel.setAttribute("aria-label", "Rimuovi voce");
+
+    btnEdit.addEventListener("click", () => {
+      startEditShoppingItem(idx, div);
+    });
+    btnDel.addEventListener("click", () => {
       if (!Array.isArray(shoppingItems)) {
         shoppingItems = [];
       }
@@ -823,11 +1019,19 @@ function renderShoppingList() {
       saveShoppingToStorage();
       renderShoppingList();
     });
+
+    actions.appendChild(btnEdit);
+    actions.appendChild(btnDel);
+    row.appendChild(span);
+    row.appendChild(actions);
+    div.appendChild(row);
+    container.appendChild(div);
   });
 }
 
 function initShopping() {
   loadShoppingFromStorage();
+  loadSupplierEmailPrefs();
   renderShoppingList();
   initSpeechRecognition();
 
@@ -852,7 +1056,7 @@ function initShopping() {
   }
 
   if (btnAdd) {
-    btnAdd.addEventListener("click", () => {
+    btnAdd.addEventListener("click", async () => {
       if (!textarea) return;
       const raw = textarea.value.trim();
       if (!raw) return;
@@ -865,8 +1069,22 @@ function initShopping() {
       saveShoppingToStorage();
       renderShoppingList();
       textarea.value = "";
+      persistSupplierEmailPrefs();
+      const auto = document.getElementById("supplier-email-after-add")?.checked === true;
+      const hasEmail = document.getElementById("supplier-email-to")?.value?.trim();
+      if (auto && hasEmail) {
+        await sendSupplierShoppingEmail({ silent: true });
+      }
     });
   }
+
+  document.getElementById("supplier-email-to")?.addEventListener("input", persistSupplierEmailPrefs);
+  document.getElementById("supplier-email-subject")?.addEventListener("input", persistSupplierEmailPrefs);
+  document.getElementById("supplier-email-after-add")?.addEventListener("change", persistSupplierEmailPrefs);
+
+  document.getElementById("btn-send-supplier-email")?.addEventListener("click", () => {
+    sendSupplierShoppingEmail({ silent: false });
+  });
 
   if (btnClear) {
     btnClear.addEventListener("click", () => {

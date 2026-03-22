@@ -9,6 +9,7 @@ const { requireRole } = require("../middleware/requireRole.middleware");
 
 router.get("/owner-console", requireAuth, requireRole(["owner"]), ownerConsoleController.getOwnerConsolePage);
 router.get("/api/owner-console/status", requireAuth, requireRole(["owner"]), asyncHandler(ownerConsoleController.apiGetStatus));
+router.post("/api/owner-console/email-settings", requireAuth, requireRole(["owner"]), asyncHandler(ownerConsoleController.apiSaveEmailSettings));
 router.post("/api/owner-console/complete", requireAuth, requireRole(["owner"]), asyncHandler(ownerConsoleController.apiCompleteSetup));
 
 module.exports = router;

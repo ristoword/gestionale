@@ -7,6 +7,7 @@ const usersRepository = require("../repositories/users.repository");
 const { getLicense } = require("../config/license");
 const { readOwnerSetup, setOwnerSetupCompleted } = require("../config/ownerSetup");
 const { getTenantIdFromRequest } = require("../context/tenantContext");
+const tenantEmailSettings = require("../service/tenantEmailSettings.service");
 
 function ensureOwner(req, res) {
   const role = req.session?.user?.role;
@@ -61,6 +62,7 @@ exports.apiGetStatus = async (req, res) => {
     license: licenseStatus,
     globalLicense: globalLicense ? { status: globalLicense.status, plan: globalLicense.plan } : null,
     ownerSetup,
+    emailSmtp: tenantEmailSettings.getPublicSettings(restaurantId),
     staff: staff.map((u) => ({
       id: u.id,
       username: u.username,
@@ -71,6 +73,32 @@ exports.apiGetStatus = async (req, res) => {
     })),
     restaurantId,
   });
+};
+
+// POST /api/owner-console/email-settings — SMTP per tenant (lista spesa / magazzino)
+exports.apiSaveEmailSettings = async (req, res) => {
+  const restaurantId = ensureOwner(req, res);
+  if (!restaurantId) return;
+
+  try {
+    if (req.body && req.body.clear === true) {
+      tenantEmailSettings.clearSettings(restaurantId);
+      return res.json({
+        ok: true,
+        emailSmtp: tenantEmailSettings.getPublicSettings(restaurantId),
+      });
+    }
+    tenantEmailSettings.saveSettings(restaurantId, req.body || {});
+    return res.json({
+      ok: true,
+      emailSmtp: tenantEmailSettings.getPublicSettings(restaurantId),
+    });
+  } catch (err) {
+    const status = err.status || 400;
+    return res.status(status).json({
+      error: err.message || "Errore salvataggio",
+    });
+  }
 };
 
 // POST /api/owner-console/complete – completa configurazione iniziale

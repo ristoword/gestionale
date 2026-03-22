@@ -226,10 +226,21 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+function getTenantSmtpServiceSafe() {
+  try {
+    // eslint-disable-next-line global-require
+    return require("./tenantEmailSettings.service");
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Email operativa magazzino → fornitore (Reply-To = email operatore se indicata).
+ * Email operativa magazzino / lista spesa → fornitore.
+ * @param {object} options - fromName, fromEmail, toName, toEmail, subject, text, html
+ * @param {string} [tenantRestaurantId] - se impostato, usa SMTP salvato in console owner per quel tenant; altrimenti SMTP globale .env
  */
-async function sendSupplierEmail(options) {
+async function sendSupplierEmail(options, tenantRestaurantId) {
   const {
     fromName,
     fromEmail,
@@ -247,7 +258,13 @@ async function sendSupplierEmail(options) {
   if (!nodemailer) {
     return { sent: false, error: "nodemailer_not_installed" };
   }
-  if (!isConfigured()) {
+
+  const tenantSvc = getTenantSmtpServiceSafe();
+  const tenantSmtp =
+    tenantRestaurantId && tenantSvc ? tenantSvc.getSmtpForSend(String(tenantRestaurantId).trim()) : null;
+
+  const useGlobal = isConfigured();
+  if (!tenantSmtp && !useGlobal) {
     return { sent: false, error: "smtp_not_configured" };
   }
 
@@ -257,21 +274,26 @@ async function sendSupplierEmail(options) {
     html ||
     `<pre style="font-family:system-ui,sans-serif;white-space:pre-wrap;">${escapeHtml(bodyText)}</pre>`;
 
+  const smtpHost = tenantSmtp ? tenantSmtp.host : SMTP_HOST;
+  const smtpPort = tenantSmtp ? tenantSmtp.port : SMTP_PORT;
+  const smtpSecure = tenantSmtp ? tenantSmtp.secure : SMTP_PORT === 465;
+  const smtpUser = tenantSmtp ? tenantSmtp.user : SMTP_USER;
+  const smtpPass = tenantSmtp ? tenantSmtp.pass : SMTP_PASS;
+  const smtpFrom = tenantSmtp ? tenantSmtp.from : SMTP_FROM;
+
   const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
     auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
+      user: smtpUser,
+      pass: smtpPass,
     },
   });
 
   const replyTo = String(fromEmail || "").trim() || undefined;
   const fromNameSafe = String(fromName || "").replace(/"/g, "").trim();
-  const fromHeader = fromNameSafe
-    ? `"${fromNameSafe}" <${SMTP_FROM}>`
-    : SMTP_FROM;
+  const fromHeader = fromNameSafe ? `"${fromNameSafe}" <${smtpFrom}>` : smtpFrom;
   const toAddr = toName ? `"${String(toName).replace(/"/g, "")}" <${to}>` : to;
 
   try {

@@ -20,6 +20,7 @@
   --tbl-ready: #dc2626;
   --tbl-bill: #ea580c;
   --tbl-paid: #16a34a;
+  --tbl-served: #9333ea;
 }
 
 *,
@@ -363,6 +364,11 @@ body {
 
 .sala-table-node.tbl-ready {
   background: var(--tbl-ready);
+  color: #fff;
+}
+
+.sala-table-node.tbl-served {
+  background: var(--tbl-served);
   color: #fff;
 }
 

@@ -431,19 +431,30 @@ exports.emailSupplier = async (req, res) => {
     return res.status(400).json({ error: "Messaggio obbligatorio" });
   }
 
-  const result = await mailService.sendSupplierEmail({
-    fromName: fromName || undefined,
-    fromEmail: fromEmail || undefined,
-    toName: toName || undefined,
-    toEmail,
-    subject,
-    text,
-  });
+  const tenantId = tenantContext.getTenantIdFromRequest(req);
+  const result = await mailService.sendSupplierEmail(
+    {
+      fromName: fromName || undefined,
+      fromEmail: fromEmail || undefined,
+      toName: toName || undefined,
+      toEmail,
+      subject,
+      text,
+    },
+    tenantId
+  );
 
   if (!result.sent) {
     const err = result.error || "invio_fallito";
     const status = err === "smtp_not_configured" ? 503 : 400;
-    return res.status(status).json({ error: err, sent: false, hint: err === "smtp_not_configured" ? "Configura SMTP_HOST, SMTP_USER, SMTP_PASS sul server" : undefined });
+    return res.status(status).json({
+      error: err,
+      sent: false,
+      hint:
+        err === "smtp_not_configured"
+          ? "Configura l’email in Console owner (Configurazione Owner) oppure SMTP globale sul server"
+          : undefined,
+    });
   }
 
   res.json({ success: true, sent: true });

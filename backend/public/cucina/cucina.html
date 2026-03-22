@@ -278,6 +278,31 @@
             <div class="shopping-list" id="shopping-list">
               <!-- popolato da cucina.js -->
             </div>
+
+            <div class="supplier-email-block">
+              <h3 class="supplier-email-title">Email fornitore</h3>
+              <p class="supplier-email-hint">
+                Invia la lista corrente al fornitore (richiede SMTP configurato sul server).
+              </p>
+              <label class="voice-textarea-label">
+                Email fornitore
+                <input type="email" id="supplier-email-to" placeholder="ordini@fornitore.it" autocomplete="email" />
+              </label>
+              <label class="voice-textarea-label">
+                Oggetto (opz.)
+                <input type="text" id="supplier-email-subject" placeholder="Ordine lista spesa — Cucina" />
+              </label>
+              <label class="supplier-email-auto">
+                <input type="checkbox" id="supplier-email-after-add" />
+                Dopo &quot;Aggiungi alla lista&quot;, invia subito l&apos;email (se l&apos;indirizzo è compilato)
+              </label>
+              <div class="form-actions">
+                <button type="button" class="btn primary" id="btn-send-supplier-email">
+                  Invia email al fornitore
+                </button>
+              </div>
+              <p id="supplier-email-status" class="supplier-email-status" aria-live="polite"></p>
+            </div>
           </div>
         </article>
       </section>

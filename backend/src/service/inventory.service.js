@@ -320,7 +320,7 @@ async function onOrderFinalized(order) {
     };
   }
 
-  for (const item of foodItems) {
+  for (const item of items) {
     const itemName = String(item.name || "").trim();
     const servedQty = Number(item.qty) || 1;
     const recipeId = item.recipeId || item.recipe_id || null;

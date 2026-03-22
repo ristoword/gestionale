@@ -90,7 +90,33 @@
       </div>
 
       <div class="card section-wide">
-        <h2>4) Completa configurazione</h2>
+        <h2>4) Email operativa (lista spesa / fornitori)</h2>
+        <p class="muted" style="margin:0 0 12px;font-size:13px">
+          Configura la casella SMTP del <strong>tuo locale</strong> per inviare ordini e liste spesa dal Magazzino e dalla Cucina.
+          Se non compili nulla qui, si usa eventualmente l’SMTP impostato sul server dall’amministratore di sistema.
+        </p>
+        <div class="form-row" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+          <label>Server SMTP (host) <input type="text" id="smtp-host" placeholder="smtp.gmail.com" autocomplete="off" /></label>
+          <label>Porta <input type="number" id="smtp-port" placeholder="587" min="1" max="65535" /></label>
+          <label style="flex-direction:row;align-items:center;gap:8px;padding-top:20px">
+            <input type="checkbox" id="smtp-secure" /> SSL/TLS (es. porta 465)
+          </label>
+        </div>
+        <div class="form-row" style="margin-top:10px">
+          <label>Utente (login SMTP) <input type="text" id="smtp-user" placeholder="ordini@tuolocale.it" autocomplete="off" /></label>
+          <label>Password / app password <input type="password" id="smtp-pass" placeholder="Lascia vuoto per non cambiare" autocomplete="new-password" /></label>
+          <label>Mittente (Da:) <input type="text" id="smtp-from" placeholder="ordini@tuolocale.it" autocomplete="off" /></label>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn primary" type="button" id="btn-save-smtp">Salva configurazione email</button>
+          <button class="btn danger" type="button" id="btn-clear-smtp">Rimuovi configurazione locale</button>
+        </div>
+        <div id="smtp-msg" class="msg"></div>
+        <p class="muted" style="margin:10px 0 0;font-size:12px">Suggerimento Gmail: crea una <strong>password per le app</strong> e usa porta 587 (TLS) oppure 465 (SSL).</p>
+      </div>
+
+      <div class="card section-wide">
+        <h2>5) Completa configurazione</h2>
         <p class="muted" style="margin:0 0 12px;font-size:13px">Quando hai configurato il personale e sei pronto a usare Ristoword, clicca il pulsante per completare il setup e accedere alla gestione operativa.</p>
         <button class="btn primary" id="btn-complete" style="padding:14px 24px;font-size:16px">Completa configurazione iniziale</button>
         <div id="complete-msg" class="msg"></div>
@@ -121,6 +147,25 @@
         $('lic-expires').textContent=lic.expiresAt?new Date(lic.expiresAt).toLocaleDateString('it-IT'):'—';
         $('biz-id').textContent=d.restaurantId||'—';
         $('owner-status').innerHTML=d.ownerSetup?.ownerSetupCompleted?'<span class="badge ok">Sì</span>':'<span class="badge warn">Da completare</span>';
+
+        const em=d.emailSmtp||{};
+        if(em.configured){
+          $('smtp-host').value=em.host||'';
+          $('smtp-port').value=em.port||587;
+          $('smtp-secure').checked=!!em.secure;
+          $('smtp-user').value=em.userFull||'';
+          $('smtp-from').value=em.from||'';
+          $('smtp-pass').value='';
+          $('smtp-pass').placeholder=em.hasPassword?'Lascia vuoto per non cambiare la password':'Inserisci password';
+        }else{
+          $('smtp-host').value='';
+          $('smtp-port').value='';
+          $('smtp-secure').checked=false;
+          $('smtp-user').value='';
+          $('smtp-from').value='';
+          $('smtp-pass').value='';
+          $('smtp-pass').placeholder='Password SMTP';
+        }
 
         const rows=(d.staff||[]).map(u=>'<tr><td>'+esc(u.username)+'</td><td>'+esc(u.name)+' '+esc(u.surname)+'</td><td>'+esc(u.role)+'</td><td>'+(u.is_active?'<span class="badge ok">Attivo</span>':'<span class="badge err">Disattivo</span>')+'</td><td><button class="btn" data-action="toggle" data-id="'+esc(u.id)+'" data-active="'+u.is_active+'">'+(u.is_active?'Disattiva':'Attiva')+'</button> <button class="btn" data-action="reset" data-id="'+esc(u.id)+'">Reset password</button></td></tr>');
         $('staff-tbody').innerHTML=rows.join('');
@@ -155,6 +200,35 @@
             await loadStatus();
           }catch(err){alert(err.message);}
         }
+      });
+
+      $('btn-save-smtp').addEventListener('click',async ()=>{
+        $('smtp-msg').textContent='';
+        try{
+          await api('POST','/api/owner-console/email-settings',{
+            host: $('smtp-host').value.trim(),
+            port: Number($('smtp-port').value)||587,
+            secure: $('smtp-secure').checked,
+            user: $('smtp-user').value.trim(),
+            pass: $('smtp-pass').value,
+            from: $('smtp-from').value.trim(),
+          });
+          $('smtp-msg').textContent='Configurazione email salvata per questo locale.';
+          $('smtp-msg').className='msg ok';
+          $('smtp-pass').value='';
+          await loadStatus();
+        }catch(e){$('smtp-msg').textContent=e.message;$('smtp-msg').className='msg err';}
+      });
+
+      $('btn-clear-smtp').addEventListener('click',async ()=>{
+        if(!confirm('Rimuovere la configurazione SMTP di questo locale? Gli invii useranno solo l’SMTP globale del server, se presente.'))return;
+        $('smtp-msg').textContent='';
+        try{
+          await api('POST','/api/owner-console/email-settings',{clear:true});
+          $('smtp-msg').textContent='Configurazione email locale rimossa.';
+          $('smtp-msg').className='msg ok';
+          await loadStatus();
+        }catch(e){$('smtp-msg').textContent=e.message;$('smtp-msg').className='msg err';}
       });
 
       $('btn-complete').addEventListener('click',async ()=>{

@@ -259,8 +259,23 @@ body {
 }
 
 /* Corsi / marce (activeCourse) */
+.kds-marca-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.kds-courses-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .kds-course-block {
-  margin-top: 8px;
+  margin-top: 0;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   border: 2px solid transparent;
@@ -381,6 +396,23 @@ body {
 
 .btn-xs.danger {
   background: var(--accent-danger);
+}
+
+.btn-xs.ghost {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  color: var(--text-soft);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.btn-xs.ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
 }
 
 /* CARD GENERICHE (RICETTE, HACCP, TURNI, SPESA) */
@@ -542,6 +574,72 @@ body {
   border-radius: var(--radius-sm);
   border: 1px solid #343848;
   background: #181b24;
+}
+
+.shopping-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.shopping-item-text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.shopping-item-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.shopping-item-actions .btn-xs {
+  flex: 0 0 auto;
+  min-width: auto;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.shopping-item-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.shopping-item-input {
+  width: 100%;
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #343848;
+  background: #151822;
+  color: var(--text);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.shopping-item-edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.shopping-item-edit-actions .btn-xs {
+  flex: 0 0 auto;
+  min-width: auto;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 /* KITCHEN AI COMMAND */
@@ -742,4 +840,51 @@ body {
   background: rgba(255, 255, 255, 0.03);
   border-radius: var(--radius-sm);
   margin-bottom: 8px;
+}
+
+/* Lista spesa — email fornitore */
+.supplier-email-block {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+.supplier-email-title {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+}
+.supplier-email-hint {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.4;
+}
+.supplier-email-block input[type="email"],
+.supplier-email-block input[type="text"] {
+  width: 100%;
+  max-width: 420px;
+}
+.supplier-email-auto {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.supplier-email-auto input {
+  margin-top: 3px;
+}
+.supplier-email-status {
+  margin: 10px 0 0 0;
+  font-size: 13px;
+  min-height: 1.2em;
+  color: var(--text-soft);
+}
+.supplier-email-status.ok {
+  color: var(--accent-ready);
+}
+.supplier-email-status.err {
+  color: var(--accent-danger);
 }

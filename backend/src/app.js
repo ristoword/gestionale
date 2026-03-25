@@ -1,5 +1,6 @@
 // backend/src/app.js
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const path = require("path");
 const sessionMiddleware = require("./config/session");
 const { ensureTenantMigration } = require("./utils/tenantMigration");
@@ -17,7 +18,13 @@ try {
   const expressRaw = require("express").raw({ type: "application/json" });
   const asyncHandler = require("./utils/asyncHandler");
   const { handleStripeWebhook } = require("./controllers/stripeWebhook.controller");
-  app.post("/api/stripe/webhook", expressRaw, asyncHandler(handleStripeWebhook));
+  const { stripeWebhookDisabledIfNoSecret } = require("./routes/stripe.routes");
+  app.post(
+    "/api/stripe/webhook",
+    expressRaw,
+    stripeWebhookDisabledIfNoSecret,
+    asyncHandler(handleStripeWebhook)
+  );
 } catch (e) {
   console.warn("stripe webhook mount failed:", e.message);
 }
@@ -29,6 +36,21 @@ app.use(express.json());
 const { corsOptional } = require("./middleware/corsOptional.middleware");
 app.use(corsOptional);
 app.use(sessionMiddleware);
+
+// Rate limiting (Blocco 4): brute-force login + protezione API
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Troppi tentativi, riprova più tardi" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+});
+app.use("/api/auth/login", loginLimiter);
+app.use("/api/", apiLimiter);
 
 // Tenant context for multi-tenant data isolation (resolves restaurantId from session)
 const { setTenantContext } = require("./middleware/tenantContext.middleware");

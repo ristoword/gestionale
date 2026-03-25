@@ -5,7 +5,7 @@ require("./loadEnv").loadEnv();
 const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
 
-  PORT: process.env.PORT || 3000,
+  PORT: process.env.PORT || 3001,
 
   SESSION_SECRET: process.env.SESSION_SECRET || "ristoword-secret",
 

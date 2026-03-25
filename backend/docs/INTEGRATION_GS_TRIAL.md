@@ -41,7 +41,7 @@ Il codice operativo post-pagamento può ancora essere generato lato Ristoword in
 
 ## Collegamenti esistenti compatibili trial + GS (riferimento rapido)
 
-Sia **`API`** la base URL del backend Ristoword (es. `http://localhost:3000` in locale, `https://…` in produzione).  
+Sia **`API`** la base URL del backend Ristoword (es. `http://localhost:3001` in locale, `https://…` in produzione).  
 Configurazione su GS: `VITE_RISTOWORD_API_URL` / `NEXT_PUBLIC_RISTOWORD_API_URL` = stesso valore di **`API`**.
 
 ### API REST (flusso trial / licenza / GS)
@@ -115,7 +115,7 @@ Configurazione su GS: `VITE_RISTOWORD_API_URL` / `NEXT_PUBLIC_RISTOWORD_API_URL`
 
 | Variabile (esempio) | Valore |
 |---------------------|--------|
-| `VITE_RISTOWORD_API_URL` / `NEXT_PUBLIC_RISTOWORD_API_URL` | Base API: `http://localhost:3000` (dev) o `https://api.tuodominio.it` (prod) |
+| `VITE_RISTOWORD_API_URL` / `NEXT_PUBLIC_RISTOWORD_API_URL` | Base API: `http://localhost:3001` (dev) o `https://api.tuodominio.it` (prod) |
 
 Tutte le chiamate: `{API_URL}/api/checkout`, ecc.
 
@@ -189,7 +189,7 @@ Risposta ok: `{ "ok": true, "restaurantId": "...", "message": "..." }`.
 ## 4) Esempio `fetch` da browser (GS)
 
 ```javascript
-const API = import.meta.env.VITE_RISTOWORD_API_URL || "http://localhost:3000";
+const API = import.meta.env.VITE_RISTOWORD_API_URL || "http://localhost:3001";
 
 export async function startRistowordTrial({ restaurantId, email, name }) {
   const r = await fetch(`${API}/api/checkout`, {
@@ -226,7 +226,7 @@ Con server avviato (`npm start` in `backend/`):
 
 ```bash
 chmod +x scripts/verify-gs-ristoword-flow.sh
-RISTOWORD_URL=http://localhost:3000 ./scripts/verify-gs-ristoword-flow.sh
+RISTOWORD_URL=http://localhost:3001 ./scripts/verify-gs-ristoword-flow.sh
 ```
 
 Esegue checkout → mock complete → validate.

@@ -29,7 +29,7 @@ exports.getAllPrint = async (req, res) => {
 };
 
 function getBaseUrl(req) {
-  const host = req.get("host") || "localhost:3000";
+  const host = req.get("host") || "localhost:3001";
   const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
   return `${protocol}://${host}`;
 }

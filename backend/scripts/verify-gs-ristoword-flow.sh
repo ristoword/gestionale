@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Verifica end-to-end (mock): checkout trial → mock complete → validate codice.
-# Uso: da cartella backend, con server su PORT (default 3000):
+# Uso: da cartella backend, con server su PORT (default 3001):
 #   chmod +x scripts/verify-gs-ristoword-flow.sh
 #   ./scripts/verify-gs-ristoword-flow.sh
 set -euo pipefail
-BASE="${RISTOWORD_URL:-http://localhost:3000}"
+BASE="${RISTOWORD_URL:-http://localhost:3001}"
 TENANT="gs_verify_$(date +%s)"
 echo "BASE=$BASE TENANT=$TENANT"
 

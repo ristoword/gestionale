@@ -71,5 +71,5 @@
 ## Deployment Note
 
 1. Restart the server to load all changes.
-2. Health checks: `curl http://localhost:3000/api/system/health`
+2. Health checks: `curl http://localhost:3001/api/system/health`
 3. Version: set `RISTOWORD_VERSION` for production builds.

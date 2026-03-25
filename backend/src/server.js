@@ -52,7 +52,7 @@ const { initWebSocket } = require("./service/websocket.service");
 const logger = require("./utils/logger");
 const { startAutoBackup, backupNow } = require("./utils/backup");
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 const server = http.createServer(app);
 initWebSocket(server, sessionMiddleware);

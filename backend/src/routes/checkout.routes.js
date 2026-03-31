@@ -5,7 +5,7 @@ const { stripeDevRoutesOnly } = require("../middleware/stripeDevRoutes.middlewar
 // POST /api/checkout
 router.post("/", checkoutController.startCheckout);
 
-// POST /api/checkout/mock/complete — solo dev o STRIPE_ALLOW_DEV_ROUTES=true in produzione
+// POST /api/checkout/mock/complete — STRIPE_ALLOW_DEV_ROUTES; in produzione anche STRIPE_ALLOW_DEV_IN_PRODUCTION
 router.post("/mock/complete", stripeDevRoutesOnly, checkoutController.mockCompleteCheckout);
 
 module.exports = router;

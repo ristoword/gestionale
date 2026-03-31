@@ -432,7 +432,7 @@ async function performActionUnlockUser({ userId, username, tenantId }) {
   if (!target && username) target = list.find((u) => String(u.username).toLowerCase() === String(username).toLowerCase());
   if (!target) return { ok: false, error: "utente_non_trovato" };
   if (tid && String(target.restaurantId || "").trim() !== String(tid)) return { ok: false, error: "tenant_mismatch" };
-  const updated = usersRepository.updateUser(target.id, { is_active: true });
+  const updated = await usersRepository.updateUser(target.id, { is_active: true });
   return { ok: !!updated, updated: updated || null };
 }
 
@@ -463,14 +463,14 @@ async function performActionForceActivate({ tenantId, plan }) {
   let record = list.find((r) => String(r.restaurantId || "").trim() === String(tid));
 
   if (!record) {
-    record = licensesRepository.create({
+    record = await licensesRepository.create({
       restaurantId: tid,
       plan: plan || "ristoword_pro",
       status: "used",
       source: "dev-force-activate",
     });
   } else {
-    record = licensesRepository.updateLicense({
+    record = await licensesRepository.updateLicense({
       restaurantId: tid,
       status: "used",
       activatedAt: new Date().toISOString(),

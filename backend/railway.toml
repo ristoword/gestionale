@@ -1,0 +1,6 @@
+# Railway: Root Directory = backend
+# Healthcheck: GET /api/health → 200 JSON (stesso di /api/system/health)
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300

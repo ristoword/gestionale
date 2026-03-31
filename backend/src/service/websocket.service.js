@@ -4,7 +4,6 @@
 const { WebSocketServer } = require("ws");
 const logger = require("../utils/logger");
 const paymentsRepository = require("../repositories/payments.repository");
-const ordersRepository = require("../repositories/orders.repository");
 const ordersService = require("./orders.service");
 const paymentsService = require("./payments.service");
 

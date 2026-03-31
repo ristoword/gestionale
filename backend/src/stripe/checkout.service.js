@@ -187,7 +187,7 @@ async function mockCompleteCheckout({ sessionId, outcome = "paid" } = {}) {
   if (event) {
     try {
       webhookResult = await processWebhookEvent({ eventId: event.id });
-      const lic = licensesRepository.findByRestaurantId(session.restaurantId);
+      const lic = await licensesRepository.findByRestaurantId(session.restaurantId);
       activationCode = lic?.activationCode || webhookResult?.activationCode || null;
       ownerActivateUrl =
         webhookResult?.ownerActivateUrl || mailService.buildOwnerActivateLink(activationCode, session.customerEmail);

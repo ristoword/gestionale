@@ -52,7 +52,7 @@ function sanitizeInput(str, maxLen = 200) {
   return String(str || "").trim().slice(0, maxLen);
 }
 
-function createSlugFromName(restaurantName) {
+async function createSlugFromName(restaurantName) {
   let name = String(restaurantName || "").trim();
   const prefixes = ["ristorante", "trattoria", "pizzeria", "osteria", "locanda"];
   for (const p of prefixes) {
@@ -64,7 +64,7 @@ function createSlugFromName(restaurantName) {
   const base = sanitizeSlug(name) || "restaurant";
   let slug = base;
   let counter = 0;
-  while (restaurantsRepository.findBySlug(slug)) {
+  while (await restaurantsRepository.findBySlug(slug)) {
     counter++;
     slug = base + "-" + counter;
   }
@@ -93,10 +93,10 @@ async function onboardRestaurant(payload, req) {
     throw new Error("Invalid adminEmail format");
   }
 
-  const slug = createSlugFromName(restaurantName);
+  const slug = await createSlugFromName(restaurantName);
   const restaurantId = restaurantsRepository.generateId();
 
-  const existingByEmail = restaurantsRepository.findByAdminEmail(adminEmail);
+  const existingByEmail = await restaurantsRepository.findByAdminEmail(adminEmail);
   if (existingByEmail) {
     throw new Error("A restaurant with this admin email already exists");
   }
@@ -105,7 +105,7 @@ async function onboardRestaurant(payload, req) {
   const temporaryPassword = generateSecurePassword(14);
   const passwordHash = await bcrypt.hash(temporaryPassword, BCRYPT_ROUNDS);
 
-  const restaurant = restaurantsRepository.create({
+  const restaurant = await restaurantsRepository.create({
     id: restaurantId,
     slug,
     restaurantName,
@@ -138,7 +138,7 @@ async function onboardRestaurant(payload, req) {
     throw new Error("Failed to create owner user (username may already exist)");
   }
 
-  licensesRepository.create({
+  await licensesRepository.create({
     restaurantId,
     plan: restaurant.plan,
     status: "active",

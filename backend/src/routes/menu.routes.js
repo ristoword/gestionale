@@ -2,26 +2,15 @@
 
 const express = require("express");
 const router = express.Router();
+const asyncHandler = require("../utils/asyncHandler");
 const MenuController = require("../controllers/menu.controller");
 
-// lista completa menu
-router.get("/", MenuController.listMenu);
-
-// solo piatti attivi
-router.get("/active", MenuController.listActiveMenu);
-
-// singolo piatto
-router.get("/:id", MenuController.getOne);
-
-// creazione piatto
-router.post("/", MenuController.create);
-// crea piatto da ricetta (e collega ricetta ↔ piatto)
-router.post("/from-recipe", MenuController.createFromRecipe);
-
-// aggiorna piatto
-router.patch("/:id", MenuController.update);
-
-// elimina piatto
-router.delete("/:id", MenuController.remove);
+router.get("/", asyncHandler(MenuController.listMenu));
+router.get("/active", asyncHandler(MenuController.listActiveMenu));
+router.get("/:id", asyncHandler(MenuController.getOne));
+router.post("/", asyncHandler(MenuController.create));
+router.post("/from-recipe", asyncHandler(MenuController.createFromRecipe));
+router.patch("/:id", asyncHandler(MenuController.update));
+router.delete("/:id", asyncHandler(MenuController.remove));
 
 module.exports = router;

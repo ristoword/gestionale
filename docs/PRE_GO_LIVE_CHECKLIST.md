@@ -11,6 +11,7 @@ Seguire in ordine; spuntare ogni voce quando completata.
 - [ ] **`NODE_ENV=production`** impostato.
 - [ ] Process manager (**systemd**, **PM2**, **Railway**, ecc.) configurato con **restart automatico** in caso di crash.
 - [ ] **HTTPS** attivo (certificato valido); niente solo HTTP in produzione per sessioni e cookie `secure`.
+- [ ] URL pubblici (`PUBLIC_APP_URL` / `APP_URL` / `BASE_URL`) in **https://** su host reale: in avvio, `validateConfig` avvisa se sono **http://** (cookie `secure` potrebbe non essere inviato).
 - [ ] **Dominio** e DNS puntano all’istanza corretta.
 - [ ] Variabile **`RISTOWORD_VERSION`** (opzionale) per tracciare il deploy.
 
@@ -22,6 +23,9 @@ Seguire in ordine; spuntare ogni voce quando completata.
 - [ ] **`TENANT_SMTP_SECRET`**: impostata in produzione se usate **email SMTP per tenant** (Console owner); lunga e segreta.
 - [ ] File **`.env` non committato** nel repository; backup dei segreti in **password manager** o vault, non in chat.
 - [ ] Utenti **default** di test disattivati o password cambiate.
+- [ ] In produzione pubblica: **`DISABLE_DEMO_LOGIN=true`** dopo aver creato utenti reali (disattiva login account demo `risto_*`).
+- [ ] **`POST /api/setup`**: dopo il primo setup completato non deve essere richiamabile dall’esterno; in codice è bloccato con 403 salvo eccezione controllata (`SETUP_ALLOW_REPEAT_POST`) — in hosting non impostare quest’ultima salvo reinstallazione voluta.
+- [ ] Ordini **QR** (`/qr`, `POST /api/qr/orders`): se li usi, **`QR_ORDER_SECRET`** in `.env` e stesso valore nel meta `rw-qr-order-key` in `public/qr/index.html`.
 - [ ] Accesso **SSH / pannello hosting** con MFA dove possibile.
 
 ---
@@ -32,7 +36,7 @@ Seguire in ordine; spuntare ogni voce quando completata.
 - [ ] **`STRIPE_WEBHOOK_SECRET`** configurato e uguale a quello mostrato nel Dashboard Stripe per l’endpoint webhook.
 - [ ] URL pubblico **`/api/stripe/webhook`** raggiungibile da internet (Stripe deve poter fare POST).
 - [ ] **`PUBLIC_APP_URL`** / URL di successo/cancel checkout coerenti con il dominio reale (vedi warning in avvio se mancanti).
-- [ ] **`STRIPE_ALLOW_DEV_ROUTES`** / route mock: **disattivate** in produzione (o accessibili solo da IP interni).
+- [ ] **Route mock Stripe** (`/api/checkout/mock/complete`, ecc.): in **`NODE_ENV=production`** restano **404** a meno di **`STRIPE_ALLOW_DEV_ROUTES=true`** e **`STRIPE_ALLOW_DEV_IN_PRODUCTION=true`**. Su hosting pubblico lasciare **entrambe assenti o false**.
 - [ ] Test manuale: un pagamento di prova in **importo minimo** e verifica licenza/attivazione.
 
 ---
@@ -49,28 +53,37 @@ Seguire in ordine; spuntare ogni voce quando completata.
 ## 5. Licenza e multi-tenant
 
 - [ ] **Licenza attiva** per ogni `restaurantId` che deve operare (file/licenza coerenti con il processo GS / onboarding in uso).
+- [ ] **`GS_VALIDATE_USE_MIRROR`**: in **produzione pubblica** lasciare **false** (validazione codici verso GS); **true** solo in dev/staging controllato. Testare timeout/rete prima del go-live.
 - [ ] Sessione utente con **`restaurantId`** corretto dopo login (verifica su Sala/Cucina che i dati siano del tenant giusto).
-- [ ] Cartella **`data/tenants/<id>/`** presente e scrivibile dal processo Node.
+- [ ] Cartella **`data/tenants/<id>/`** presente e scrivibile dal processo Node (e/o dati equivalenti su **MySQL** se `USE_MYSQL_DATABASE=true`).
+- [ ] Con **MySQL**: verificare migrazioni eseguite (`npm run migrate:mysql`) e backup del **database** oltre ai file sotto `data/`.
 
 ---
 
 ## 6. Backup e disaster recovery
 
 - [ ] **Backup schedulato** della cartella `data/` (almeno giornaliero) + retention definita.
-- [ ] Prova di **restore** su ambiente di staging (non solo teoria).
+- [ ] Con **MySQL** (es. Railway): snapshot / backup automatici del servizio database; retention e regione annotati.
+- [ ] **Export periodico** (dump SQL o backup) conservato anche **fuori** dal solo PaaS (storage separato), per rischio account/provider.
+- [ ] Sessioni su file (`backend/data/sessions/` in produzione con `express-session` + file store): incluse nel backup filesystem o accettato logout globale dopo restore.
+- [ ] Prova di **restore** su ambiente di staging (DB + `data/` se usi ancora JSON misto).
 - [ ] Documentato **chi** ripristina e **in quanto tempo** (RTO/RPO concordati con il cliente).
 
 ---
 
 ## 7. Rete e accessi applicativi
 
-- [ ] **`/dev-access`** non esposto pubblicamente senza protezione (VPN, IP allowlist, o disabilitato in prod).
+- [ ] **`/dev-access`**: in produzione, login dev-owner / bridge / API tecnica sono disattivi (**404**) se `DEV_OWNER_ENABLED=true` senza **`DEV_OWNER_ALLOW_IN_PRODUCTION=true`** (su hosting pubblico non impostare quest’ultima salvo necessità). Restano raggiungibili dashboard/status per **owner** già loggato con sessione normale.
 - [ ] **Super-admin**: credenziali forti; cookie `super_admin_session` non su macchine condivise in modo non sicuro.
 - [ ] (Opzionale ma consigliato) **Rate limiting** sul login a livello reverse proxy (Nginx, Cloudflare, ecc.).
 
 ---
 
 ## 8. Funzioni core — smoke test
+
+Dopo ogni deploy, da repo (cartella `backend/`):
+
+- [ ] **`npm run smoke:hosting -- https://<tuo-dominio>`** — health + setup status (vedi `backend/docs/RAILWAY.md`). Opzionale: `--with-mysql` se il DB è raggiungibile dalla macchina che lancia lo script.
 
 Eseguire rapidamente su **un tenant reale** o di staging:
 
@@ -110,7 +123,7 @@ Eseguire rapidamente su **un tenant reale** o di staging:
 
 ---
 
-*Ultimo aggiornamento: checklist generica RistoWord — adattare nomi variabili ai file `.env` del progetto.*
+*Ultimo aggiornamento: 2026-03-30 — allineata a hardening e variabili in `backend/.env.example`. Roadmap e stato progetto: `docs/stato-ristoword/STATO_ATTUALE.md`.*
 
 ---
 

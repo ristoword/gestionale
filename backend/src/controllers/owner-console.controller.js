@@ -39,10 +39,12 @@ exports.apiGetStatus = async (req, res) => {
   const restaurantId = ensureOwner(req, res);
   if (!restaurantId) return;
 
-  const license = licensesRepository.findByRestaurantId(restaurantId);
+  const license = await licensesRepository.findByRestaurantId(restaurantId);
   const globalLicense = await getLicense();
   const ownerSetup = readOwnerSetup(restaurantId);
-  const staff = usersRepository.findByRestaurantId(restaurantId).filter((u) => String(u.role).toLowerCase() !== "owner");
+  const staff = (await usersRepository.findByRestaurantId(restaurantId)).filter(
+    (u) => String(u.role).toLowerCase() !== "owner"
+  );
 
   const licenseStatus = {
     valid: !!(license && (license.status === "active" || license.status === "grace")),

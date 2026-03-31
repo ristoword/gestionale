@@ -1,5 +1,5 @@
 // backend/src/middleware/stripeDevRoutes.middleware.js
-// Delega a stripe.routes.js (Blocco 3): 404 se STRIPE_ALLOW_DEV_ROUTES !== 'true'
+// Delega a stripe.routes.js: 404 se dev routes off; in produzione serve anche STRIPE_ALLOW_DEV_IN_PRODUCTION
 
 const { stripeDevRoutesGuard } = require("../routes/stripe.routes");
 

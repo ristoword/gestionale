@@ -88,7 +88,7 @@ async function syncLicenseFromPaidSession({
   if (!tenantLicense) {
     const picked = pickActivationCodeFromPoolOrGenerate();
     poolClaimed = picked.fromPool;
-    tenantLicense = licensesRepository.create({
+    tenantLicense = await licensesRepository.create({
       restaurantId: rid,
       plan,
       status: "active",
@@ -106,7 +106,7 @@ async function syncLicenseFromPaidSession({
       poolClaimed = picked.fromPool;
     }
 
-    tenantLicense = licensesRepository.updateLicense({
+    tenantLicense = await licensesRepository.updateLicense({
       restaurantId: rid,
       plan,
       status: "active",

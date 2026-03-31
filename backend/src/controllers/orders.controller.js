@@ -166,7 +166,7 @@ async function setStatus(req, res, next) {
     if (updated && isFinalState) {
       const inventoryService = getInventoryServiceSafe();
       if (inventoryService) {
-        const shouldDeduct = ordersService.tryMarkOrderInventoryProcessed(updated.id);
+        const shouldDeduct = await ordersService.tryMarkOrderInventoryProcessed(updated.id);
         if (shouldDeduct) {
           logger.info("Order final state (inventory sync)", {
             orderId: updated.id,

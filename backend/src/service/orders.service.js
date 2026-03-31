@@ -5,7 +5,7 @@ const ordersRepository = require("../repositories/orders.repository");
 
 async function listOrders() {
   try {
-    const orders = ordersRepository.getAllOrders();
+    const orders = await ordersRepository.getAllOrders();
     return Array.isArray(orders) ? orders : [];
   } catch (err) {
     // CORE PROTECTION: order listing must never crash because of IO/parsing issues.
@@ -39,7 +39,7 @@ function getOrderDateStr(order) {
 async function listActiveOrders() {
   let all = [];
   try {
-    all = ordersRepository.getAllOrders();
+    all = await ordersRepository.getAllOrders();
   } catch (err) {
     // If anything goes wrong reading orders, return an empty list instead of breaking UI.
     all = [];
@@ -55,7 +55,7 @@ async function listActiveOrders() {
  * Returns all orders for a specific date (for storico giornaliero).
  */
 async function listOrdersByDate(dateStr) {
-  const all = ordersRepository.getAllOrders();
+  const all = await ordersRepository.getAllOrders();
   const target = String(dateStr || "").slice(0, 10);
   if (!target) return [];
 
@@ -71,6 +71,26 @@ function normalizeItemCourse(it) {
   return { ...it, course };
 }
 
+/** Nuova comanda in cucina: sempre corso 1 in marcia (un corso alla volta). */
+function deriveInitialActiveCourse(items, bodyActiveCourse) {
+  const list = Array.isArray(items) ? items : [];
+  if (list.length > 0) return 1;
+  const ac = Number(bodyActiveCourse);
+  return Number.isFinite(ac) && ac >= 1 ? Math.floor(ac) : 1;
+}
+
+function getMaxCourseFromOrder(order) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  if (!items.length) return null;
+  let m = 1;
+  for (const it of items) {
+    const c = Number(it && it.course);
+    const cn = Number.isFinite(c) && c >= 1 ? Math.floor(c) : 1;
+    if (cn > m) m = cn;
+  }
+  return m;
+}
+
 async function createOrder(payload) {
   const body = payload || {};
   const orders = await ordersRepository.getAllOrders();
@@ -80,8 +100,7 @@ async function createOrder(payload) {
   const rawItems = Array.isArray(body.items) ? body.items : [];
   const items = rawItems.map(normalizeItemCourse);
 
-  const ac = Number(body.activeCourse);
-  const activeCourse = Number.isFinite(ac) && ac >= 1 ? Math.floor(ac) : 1;
+  const activeCourse = deriveInitialActiveCourse(items, body.activeCourse);
 
   const newOrder = {
     id,
@@ -98,7 +117,7 @@ async function createOrder(payload) {
   };
 
   orders.push(newOrder);
-  ordersRepository.saveAllOrders(orders);
+  await ordersRepository.saveAllOrders(orders);
   return newOrder;
 }
 
@@ -114,12 +133,12 @@ async function setStatus(id, status) {
   target.status = status;
   target.updatedAt = new Date().toISOString();
 
-  ordersRepository.saveAllOrders(orders);
+  await ordersRepository.saveAllOrders(orders);
   return target;
 }
 
 async function setActiveCourse(id, activeCourse) {
-  const n = Number(activeCourse);
+  let n = Number(activeCourse);
   if (!Number.isFinite(n) || n < 1) {
     const err = new Error("activeCourse deve essere un numero intero >= 1");
     err.status = 400;
@@ -132,9 +151,12 @@ async function setActiveCourse(id, activeCourse) {
     err.status = 404;
     throw err;
   }
-  target.activeCourse = Math.floor(n);
+  n = Math.floor(n);
+  const maxC = getMaxCourseFromOrder(target);
+  if (maxC != null && n > maxC) n = maxC;
+  target.activeCourse = n;
   target.updatedAt = new Date().toISOString();
-  ordersRepository.saveAllOrders(orders);
+  await ordersRepository.saveAllOrders(orders);
   return target;
 }
 
@@ -142,14 +164,14 @@ async function setActiveCourse(id, activeCourse) {
  * Try to mark order as inventory-processed. Returns true if we marked it (caller should deduct),
  * false if already marked (idempotent – do not deduct again).
  */
-function tryMarkOrderInventoryProcessed(id) {
-  const orders = ordersRepository.getAllOrders();
+async function tryMarkOrderInventoryProcessed(id) {
+  const orders = await ordersRepository.getAllOrders();
   const target = orders.find((o) => String(o.id) === String(id));
   if (!target) return false;
   if (target.inventoryProcessedAt) return false;
 
   target.inventoryProcessedAt = new Date().toISOString();
-  ordersRepository.saveAllOrders(orders);
+  await ordersRepository.saveAllOrders(orders);
   return true;
 }
 

@@ -74,6 +74,17 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("[Ristoword] SECURITY: basic checks done");
   logger.info("Server started", { port: PORT, websocket: "/ws" });
 
+  // MySQL: ping opzionale (MYSQL_PING_ON_START=true + URL o host remoto). Non blocca né sostituisce JSON.
+  setImmediate(() => {
+    try {
+      const { maybePingMysqlOnStart } = require("./db/mysql-startup-ping");
+      maybePingMysqlOnStart().catch(() => {});
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[MySQL] Ping avvio non eseguito:", e && e.message ? e.message : e);
+    }
+  });
+
   // BACKUP IMMEDIATO + AUTO
   backupNow();
   startAutoBackup();

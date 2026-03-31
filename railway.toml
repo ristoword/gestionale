@@ -1,0 +1,6 @@
+# Root repo: npm start → cd backend && npm start
+# Healthcheck: app Express in backend; path deve rispondere 200
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300

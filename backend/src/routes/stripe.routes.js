@@ -21,11 +21,16 @@ function stripeWebhookDisabledIfNoSecret(req, res, next) {
 }
 
 /**
- * Route di test/mock Stripe: consentite solo se STRIPE_ALLOW_DEV_ROUTES === 'true'.
- * Altrimenti 404 (nessuna informazione su esistenza della route).
+ * Route di test/mock Stripe: STRIPE_ALLOW_DEV_ROUTES === 'true'.
+ * In NODE_ENV=production serve anche STRIPE_ALLOW_DEV_IN_PRODUCTION=true (doppia conferma).
  */
 function stripeDevRoutesGuard(req, res, next) {
   if (String(process.env.STRIPE_ALLOW_DEV_ROUTES || "").toLowerCase() !== "true") {
+    return res.sendStatus(404);
+  }
+  const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const allowInProd = String(process.env.STRIPE_ALLOW_DEV_IN_PRODUCTION || "").trim().toLowerCase() === "true";
+  if (isProd && !allowInProd) {
     return res.sendStatus(404);
   }
   return next();

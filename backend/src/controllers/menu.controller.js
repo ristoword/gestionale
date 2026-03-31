@@ -2,10 +2,9 @@
 
 const menuService = require("../service/menu.service");
 
-// GET /api/menu -> tutti i piatti
-exports.listMenu = (req, res, next) => {
+exports.listMenu = async (req, res, next) => {
   try {
-    const items = menuService.listAll();
+    const items = await menuService.listAll();
     res.json(items);
   } catch (err) {
     const e = err instanceof Error ? err : new Error(String(err));
@@ -14,10 +13,9 @@ exports.listMenu = (req, res, next) => {
   }
 };
 
-// GET /api/menu/active -> solo piatti attivi
-exports.listActiveMenu = (req, res, next) => {
+exports.listActiveMenu = async (req, res, next) => {
   try {
-    const items = menuService.listActive();
+    const items = await menuService.listActive();
     res.json(items);
   } catch (err) {
     const e = err instanceof Error ? err : new Error(String(err));
@@ -26,10 +24,9 @@ exports.listActiveMenu = (req, res, next) => {
   }
 };
 
-// GET /api/menu/:id
-exports.getOne = (req, res, next) => {
+exports.getOne = async (req, res, next) => {
   try {
-    const item = menuService.getOne(req.params.id);
+    const item = await menuService.getOne(req.params.id);
     if (!item) return res.status(404).json({ error: "Piatto non trovato" });
     res.json(item);
   } catch (err) {
@@ -39,10 +36,9 @@ exports.getOne = (req, res, next) => {
   }
 };
 
-// POST /api/menu
-exports.create = (req, res, next) => {
+exports.create = async (req, res, next) => {
   try {
-    const created = menuService.create(req.body);
+    const created = await menuService.create(req.body);
     res.status(201).json(created);
   } catch (err) {
     const e = err instanceof Error ? err : new Error(String(err));
@@ -51,7 +47,6 @@ exports.create = (req, res, next) => {
   }
 };
 
-// PATCH /api/menu/:id
 exports.update = async (req, res, next) => {
   try {
     const updated = await menuService.update(req.params.id, req.body);
@@ -63,7 +58,6 @@ exports.update = async (req, res, next) => {
   }
 };
 
-// POST /api/menu/from-recipe – create dish from recipe and link both
 exports.createFromRecipe = async (req, res, next) => {
   try {
     const { recipeId } = req.body || {};
@@ -76,10 +70,9 @@ exports.createFromRecipe = async (req, res, next) => {
   }
 };
 
-// DELETE /api/menu/:id
-exports.remove = (req, res, next) => {
+exports.remove = async (req, res, next) => {
   try {
-    menuService.remove(req.params.id);
+    await menuService.remove(req.params.id);
     res.json({ success: true });
   } catch (err) {
     const e = err instanceof Error ? err : new Error(String(err));

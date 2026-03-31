@@ -56,12 +56,18 @@ function normalize(user, token = true) {
   return out;
 }
 
+function isDemoLoginDisabled() {
+  const v = String(process.env.DISABLE_DEMO_LOGIN || "").trim().toLowerCase();
+  return v === "true" || v === "1";
+}
+
 exports.findByCredentials = async (username, password, role) => {
   const fromJson = await usersRepository.findByCredentials(username, password);
   if (fromJson) {
     const roleOk = !role || fromJson.role === role;
     if (roleOk) return normalize(fromJson);
   }
+  if (isDemoLoginDisabled()) return null;
   const user = DEMO_USERS.find((u) => {
     const sameUser = u.username === String(username).trim().toLowerCase();
     const sameRole = role ? u.role === role : true;
@@ -80,14 +86,16 @@ exports.findByCredentials = async (username, password, role) => {
 };
 
 exports.findByUsername = async (username) => {
-  const fromJson = usersRepository.findByUsername(username);
+  const fromJson = await usersRepository.findByUsername(username);
   if (fromJson) return normalize(fromJson);
+  if (isDemoLoginDisabled()) return null;
   const user = DEMO_USERS.find((u) => u.username === String(username).trim().toLowerCase());
   if (!user) return null;
   return normalize(user);
 };
 
 exports.findManagerByDepartment = async (department) => {
+  if (isDemoLoginDisabled()) return null;
   const entry = Object.entries(MANAGER_ROLES).find(([, v]) => v.department === department);
   if (!entry) return null;
   return DEMO_USERS.find((u) => u.role === entry[0]) || null;

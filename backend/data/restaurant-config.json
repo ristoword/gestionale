@@ -1,0 +1,12 @@
+{
+  "restaurantName": "X",
+  "numTables": 20,
+  "departments": {
+    "sala": true,
+    "cucina": true,
+    "pizzeria": true,
+    "bar": true
+  },
+  "setupComplete": true,
+  "completedAt": "2026-03-29T20:58:20.719Z"
+}

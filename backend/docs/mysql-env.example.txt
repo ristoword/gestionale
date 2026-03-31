@@ -1,0 +1,21 @@
+# Esempio variabili per MySQL / Railway (NON inserire nel repo .env reale con segreti)
+# Copiare in backend/.env quando sarete pronti al test.
+
+# Flag futuro: src/config/mysqlPersistence.js (oggi nessun repository lo usa ancora)
+# USE_MYSQL_DATABASE=false
+
+# Opzione A — URL unico (Railway / molti provider)
+# DATABASE_URL=mysql://mysql:<password>@<host>:<port>/<database>
+
+# Opzione B — variabili separate (Railway MySQL plugin spesso espone questi nomi)
+# MYSQLHOST=containers-us-west-xxx.railway.app
+# MYSQLPORT=3306
+# MYSQLUSER=root
+# MYSQLPASSWORD=...
+# MYSQLDATABASE=railway
+
+# Opzione C — alias
+# MYSQL_URL=mysql://...
+
+# Pool (opzionale)
+# MYSQL_POOL_SIZE=10

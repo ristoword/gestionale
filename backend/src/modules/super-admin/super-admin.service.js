@@ -480,10 +480,10 @@ async function apiCreateTempLicense({ restaurantId, plan, mode, expiresAt, exten
 
   let updated = null;
   if (existing) {
-    updated = licensesRepository.updateLicense(payload);
+    updated = await licensesRepository.updateLicense(payload);
     // updateLicense returns merged record
   } else {
-    updated = licensesRepository.create(payload);
+    updated = await licensesRepository.create(payload);
   }
 
   upsertTenantLicenseFile({ tenantId: rid, licenseRecord: updated || payload });
@@ -516,7 +516,7 @@ async function apiLicenseMarkTrusted({ restaurantId }) {
     updatedAt: now,
   };
 
-  const updated = licensesRepository.updateLicense({ ...existing, ...payload });
+  const updated = await licensesRepository.updateLicense({ ...existing, ...payload });
   if (updated) upsertTenantLicenseFile({ tenantId: rid, licenseRecord: updated });
 
   return { ok: true, updated };
@@ -544,7 +544,7 @@ async function apiRevokeLicense({ restaurantId, reason, suspicious }) {
     updatedAt: now,
   };
 
-  const updated = licensesRepository.updateLicense(payload);
+  const updated = await licensesRepository.updateLicense(payload);
   if (updated) upsertTenantLicenseFile({ tenantId: rid, licenseRecord: updated });
 
   return { ok: true, updated };
@@ -559,7 +559,7 @@ async function apiBlockCustomer({ restaurantId }) {
     if (String(u.restaurantId || "").trim() === rid) return { ...u, is_active: false };
     return u;
   });
-  usersRepository.writeUsers(next);
+  await usersRepository.writeUsers(next);
   return { ok: true };
 }
 
@@ -572,7 +572,7 @@ async function apiUnblockCustomer({ restaurantId }) {
     if (String(u.restaurantId || "").trim() === rid) return { ...u, is_active: true };
     return u;
   });
-  usersRepository.writeUsers(next);
+  await usersRepository.writeUsers(next);
   return { ok: true };
 }
 
@@ -697,12 +697,12 @@ async function apiGetConsoleUsers() {
 async function apiPostResetUserPassword({ userId, forceMustChange } = {}) {
   const id = String(userId || "").trim();
   if (!id) return { ok: false, error: "userId_obbligatorio" };
-  const user = usersRepository.findById(id);
+  const user = await usersRepository.findById(id);
   if (!user) return { ok: false, error: "utente_non_trovato" };
   const plain = randomPlainPassword(18);
   const hash = await bcrypt.hash(plain, BCRYPT_USER_ROUNDS);
   const mustChange = forceMustChange !== false;
-  usersRepository.setUserPassword(id, hash, { mustChangePassword: mustChange });
+  await usersRepository.setUserPassword(id, hash, { mustChangePassword: mustChange });
   return {
     ok: true,
     userId: id,

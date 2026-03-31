@@ -53,7 +53,7 @@ async function hasValidLicenseForRestaurant(restaurantId) {
   const rid = String(restaurantId || "").trim();
   if (!rid) return false;
 
-  const globalRow = licensesRepository.findByRestaurantId(rid);
+  const globalRow = await licensesRepository.findByRestaurantId(rid);
   if (isLicenseRecordValid(globalRow)) return true;
 
   const tenantFile = readTenantLicenseJson(rid);

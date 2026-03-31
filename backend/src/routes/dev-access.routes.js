@@ -3,19 +3,47 @@
 // Sezione privata DEV / Owner tecnico (accesso di emergenza).
 
 const router = require("express").Router();
+const rateLimit = require("express-rate-limit");
 const devAccessController = require("../controllers/dev-access.controller");
 const { requireDevOwnerAuth } = require("../middleware/requireDevOwnerAuth.middleware");
 
 const DEV_ENABLED = () => String(process.env.DEV_OWNER_ENABLED || "").toLowerCase() === "true";
+
+function isProduction() {
+  return String(process.env.NODE_ENV || "").toLowerCase() === "production";
+}
+
+function devOwnerAllowInProduction() {
+  return String(process.env.DEV_OWNER_ALLOW_IN_PRODUCTION || "").trim().toLowerCase() === "true";
+}
+
+/** Dev-owner login, bridge, API: sì se dev abilitato e (non produzione oppure esplicito allow). */
+function devAccessFullyUnlocked() {
+  if (!DEV_ENABLED()) return false;
+  if (isProduction() && !devOwnerAllowInProduction()) return false;
+  return true;
+}
 
 // Consenti accesso owner console: owner session può accedere a dashboard/status anche senza DEV_ENABLED.
 function isOwnerSession(req) {
   return req.session?.user?.role === "owner" && req.session?.restaurantId;
 }
 
+function isOwnerDevConsolePath(p) {
+  return p === "/" || p === "/dashboard" || p === "/status";
+}
+
+const devLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: "Troppi tentativi, riprova più tardi",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 router.use((req, res, next) => {
-  if (DEV_ENABLED()) return next();
-  if (isOwnerSession(req) && /^\/(dashboard|status)?$/.test(req.path)) return next();
+  if (devAccessFullyUnlocked()) return next();
+  if (isOwnerSession(req) && isOwnerDevConsolePath(req.path)) return next();
   return res.status(404).send("Not found");
 });
 
@@ -23,7 +51,7 @@ router.use((req, res, next) => {
 router.get("/login", devAccessController.getDevLogin);
 
 // POST /dev-access/login
-router.post("/login", devAccessController.postDevLogin);
+router.post("/login", devLoginLimiter, devAccessController.postDevLogin);
 
 // GET /dev-access/logout
 router.get("/logout", devAccessController.logout);

@@ -1,46 +1,17 @@
 // backend/src/repositories/orders.repository.js
-const paths = require("../config/paths");
-const tenantContext = require("../context/tenantContext");
-const { safeReadJson, atomicWriteJson } = require("../utils/safeFileIO");
+// Router: JSON (default) oppure MySQL se USE_MYSQL_DATABASE=true.
 
-function getDataPath() {
-  return paths.tenant(tenantContext.getRestaurantId(), "orders.json");
-}
+const { useMysqlPersistence } = require("../config/mysqlPersistence");
+const json = require("./orders.repository.json");
+const mysql = require("./mysql/orders.repository.mysql");
 
-function safeReadFile() {
-  const parsed = safeReadJson(getDataPath(), []);
-  return (Array.isArray(parsed) ? parsed : []).map((o) => ({
-    ...o,
-    items: Array.isArray(o.items) ? o.items : [],
-  }));
-}
-
-function writeFile(data) {
-  atomicWriteJson(getDataPath(), data);
-}
-
-function getAllOrders() {
-  return safeReadFile();
-}
-
-function getOrderById(id) {
-  const orders = safeReadFile();
-  return orders.find((o) => String(o.id) === String(id)) || null;
-}
-
-function saveAllOrders(orders) {
-  writeFile(orders);
-}
-
-function getNextId(orders) {
-  if (!orders.length) return 1;
-  const max = Math.max(...orders.map((o) => Number(o.id) || 0));
-  return max + 1;
+function impl() {
+  return useMysqlPersistence() ? mysql : json;
 }
 
 module.exports = {
-  getAllOrders,
-  saveAllOrders,
-  getNextId,
-  getOrderById,
+  getAllOrders: (...a) => impl().getAllOrders(...a),
+  saveAllOrders: (...a) => impl().saveAllOrders(...a),
+  getOrderById: (...a) => impl().getOrderById(...a),
+  getNextId: json.getNextId.bind(json),
 };

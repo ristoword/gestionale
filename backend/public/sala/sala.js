@@ -323,30 +323,46 @@ async function apiPatchActiveCourse(orderId, activeCourse) {
   return data;
 }
 
-function getPrimaryOpenOrderForTable(tableNum) {
+/**
+ * Comanda più vecchia sul tavolo ancora in ciclo (non servita/chiusa): marcia, sync bozza, hint popup.
+ * Esclude `servito` così la marcia e la bozza non puntano a una comanda già finita.
+ */
+function getPrimaryOrderForTableFlow(tableNum) {
   const t = Number(tableNum);
   const list = (allOrders || [])
     .filter(
       (o) =>
         Number(o.table) === t &&
         o.status !== "chiuso" &&
-        o.status !== "annullato"
+        o.status !== "annullato" &&
+        String(o.status || "").toLowerCase() !== "servito"
     )
     .sort((a, b) => {
       const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      /* Ordine più vecchio = comanda principale (marcia / corsi coerenti) */
       return ta - tb;
     });
   return list[0] || null;
 }
 
+function getMaxCourseFromOrderItems(o) {
+  let m = 1;
+  if (o && Array.isArray(o.items) && o.items.length) {
+    o.items.forEach((it) => {
+      const n = Number(it.course) >= 1 ? Math.floor(Number(it.course)) : 1;
+      if (n > m) m = n;
+    });
+  }
+  return m;
+}
+
 /**
  * Dopo invio ordine la bozza locale è vuota o ha un solo corso:
  * ricostruisce corsi e voci dall'ordine sul server così popup / menù tornano allineati.
+ * Usa solo ordini non serviti (vedi getPrimaryOrderForTableFlow).
  */
 function syncCourseDraftFromPrimaryOrder(tableNum) {
-  const o = getPrimaryOpenOrderForTable(tableNum);
+  const o = getPrimaryOrderForTableFlow(tableNum);
   if (!o || !Array.isArray(o.items) || o.items.length === 0) return;
 
   const byN = new Map();
@@ -778,12 +794,17 @@ function initPopupUiOnce() {
       return;
     }
     if (act === "next-course") {
-      const o = getPrimaryOpenOrderForTable(tableNum);
+      const o = getPrimaryOrderForTableFlow(tableNum);
       if (!o) {
-        alert("Nessun ordine aperto per questo tavolo.");
+        alert("Nessun ordine attivo su questo tavolo per la marcia.");
         return;
       }
+      const maxC = getMaxCourseFromOrderItems(o);
       const cur = Number(o.activeCourse) >= 1 ? Number(o.activeCourse) : 1;
+      if (cur >= maxC) {
+        alert("Sei già sull'ultimo corso di questa comanda.");
+        return;
+      }
       const next = cur + 1;
       try {
         await apiPatchActiveCourse(o.id, next);
@@ -955,19 +976,10 @@ function buildPopupReservedFree(tableNum) {
 }
 
 function buildPopupOccupied(tableNum) {
-  const po = getPrimaryOpenOrderForTable(tableNum);
+  const po = getPrimaryOrderForTableFlow(tableNum);
   const ac =
     po && Number(po.activeCourse) >= 1 ? Math.floor(Number(po.activeCourse)) : 1;
-  const maxC = (() => {
-    let m = 1;
-    if (po && Array.isArray(po.items)) {
-      po.items.forEach((it) => {
-        const n = Number(it.course) >= 1 ? Math.floor(Number(it.course)) : 1;
-        if (n > m) m = n;
-      });
-    }
-    return m;
-  })();
+  const maxC = getMaxCourseFromOrderItems(po);
   return `
     <p class="sala-popup-hint">Comanda attiva — <strong>Marca corso (server): ${ac}</strong>${maxC > 1 ? ` / fino a corso ${maxC}` : ""}. Il corso attivo è evidenziato sotto; usa <strong>Marcia prossima portata</strong> per il corso successivo.</p>
     <div class="sala-popup-actions">
@@ -1276,8 +1288,8 @@ async function handleCreateOrder() {
     if (!ok) return;
   }
 
-  const ac = getActiveCourse(tableNum);
-  const activeCourseNum = ac && Number(ac.n) >= 1 ? Number(ac.n) : 1;
+  /* Marca iniziale sempre corso 1 (KDS un corso alla volta; la sala avanza con "Marcia prossima portata"). */
+  const activeCourseNum = 1;
 
   const payload = {
     table: tableNum,

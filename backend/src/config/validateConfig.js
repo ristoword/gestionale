@@ -5,6 +5,7 @@
 // Other problems are logged as warnings so existing behaviour is preserved.
 
 const env = require("./env");
+const { useMysqlPersistence } = require("./mysqlPersistence");
 
 function mask(value) {
   if (!value) return "(not set)";
@@ -125,6 +126,67 @@ function validateSuperAdmin() {
   }
 }
 
+function validateDemoLogin() {
+  if (env.NODE_ENV !== "production") return;
+  const d = String(process.env.DISABLE_DEMO_LOGIN || "").trim().toLowerCase();
+  if (d === "true" || d === "1") return;
+  console.warn(
+    "[SECURITY] DISABLE_DEMO_LOGIN non è true: gli account demo (es. risto_*) possono restare utilizzabili. " +
+      "In produzione imposta DISABLE_DEMO_LOGIN=true dopo aver creato utenti reali."
+  );
+}
+
+function validateQrOrdering() {
+  if (env.NODE_ENV !== "production") return;
+  const secret = String(process.env.QR_ORDER_SECRET || "").trim();
+  if (!secret) {
+    console.warn(
+      "[SECURITY][QR] QR_ORDER_SECRET non impostato: POST /api/qr/orders risponde 403; le pagine /qr restano pubbliche ma l’invio ordini è disattivato."
+    );
+    return;
+  }
+  if (secret.length < 16) {
+    console.warn(
+      "[SECURITY][QR] QR_ORDER_SECRET è corto: in produzione usa una stringa casuale lunga (es. 24+ caratteri) e lo stesso valore nel meta `rw-qr-order-key` in public/qr/index.html."
+    );
+  }
+}
+
+function validateProductionDangerousFlags() {
+  if (env.NODE_ENV !== "production") return;
+  const devOn = String(process.env.DEV_OWNER_ENABLED || "").trim().toLowerCase() === "true";
+  const devProd = String(process.env.DEV_OWNER_ALLOW_IN_PRODUCTION || "").trim().toLowerCase() === "true";
+  if (devOn && !devProd) {
+    console.warn(
+      "[SECURITY] DEV_OWNER_ENABLED in produzione senza DEV_OWNER_ALLOW_IN_PRODUCTION: " +
+        "login dev-owner, bridge e API /dev-access sono disattivi; restano solo dashboard/status per sessione owner."
+    );
+  } else if (devOn && devProd) {
+    console.warn(
+      "[SECURITY] DEV_OWNER_ALLOW_IN_PRODUCTION=true: tutta la sezione /dev-access tecnica è attiva in produzione. " +
+        "Disattivala su hosting pubblico se non indispensabile."
+    );
+  }
+  const stripeDev = String(process.env.STRIPE_ALLOW_DEV_ROUTES || "").trim().toLowerCase() === "true";
+  const stripeDevInProd = String(process.env.STRIPE_ALLOW_DEV_IN_PRODUCTION || "").trim().toLowerCase() === "true";
+  if (stripeDev) {
+    if (stripeDevInProd) {
+      console.warn(
+        "[SECURITY] STRIPE_ALLOW_DEV_IN_PRODUCTION=true: route checkout/mock Stripe sono attive anche in produzione. Disattiva appena possibile."
+      );
+    } else {
+      console.warn(
+        "[SECURITY] STRIPE_ALLOW_DEV_ROUTES=true: in produzione le route mock restano 404 finché non imposti anche STRIPE_ALLOW_DEV_IN_PRODUCTION=true (sconsigliato su hosting pubblico)."
+      );
+    }
+  }
+  if (String(process.env.GS_VALIDATE_USE_MIRROR || "").trim().toLowerCase() === "true") {
+    console.warn(
+      "[SECURITY] GS_VALIDATE_USE_MIRROR=true in produzione: verifica codici potrebbe usare solo il mirror RW."
+    );
+  }
+}
+
 function validateStripeCheckout() {
   const sk = process.env.STRIPE_SECRET_KEY && String(process.env.STRIPE_SECRET_KEY).trim();
   if (!sk) return;
@@ -152,15 +214,31 @@ function validateStripeCheckout() {
   }
 }
 
+function validateMysqlApp() {
+  if (!useMysqlPersistence()) return;
+  const url = String(process.env.DATABASE_URL || process.env.MYSQL_URL || "").trim();
+  const hasUrl = url.startsWith("mysql:") || url.startsWith("mysql2:");
+  const host = String(process.env.MYSQLHOST || process.env.MYSQL_HOST || "").trim();
+  if (!hasUrl && !host) {
+    console.warn(
+      "[CONFIG][MySQL] USE_MYSQL_DATABASE=true ma DATABASE_URL/MYSQL_URL o MYSQLHOST mancanti: il pool non potrà connettersi."
+    );
+  }
+}
+
 function validateConfig() {
   // Order matters: fail-fast on mandatory session,
   // then only warnings for optional integrations.
   validateSession();
+  validateMysqlApp();
   validateAi();
   validateSmtp();
   validateLicenseAndOnboarding();
   validateAppUrl();
   validateSuperAdmin();
+  validateDemoLogin();
+  validateQrOrdering();
+  validateProductionDangerousFlags();
   validateStripeCheckout();
 }
 

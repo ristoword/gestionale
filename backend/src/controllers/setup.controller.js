@@ -18,6 +18,18 @@ async function getStatus(req, res) {
 
 // POST /api/setup
 async function runSetup(req, res) {
+  const allowRepeat =
+    String(process.env.SETUP_ALLOW_REPEAT_POST || "").trim().toLowerCase() === "true";
+  if (!allowRepeat) {
+    const cfg = setupConfig.readConfig();
+    if (cfg && cfg.setupComplete === true) {
+      return res.status(403).json({
+        ok: false,
+        error: "La configurazione iniziale è già stata completata.",
+      });
+    }
+  }
+
   const { restaurantName, numTables, departments, seedMenu } = req.body || {};
 
   const name = (restaurantName || "").trim();

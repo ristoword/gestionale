@@ -4,21 +4,20 @@ const menuRepository = require("../repositories/menu.repository");
 const recipesRepository = require("../repositories/recipes.repository");
 const { computeAdvancedFoodCost } = require("./foodcost.service");
 
-function listAll() {
-  return menuRepository.getAll();
+async function listAll() {
+  return await menuRepository.getAll();
 }
 
-function listActive() {
-  return menuRepository.getActive();
+async function listActive() {
+  return await menuRepository.getActive();
 }
 
-function create(data) {
+async function create(data) {
   if (!data.name) {
     throw new Error("Nome piatto obbligatorio");
   }
   let enriched = { ...data };
 
-  // Se arrivano ingredienti / parametri di food cost, calcola i valori derivati centralmente.
   if (Array.isArray(data.ingredients) && data.ingredients.length > 0) {
     const fc = computeAdvancedFoodCost({
       ingredients: data.ingredients,
@@ -54,11 +53,11 @@ function create(data) {
     };
   }
 
-  return menuRepository.add(enriched);
+  return await menuRepository.add(enriched);
 }
 
-function getOne(id) {
-  const item = menuRepository.getById(id);
+async function getOne(id) {
+  const item = await menuRepository.getById(id);
   if (!item) {
     throw new Error("Piatto non trovato");
   }
@@ -103,7 +102,7 @@ async function update(id, data) {
     };
   }
 
-  const item = menuRepository.update(id, patch);
+  const item = await menuRepository.update(id, patch);
   if (!item) throw new Error("Piatto non trovato");
   if (data.recipeId != null || data.recipe_id != null) {
     const recipeId = data.recipeId || data.recipe_id;
@@ -122,7 +121,7 @@ async function createDishFromRecipe(recipeId) {
   if (!recipe) throw new Error("Ricetta non trovata");
   const name = recipe.name || recipe.menuItemName || "Piatto da ricetta";
   const price = recipe.sellingPrice ?? recipe.selling_price ?? 0;
-  const dish = menuRepository.add({
+  const dish = await menuRepository.add({
     name,
     price,
     sellingPrice: price,
@@ -134,8 +133,8 @@ async function createDishFromRecipe(recipeId) {
   return dish;
 }
 
-function remove(id) {
-  const ok = menuRepository.remove(id);
+async function remove(id) {
+  const ok = await menuRepository.remove(id);
   if (!ok) throw new Error("Piatto non trovato");
   return true;
 }

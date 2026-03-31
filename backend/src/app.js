@@ -45,11 +45,19 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+const superAdminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Troppi tentativi, riprova più tardi" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 200,
 });
 app.use("/api/auth/login", loginLimiter);
+app.use("/api/super-admin/login", superAdminLoginLimiter);
 app.use("/api/", apiLimiter);
 
 // Tenant context for multi-tenant data isolation (resolves restaurantId from session)
@@ -238,8 +246,8 @@ try {
 try {
   const menuRouter = require("./routes/menu.routes");
   const MenuController = require("./controllers/menu.controller");
-  // listActiveMenu è sincrona (non ritorna Promise): non usare .catch su undefined
-  app.get("/api/menu/active", (req, res, next) => MenuController.listActiveMenu(req, res, next));
+  const asyncHandler = require("./utils/asyncHandler");
+  app.get("/api/menu/active", asyncHandler(MenuController.listActiveMenu));
   app.use("/api/menu", requireAuth, requireRole(ROLES_MENU), menuRouter);
 } catch (e) {
   console.warn("menu.routes non trovato:", e.message);

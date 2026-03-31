@@ -41,7 +41,7 @@ async function getLowStockItems() {
 }
 
 async function getMenuItems() {
-  return menuRepository.getAll();
+  return await menuRepository.getAll();
 }
 
 async function getRecipes() {

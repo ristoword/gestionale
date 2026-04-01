@@ -807,7 +807,7 @@ async function getDailyBrain() {
   );
   const production = summarizeProduction(dailyOrders, predictions);
 
-  const recordedFoodCost = orderFoodCostsRepository.getTotalFoodCostForDate(today);
+  const recordedFoodCost = await orderFoodCostsRepository.getTotalFoodCostForDate(today);
   const foodCost = summarizeFoodCost(
     dailyOrders,
     inventory,

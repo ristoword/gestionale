@@ -25,7 +25,7 @@ exports.list = async (req, res) => {
   const restaurantId = ensureOwner(req, res);
   if (!restaurantId) return;
   const { userId, dateFrom, dateTo, status } = req.query || {};
-  const records = attendanceRepository.listByRestaurant(restaurantId, {
+  const records = await attendanceRepository.listByRestaurant(restaurantId, {
     userId: userId || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
@@ -41,7 +41,7 @@ exports.dailySummary = async (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0, 10);
   const users = await usersRepository.findByRestaurantId(restaurantId);
   const usersWithRates = users.map((u) => ({ id: u.id, hourlyRate: u.hourlyRate }));
-  const summary = attendanceRepository.getDailySummary(restaurantId, date, usersWithRates);
+  const summary = await attendanceRepository.getDailySummary(restaurantId, date, usersWithRates);
   res.json(summary);
 };
 
@@ -50,12 +50,12 @@ exports.closeShift = async (req, res) => {
   const restaurantId = ensureOwner(req, res);
   if (!restaurantId) return;
   const id = req.params.id;
-  const record = attendanceRepository.readAttendance(restaurantId).find((r) => r.id === id);
+  const record = (await attendanceRepository.readAttendance(restaurantId)).find((r) => r.id === id);
   if (!record || record.restaurantId !== restaurantId) {
     return res.status(404).json({ error: "Turno non trovato." });
   }
   const { clockOutAt, notes } = req.body || {};
-  const updated = attendanceRepository.closeShift(restaurantId, id, {
+  const updated = await attendanceRepository.closeShift(restaurantId, id, {
     clockOutAt: clockOutAt || new Date().toISOString(),
     notes,
   });
@@ -67,20 +67,20 @@ exports.setAnomaly = async (req, res) => {
   const restaurantId = ensureOwner(req, res);
   if (!restaurantId) return;
   const id = req.params.id;
-  const record = attendanceRepository.readAttendance(restaurantId).find((r) => r.id === id);
+  const record = (await attendanceRepository.readAttendance(restaurantId)).find((r) => r.id === id);
   if (!record || record.restaurantId !== restaurantId) {
     return res.status(404).json({ error: "Turno non trovato." });
   }
   const { anomalyType, notes, clear } = req.body || {};
   if (clear) {
-    const updated = attendanceRepository.updateShift(restaurantId, id, {
+    const updated = await attendanceRepository.updateShift(restaurantId, id, {
       status: record.clockOutAt ? "closed" : "open",
       anomalyType: null,
       notes: notes != null ? notes : "",
     });
     return res.json(updated);
   }
-  const updated = attendanceRepository.markAnomaly(
+  const updated = await attendanceRepository.markAnomaly(
     restaurantId,
     id,
     anomalyType || record.anomalyType,
@@ -99,7 +99,7 @@ exports.me = async (req, res) => {
   if (!restaurantId) {
     return res.status(403).json({ error: "Ristorante non in sessione." });
   }
-  const records = attendanceRepository.listByUser(user.id, restaurantId);
+  const records = await attendanceRepository.listByUser(user.id, restaurantId);
   res.json(records);
 };
 
@@ -114,11 +114,11 @@ exports.meToday = async (req, res) => {
     return res.status(403).json({ error: "Ristorante non in sessione." });
   }
   const today = attendanceRepository.dateOnly(new Date().toISOString());
-  const all = attendanceRepository.listByUser(user.id, restaurantId);
+  const all = await attendanceRepository.listByUser(user.id, restaurantId);
   const todayRecords = all.filter(
     (r) => attendanceRepository.dateOnly(r.clockInAt || r.clockOutAt || r.date) === today
   );
-  const openShift = attendanceRepository.findOpenShiftByUser(user.id, restaurantId);
+  const openShift = await attendanceRepository.findOpenShiftByUser(user.id, restaurantId);
   res.json({
     openShift: openShift || null,
     todayRecords,

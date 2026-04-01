@@ -56,7 +56,7 @@ async function notifyGsCodeActivated({ code, email, activatedAt, expiresAt } = {
     } catch (_) {
       data = { raw: text.slice(0, 500) };
     }
-    gsCodesMirror.touchNotifyToGs();
+    await gsCodesMirror.touchNotifyToGs();
     if (!res.ok) {
       return { ok: false, status: res.status, data };
     }

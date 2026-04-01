@@ -1,12 +1,12 @@
 const qrTablesRepository = require("../repositories/qr-tables.repository");
 
 exports.listTables = async (req, res) => {
-  const tables = qrTablesRepository.getTables();
+  const tables = await qrTablesRepository.getTables();
   res.json(tables);
 };
 
 exports.getTableById = async (req, res) => {
-  const table = qrTablesRepository.getTableById(req.params.id);
+  const table = await qrTablesRepository.getTableById(req.params.id);
   if (!table) {
     return res.status(404).json({ error: "Tavolo non trovato" });
   }
@@ -14,7 +14,7 @@ exports.getTableById = async (req, res) => {
 };
 
 exports.getTablePrint = async (req, res) => {
-  const table = qrTablesRepository.getTableById(req.params.id);
+  const table = await qrTablesRepository.getTableById(req.params.id);
   if (!table) {
     return res.status(404).send("Tavolo non trovato");
   }
@@ -23,7 +23,7 @@ exports.getTablePrint = async (req, res) => {
 };
 
 exports.getAllPrint = async (req, res) => {
-  const tables = qrTablesRepository.getTables();
+  const tables = await qrTablesRepository.getTables();
   res.set("Content-Type", "text/html; charset=utf-8");
   res.send(renderAllQrCardsHtml(tables, req));
 };

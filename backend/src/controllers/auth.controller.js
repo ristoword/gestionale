@@ -49,11 +49,11 @@ exports.login = async (req, res, next) => {
     // Timbratura: solo utenti non-owner, con restaurantId
     if (user.role !== "owner" && user.restaurantId) {
       try {
-        const openShift = attendanceRepository.findOpenShiftByUser(user.id, user.restaurantId);
+        const openShift = await attendanceRepository.findOpenShiftByUser(user.id, user.restaurantId);
         if (openShift) {
-          attendanceRepository.markAnomaly(user.restaurantId, openShift.id, "double_clockin", "Login con turno già aperto");
+          await attendanceRepository.markAnomaly(user.restaurantId, openShift.id, "double_clockin", "Login con turno già aperto");
         } else {
-          attendanceRepository.createShift(user.restaurantId, {
+          await attendanceRepository.createShift(user.restaurantId, {
             userId: user.id,
             status: "open",
           });
@@ -92,13 +92,13 @@ exports.logout = async (req, res, next) => {
     const restaurantId = req.session && req.session.restaurantId;
     if (sessionUser && sessionUser.role !== "owner" && restaurantId && sessionUser.id) {
       try {
-        const openShift = attendanceRepository.findOpenShiftByUser(sessionUser.id, restaurantId);
+        const openShift = await attendanceRepository.findOpenShiftByUser(sessionUser.id, restaurantId);
         if (openShift) {
-          attendanceRepository.closeShift(restaurantId, openShift.id, {
+          await attendanceRepository.closeShift(restaurantId, openShift.id, {
             clockOutAt: new Date().toISOString(),
           });
         } else {
-          attendanceRepository.createAnomalyRecord(
+          await attendanceRepository.createAnomalyRecord(
             restaurantId,
             sessionUser.id,
             "double_clockout",

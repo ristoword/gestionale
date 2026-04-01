@@ -3,13 +3,13 @@ const bookingsService = require("../service/bookings.service");
 
 // GET /api/bookings
 exports.listBookings = async (req, res) => {
-  const data = bookingsRepository.getAll();
+  const data = await bookingsRepository.getAll();
   res.json(data);
 };
 
 // GET /api/bookings/:id
 exports.getBookingById = async (req, res) => {
-  const booking = bookingsRepository.getById(req.params.id);
+  const booking = await bookingsRepository.getById(req.params.id);
 
   if (!booking) {
     return res.status(404).json({ error: "Prenotazione non trovata" });
@@ -26,7 +26,7 @@ exports.createBooking = async (req, res) => {
 
 // PATCH /api/bookings/:id
 exports.updateBooking = async (req, res) => {
-  const booking = bookingsRepository.update(req.params.id, req.body);
+  const booking = await bookingsRepository.update(req.params.id, req.body);
 
   if (!booking) {
     return res.status(404).json({ error: "Prenotazione non trovata" });

@@ -32,7 +32,7 @@ exports.me = async (req, res) => {
   const restaurantId = getRestaurantId(req);
   if (!restaurantId) return res.status(403).json({ error: "Ristorante non in sessione." });
 
-  const items = leaveRepository.readLeaveRequests(restaurantId);
+  const items = await leaveRepository.readLeaveRequests(restaurantId);
   const mine = items.filter((r) => r.userId === String(user.id));
   mine.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(mine);
@@ -56,7 +56,7 @@ exports.create = async (req, res) => {
   }
   const reqType = type === "ferie" || type === "permesso" || type === "malattia" ? type : "ferie";
 
-  if (leaveRepository.hasOverlap(restaurantId, user.id, reqType, start, end, null)) {
+  if (await leaveRepository.hasOverlap(restaurantId, user.id, reqType, start, end, null)) {
     return res.status(409).json({ error: "Richiesta duplicata: esiste già una richiesta (pending/approvata) per questo periodo e tipo." });
   }
 
@@ -65,7 +65,7 @@ exports.create = async (req, res) => {
   const surname = fullUser?.surname ?? "";
   const username = fullUser?.username ?? user.username ?? "";
 
-  const record = leaveRepository.createLeaveRequest(restaurantId, {
+  const record = await leaveRepository.createLeaveRequest(restaurantId, {
     userId: user.id,
     username,
     name,
@@ -88,13 +88,13 @@ exports.cancel = async (req, res) => {
   if (!restaurantId) return res.status(403).json({ error: "Ristorante non in sessione." });
 
   const id = req.params.id;
-  const record = leaveRepository.findLeaveById(restaurantId, id);
+  const record = await leaveRepository.findLeaveById(restaurantId, id);
   if (!record) return res.status(404).json({ error: "Richiesta non trovata." });
   if (record.userId !== String(user.id)) return res.status(403).json({ error: "Non puoi annullare questa richiesta." });
   if (record.status !== "pending") {
     return res.status(400).json({ error: "Solo le richieste in attesa possono essere annullate." });
   }
-  const updated = leaveRepository.updateLeaveRequest(restaurantId, id, { status: "cancelled" });
+  const updated = await await leaveRepository.updateLeaveRequest(restaurantId, id, { status: "cancelled" });
   res.json(updated);
 };
 
@@ -104,7 +104,7 @@ exports.list = async (req, res) => {
   if (!restaurantId) return;
 
   const { status, type, userId, from, to } = req.query || {};
-  let items = leaveRepository.readLeaveRequests(restaurantId);
+  let items = await leaveRepository.readLeaveRequests(restaurantId);
   if (status) items = items.filter((r) => r.status === status);
   if (type) items = items.filter((r) => r.type === type);
   if (userId) items = items.filter((r) => r.userId === String(userId));
@@ -126,14 +126,14 @@ exports.approve = async (req, res) => {
   if (!restaurantId) return;
 
   const id = req.params.id;
-  const record = leaveRepository.findLeaveById(restaurantId, id);
+  const record = await leaveRepository.findLeaveById(restaurantId, id);
   if (!record) return res.status(404).json({ error: "Richiesta non trovata." });
   if (record.status !== "pending") {
     return res.status(400).json({ error: "Richiesta già elaborata (approvata/rifiutata/annullata)." });
   }
 
   const ownerUsername = req.session?.user?.username || "owner";
-  leaveRepository.updateLeaveRequest(restaurantId, id, {
+  await leaveRepository.updateLeaveRequest(restaurantId, id, {
     status: "approved",
     reviewedAt: new Date().toISOString(),
     reviewedBy: ownerUsername,
@@ -153,7 +153,7 @@ exports.approve = async (req, res) => {
     });
   }
 
-  const updated = leaveRepository.findLeaveById(restaurantId, id);
+  const updated = await leaveRepository.findLeaveById(restaurantId, id);
   res.json(updated);
 };
 
@@ -163,14 +163,14 @@ exports.reject = async (req, res) => {
   if (!restaurantId) return;
 
   const id = req.params.id;
-  const record = leaveRepository.findLeaveById(restaurantId, id);
+  const record = await leaveRepository.findLeaveById(restaurantId, id);
   if (!record) return res.status(404).json({ error: "Richiesta non trovata." });
   if (record.status !== "pending") {
     return res.status(400).json({ error: "Richiesta già elaborata." });
   }
 
   const ownerUsername = req.session?.user?.username || "owner";
-  const updated = leaveRepository.updateLeaveRequest(restaurantId, id, {
+  const updated = await leaveRepository.updateLeaveRequest(restaurantId, id, {
     status: "rejected",
     reviewedAt: new Date().toISOString(),
     reviewedBy: ownerUsername,

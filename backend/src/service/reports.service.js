@@ -217,7 +217,7 @@ async function buildDashboardSummary(targetDate = new Date()) {
   }).length;
 
   const inventoryLowStockCount = inventoryService.getLowStockCount();
-  const totalFoodCostToday = orderFoodCostsRepository.getTotalFoodCostForDate(date);
+  const totalFoodCostToday = await orderFoodCostsRepository.getTotalFoodCostForDate(date);
 
   const topItems = dailyReport.orders?.topItems || [];
   const topProfitableItems = [];

@@ -4,7 +4,7 @@ const dailyMenuRepository = require("../repositories/daily-menu.repository");
 
 exports.getAll = async (req, res, next) => {
   try {
-    const data = dailyMenuRepository.getAll();
+    const data = await dailyMenuRepository.getAll();
     res.json(data);
   } catch (err) {
     next(err);
@@ -13,8 +13,8 @@ exports.getAll = async (req, res, next) => {
 
 exports.getActive = async (req, res, next) => {
   try {
-    const data = dailyMenuRepository.getAll();
-    const dishes = data.menuActive ? dailyMenuRepository.getActiveDishes() : [];
+    const data = await dailyMenuRepository.getAll();
+    const dishes = data.menuActive ? await dailyMenuRepository.getActiveDishes() : [];
     res.json({ menuActive: data.menuActive, dishes });
   } catch (err) {
     next(err);
@@ -23,7 +23,7 @@ exports.getActive = async (req, res, next) => {
 
 exports.createDish = async (req, res, next) => {
   try {
-    const dish = dailyMenuRepository.addDish(req.body);
+    const dish = await dailyMenuRepository.addDish(req.body);
     res.status(201).json(dish);
   } catch (err) {
     next(err);
@@ -32,7 +32,7 @@ exports.createDish = async (req, res, next) => {
 
 exports.updateDish = async (req, res, next) => {
   try {
-    const dish = dailyMenuRepository.updateDish(req.params.id, req.body);
+    const dish = await dailyMenuRepository.updateDish(req.params.id, req.body);
     if (!dish) return res.status(404).json({ error: "Piatto non trovato" });
     res.json(dish);
   } catch (err) {
@@ -42,7 +42,7 @@ exports.updateDish = async (req, res, next) => {
 
 exports.deleteDish = async (req, res, next) => {
   try {
-    const ok = dailyMenuRepository.removeDish(req.params.id);
+    const ok = await dailyMenuRepository.removeDish(req.params.id);
     if (!ok) return res.status(404).json({ error: "Piatto non trovato" });
     res.json({ success: true });
   } catch (err) {
@@ -52,7 +52,7 @@ exports.deleteDish = async (req, res, next) => {
 
 exports.toggleDish = async (req, res, next) => {
   try {
-    const dish = dailyMenuRepository.toggleDish(req.params.id);
+    const dish = await dailyMenuRepository.toggleDish(req.params.id);
     if (!dish) return res.status(404).json({ error: "Piatto non trovato" });
     res.json(dish);
   } catch (err) {
@@ -63,7 +63,7 @@ exports.toggleDish = async (req, res, next) => {
 exports.setMenuActive = async (req, res, next) => {
   try {
     const { active } = req.body || {};
-    const data = dailyMenuRepository.setMenuActive(active);
+    const data = await dailyMenuRepository.setMenuActive(active);
     res.json(data);
   } catch (err) {
     next(err);

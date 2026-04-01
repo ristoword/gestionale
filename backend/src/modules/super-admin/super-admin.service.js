@@ -636,8 +636,8 @@ function sanitizeUserForConsole(u) {
 }
 
 async function apiGetGsMirrorConsole() {
-  const state = gsCodesMirror.readState();
-  const stats = gsCodesMirror.computeStats();
+  const state = await gsCodesMirror.readState();
+  const stats = await gsCodesMirror.computeStats();
   const codes = (state.codes || []).slice().sort((a, b) => {
     const ta = new Date(b.rwSyncedAt || b.activatedAt || 0).getTime();
     const tb = new Date(a.rwSyncedAt || a.activatedAt || 0).getTime();
@@ -658,7 +658,7 @@ async function apiPostGenerateGsCodes({ count }) {
   if (!Number.isFinite(n) || n < 1 || n > 25) {
     return { ok: false, error: "count_invalido", message: "Usa un numero tra 1 e 25" };
   }
-  const { added, count: gen } = gsCodesMirror.generateLocalCodes(Math.floor(n));
+  const { added, count: gen } = await gsCodesMirror.generateLocalCodes(Math.floor(n));
   let gsSync = null;
   try {
     gsSync = await pushCodesBatchToGs(added);
@@ -669,7 +669,7 @@ async function apiPostGenerateGsCodes({ count }) {
     ok: true,
     generated: gen,
     codes: added,
-    stats: gsCodesMirror.computeStats(),
+    stats: await gsCodesMirror.computeStats(),
     gsSync,
   };
 }

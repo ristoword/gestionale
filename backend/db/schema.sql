@@ -257,4 +257,18 @@ CREATE TABLE IF NOT EXISTS tenant_menus (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------------
+-- Payload generico JSON per moduli tenant ancora non modellati a tabelle dedicate
+-- (inventory-transfers, stock-movements, order-food-costs, altri step progressivi).
+-- Nota: restaurant_id = "__global__" per dati non tenantizzati.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tenant_module_data (
+  restaurant_id VARCHAR(64)  NOT NULL,
+  module_key    VARCHAR(128) NOT NULL,
+  payload_json  JSON         NOT NULL,
+  updated_at    DATETIME(3)  NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (restaurant_id, module_key),
+  KEY idx_tenant_module_key (module_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

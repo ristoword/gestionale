@@ -1,59 +1,17 @@
-// backend/src/repositories/inventory-transfers.repository.js
-// Storico trasferimenti interni: Magazzino Centrale → Scorte reparti
+// Router: JSON (default) oppure MySQL se USE_MYSQL_DATABASE=true.
 
-const paths = require("../config/paths");
-const tenantContext = require("../context/tenantContext");
-const { safeReadJson, atomicWriteJson } = require("../utils/safeFileIO");
+const { useMysqlPersistence } = require("../config/mysqlPersistence");
+const json = require("./inventory-transfers.repository.json");
+const mysql = require("./mysql/inventory-transfers.repository.mysql");
 
-function getDataPath() {
-  return paths.tenant(tenantContext.getRestaurantId(), "inventory-transfers.json");
-}
-
-function readTransfers() {
-  const data = safeReadJson(getDataPath(), []);
-  return Array.isArray(data) ? data : [];
-}
-
-function addTransfer(record) {
-  const list = readTransfers();
-  const entry = {
-    id: Date.now(),
-    ...record,
-    createdAt: new Date().toISOString(),
-  };
-  list.unshift(entry);
-  atomicWriteJson(getDataPath(), list);
-  return entry;
-}
-
-function getRecentTransfers(limit = 100) {
-  const list = readTransfers();
-  return list.slice(0, Math.min(limit, list.length));
-}
-
-function getById(id) {
-  const list = readTransfers();
-  return list.find((t) => String(t.id) === String(id)) || null;
-}
-
-function updateTransfer(id, patch) {
-  const list = readTransfers();
-  const idx = list.findIndex((t) => String(t.id) === String(id));
-  if (idx === -1) return null;
-  const next = {
-    ...list[idx],
-    ...patch,
-    updatedAt: new Date().toISOString(),
-  };
-  list[idx] = next;
-  atomicWriteJson(getDataPath(), list);
-  return next;
+function impl() {
+  return useMysqlPersistence() ? mysql : json;
 }
 
 module.exports = {
-  addTransfer,
-  getRecentTransfers,
-  getById,
-  updateTransfer,
-  readTransfers,
+  addTransfer: (...a) => impl().addTransfer(...a),
+  getRecentTransfers: (...a) => impl().getRecentTransfers(...a),
+  getById: (...a) => impl().getById(...a),
+  updateTransfer: (...a) => impl().updateTransfer(...a),
+  readTransfers: (...a) => impl().readTransfers(...a),
 };

@@ -1,0 +1,18 @@
+const { v4: uuid } = require("uuid");
+const { getJson, setJson } = require("./tenant-module.mysql");
+const SECTION_TYPES=["buffet","antipasti","primo","secondo","dessert","bevande","custom"];
+const ITEM_MODES=["detailed","priced"];
+const ITEM_UNITS=["g","kg","ml","cl","l","pcs"];
+const MODULE_KEY='catering-presets';
+function normalizeItem(i){ const mode=ITEM_MODES.includes(i.mode)?i.mode:'priced'; return { id:i.id||uuid(), name:String(i.name||'').trim()||'Voce', mode, quantityPerPerson: mode==='detailed'?Number(i.quantityPerPerson)||0:null, unit: mode==='detailed'&&ITEM_UNITS.includes(i.unit)?i.unit:null, pricePerPerson: mode==='priced'?Number(i.pricePerPerson)||0:null, fixedPrice: mode==='priced'?Number(i.fixedPrice)||0:null, recipeId:i.recipeId||null, notes:String(i.notes||'').trim() }; }
+function normalizeSection(s){ const items=Array.isArray(s.items)?s.items.map(normalizeItem):[]; return { id:s.id||uuid(), name:String(s.name||'').trim()||'Sezione', type:SECTION_TYPES.includes(s.type)?s.type:'custom', items }; }
+function normalizePreset(p){ const sections=Array.isArray(p.sections)?p.sections.map(normalizeSection):[]; return { id:p.id||uuid(), restaurantId:p.restaurantId||null, name:String(p.name||'').trim()||'Preset', description:String(p.description||'').trim(), defaultPricePerPerson:Number(p.defaultPricePerPerson)||0, sections, notes:String(p.notes||'').trim(), createdAt:p.createdAt||new Date().toISOString(), updatedAt:p.updatedAt||new Date().toISOString() }; }
+function validatePreset(data){ const errs=[]; const sections=Array.isArray(data.sections)?data.sections:[]; if(sections.length<1) errs.push('Il preset deve avere almeno 1 sezione'); sections.forEach((s)=>{ const items=Array.isArray(s.items)?s.items:[]; items.forEach((it,jdx)=>{ const mode=it.mode||'priced'; if(mode==='detailed'){ const qty=Number(it.quantityPerPerson); if(!Number.isFinite(qty)||qty<=0) errs.push(`Sezione "${s.name}" – voce ${jdx+1}: quantità per persona obbligatoria`); if(!it.unit) errs.push(`Sezione "${s.name}" – voce ${jdx+1}: unità obbligatoria`);} else { const pp=Number(it.pricePerPerson)||0; const fp=Number(it.fixedPrice)||0; if(pp<=0&&fp<=0) errs.push(`Sezione "${s.name}" – voce ${jdx+1}: inserire prezzo per persona o prezzo fisso`);} }); }); return errs; }
+async function readAll(){ const data=await getJson(MODULE_KEY,{presets:[]}); const list=Array.isArray(data)?data:(data.presets||[]); return list.map(normalizePreset); }
+async function writeAll(presets){ await setJson(MODULE_KEY,{ presets }); }
+async function getAll(){ return readAll(); }
+async function getById(id){ const list=await readAll(); return list.find((p)=>p.id===id)||null; }
+async function create(data){ const preset=normalizePreset({ ...data,id:data.id||uuid() }); const errs=validatePreset(preset); if(errs.length){ const e=new Error(errs.join('; ')); e.status=400; throw e; } const list=await readAll(); list.push(preset); await writeAll(list); return preset; }
+async function update(id,data){ const list=await readAll(); const idx=list.findIndex((p)=>p.id===id); if(idx===-1) return null; const next=normalizePreset({ ...list[idx], ...data, id:list[idx].id, updatedAt:new Date().toISOString() }); const errs=validatePreset(next); if(errs.length){ const e=new Error(errs.join('; ')); e.status=400; throw e; } list[idx]=next; await writeAll(list); return next; }
+async function remove(id){ const list=await readAll(); const idx=list.findIndex((p)=>p.id===id); if(idx===-1) return false; list.splice(idx,1); await writeAll(list); return true; }
+module.exports={ SECTION_TYPES,ITEM_MODES,ITEM_UNITS,getAll,getById,create,update,remove };

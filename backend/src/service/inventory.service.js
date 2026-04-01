@@ -158,7 +158,7 @@ async function validateOrderConsumption(order) {
  * If ANY ingredient has insufficient kitchen stock, BLOCKS entire consumption and returns error.
  * Uses deductFromDepartment instead of central deduction.
  */
-function deductRecipeIngredients(order, itemName, recipe, servedQty) {
+async function deductRecipeIngredients(order, itemName, recipe, servedQty) {
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
   const department = recipe.department || recipe.area || "cucina";
   const warnings = [];
@@ -240,7 +240,7 @@ function deductRecipeIngredients(order, itemName, recipe, servedQty) {
       });
     }
 
-    stockMovementsRepository.createMovement({
+    await stockMovementsRepository.createMovement({
       type: "recipe_consumption",
       orderId: order.id,
       orderStatus: order.status || "chiuso",
@@ -286,7 +286,7 @@ async function onOrderFinalized(order) {
     };
   }
 
-  const existingMovements = stockMovementsRepository.findByOrderId(order.id);
+  const existingMovements = await stockMovementsRepository.findByOrderId(order.id);
   const hasRecipeConsumption = existingMovements.some((m) => m.type === "recipe_consumption" || m.type === "deduction");
   if (hasRecipeConsumption) {
     return {
@@ -338,7 +338,7 @@ async function onOrderFinalized(order) {
     totalFoodCost += foodCost;
     itemFoodCosts.push({ itemName, qty: servedQty, foodCost });
 
-    const deductResult = deductRecipeIngredients(order, itemName, recipe, servedQty);
+    const deductResult = await deductRecipeIngredients(order, itemName, recipe, servedQty);
     if (deductResult.blocked) {
       return {
         ok: false,
@@ -368,7 +368,7 @@ async function onOrderFinalized(order) {
   const estimatedMargin = estimatedRevenue - totalFoodCost;
 
   if (totalFoodCost > 0 || estimatedRevenue > 0) {
-    orderFoodCostsRepository.recordOrderFoodCost(
+    await orderFoodCostsRepository.recordOrderFoodCost(
       order.id,
       totalFoodCost,
       order.updatedAt || new Date().toISOString(),

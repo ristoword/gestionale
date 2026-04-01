@@ -1,0 +1,12 @@
+const crypto = require("crypto");
+const { getJson, setJson } = require("./tenant-module.mysql");
+const MODULE_KEY = "staff-requests";
+function createId(){ if(crypto.randomUUID) return crypto.randomUUID(); return `req_${Date.now()}_${Math.floor(Math.random()*10000)}`; }
+async function readAll(){ const data=await getJson(MODULE_KEY, []); return Array.isArray(data)?data:[]; }
+async function writeAll(requests){ await setJson(MODULE_KEY, Array.isArray(requests)?requests:[]); }
+async function getAll(filters={}){ let requests=await readAll(); if(filters.staffId) requests=requests.filter((r)=>r.staffId===filters.staffId); if(filters.type) requests=requests.filter((r)=>r.type===filters.type); if(filters.status) requests=requests.filter((r)=>r.status===filters.status); if(filters.dateFrom) requests=requests.filter((r)=>(r.createdAt||r.date||'')>=filters.dateFrom); if(filters.dateTo) requests=requests.filter((r)=>(r.createdAt||r.date||'')<=filters.dateTo); return requests.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); }
+async function getById(id){ const reqs=await readAll(); return reqs.find((r)=>r.id===id)||null; }
+async function getByStaffId(staffId){ return getAll({staffId}); }
+async function create(data){ const reqs=await readAll(); const req={ id:data.id||createId(), staffId:data.staffId||'', type:data.type||'vacation', status:data.status||'pending', dateFrom:data.dateFrom||'', dateTo:data.dateTo||'', dates:data.dates||[], shiftId:data.shiftId||null, reason:data.reason||'', notes:data.notes||'', requestNotes:data.requestNotes||'', approvedBy:data.approvedBy||null, rejectedBy:data.rejectedBy||null, approvedAt:data.approvedAt||null, rejectedAt:data.rejectedAt||null, rejectionReason:data.rejectionReason||'', createdAt:data.createdAt||new Date().toISOString(), updatedAt:data.updatedAt||new Date().toISOString() }; reqs.push(req); await writeAll(reqs); return req; }
+async function update(id,data){ const reqs=await readAll(); const idx=reqs.findIndex((r)=>r.id===id); if(idx===-1) return null; const allowed=['status','notes','requestNotes','approvedBy','rejectedBy','approvedAt','rejectedAt','rejectionReason','dateFrom','dateTo','dates','reason']; for(const k of allowed) if(data[k]!==undefined) reqs[idx][k]=data[k]; reqs[idx].updatedAt=new Date().toISOString(); await writeAll(reqs); return reqs[idx]; }
+module.exports={ getAll,getById,getByStaffId,create,update };

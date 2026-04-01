@@ -17,6 +17,22 @@
  *   node scripts/db-migrate-json-to-mysql.js --step=storni
  *   node scripts/db-migrate-json-to-mysql.js --step=cassa-shifts
  *   node scripts/db-migrate-json-to-mysql.js --step=menus
+ *   node scripts/db-migrate-json-to-mysql.js --step=inventory-transfers
+ *   node scripts/db-migrate-json-to-mysql.js --step=stock-movements
+ *   node scripts/db-migrate-json-to-mysql.js --step=order-food-costs
+ *   node scripts/db-migrate-json-to-mysql.js --step=bookings
+ *   node scripts/db-migrate-json-to-mysql.js --step=customers
+ *   node scripts/db-migrate-json-to-mysql.js --step=haccp
+ *   node scripts/db-migrate-json-to-mysql.js --step=devices
+ *   node scripts/db-migrate-json-to-mysql.js --step=print-routes
+ *   node scripts/db-migrate-json-to-mysql.js --step=print-jobs
+ *   node scripts/db-migrate-json-to-mysql.js --step=attendance
+ *   node scripts/db-migrate-json-to-mysql.js --step=leave
+ *   node scripts/db-migrate-json-to-mysql.js --step=staff
+ *   node scripts/db-migrate-json-to-mysql.js --step=staff-shifts
+ *   node scripts/db-migrate-json-to-mysql.js --step=staff-requests
+ *   node scripts/db-migrate-json-to-mysql.js --step=sessions
+ *   node scripts/db-migrate-json-to-mysql.js --step=pos-shifts
  *   node scripts/db-migrate-json-to-mysql.js --step=all
  *   node scripts/db-migrate-json-to-mysql.js --step=restaurants --dry-run
  *
@@ -58,7 +74,7 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.info(`
-Uso: node scripts/db-migrate-json-to-mysql.js --step=<restaurants|users|licenses|orders|payments|closures|reports|storni|cassa-shifts|all> [--dry-run]
+Uso: node scripts/db-migrate-json-to-mysql.js --step=<restaurants|users|licenses|orders|payments|closures|reports|storni|cassa-shifts|menus|inventory-transfers|stock-movements|order-food-costs|all> [--dry-run]
 
 Esegui dalla cartella backend (dove c'è package.json).
 Prima: node scripts/db-bootstrap.js (schema)
@@ -780,6 +796,63 @@ async function migrateCassaShifts(conn, dryRun) {
   console.info(`[migrate] cassa-shifts: totale ${total} turni${dryRun ? " (dry-run)" : ""}`);
 }
 
+
+async function migrateTenantModuleData(conn, dryRun, moduleKey, fileName) {
+  const tenantsDir = path.join(paths.DATA, "tenants");
+  if (!fs.existsSync(tenantsDir)) {
+    console.info(`[migrate] ${moduleKey}: nessuna cartella tenants`);
+    return;
+  }
+  const dirs = fs
+    .readdirSync(tenantsDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+
+  let total = 0;
+  for (const dir of dirs) {
+    const safe = path.basename(dir);
+    const fp = path.join(tenantsDir, safe, fileName);
+    if (!fs.existsSync(fp)) continue;
+    const payload = safeReadJson(fp, []);
+    await ensureRestaurantStub(conn, safe, dryRun);
+    if (dryRun) {
+      console.info(`[migrate][dry-run] ${moduleKey} tenant "${safe}"`);
+      total += 1;
+      continue;
+    }
+    await conn.query(
+      `INSERT INTO tenant_module_data (restaurant_id, module_key, payload_json, updated_at)
+       VALUES (?, ?, CAST(? AS JSON), NOW(3))
+       ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json), updated_at = NOW(3)`,
+      [safe, moduleKey, JSON.stringify(payload)]
+    );
+    total += 1;
+  }
+  console.info(`[migrate] ${moduleKey}: ${total} tenant processati${dryRun ? " (dry-run)" : ""}`);
+}
+
+
+async function migrateGlobalModuleData(conn, dryRun, moduleKey, fileName) {
+  const fp = path.join(paths.DATA, fileName);
+  if (!fs.existsSync(fp)) {
+    console.info(`[migrate] ${moduleKey}: file non trovato (${fileName})`);
+    return;
+  }
+  const payload = safeReadJson(fp, {});
+  const rid = "__global__";
+  if (dryRun) {
+    console.info(`[migrate][dry-run] ${moduleKey} globale da ${fileName}`);
+    return;
+  }
+  await conn.query(
+    `INSERT INTO tenant_module_data (restaurant_id, module_key, payload_json, updated_at)
+     VALUES (?, ?, CAST(? AS JSON), NOW(3))
+     ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json), updated_at = NOW(3)`,
+    [rid, moduleKey, JSON.stringify(payload)]
+  );
+  console.info(`[migrate] ${moduleKey}: payload globale migrato`);
+}
+
 async function runStep(step, dryRun) {
   const pool = getPool();
   const conn = await pool.getConnection();
@@ -805,6 +878,50 @@ async function runStep(step, dryRun) {
       await migrateStorni(conn, dryRun);
     } else if (step === "cassa-shifts") {
       await migrateCassaShifts(conn, dryRun);
+    } else if (step === "inventory-transfers") {
+      await migrateTenantModuleData(conn, dryRun, "inventory-transfers", "inventory-transfers.json");
+    } else if (step === "stock-movements") {
+      await migrateTenantModuleData(conn, dryRun, "stock-movements", "stock-movements.json");
+    } else if (step === "order-food-costs") {
+      await migrateTenantModuleData(conn, dryRun, "order-food-costs", "order-food-costs.json");
+    } else if (step === "bookings") {
+      await migrateTenantModuleData(conn, dryRun, "bookings", "bookings.json");
+    } else if (step === "customers") {
+      await migrateTenantModuleData(conn, dryRun, "customers", "customers.json");
+    } else if (step === "haccp") {
+      await migrateTenantModuleData(conn, dryRun, "haccp-checks", "haccp-checks.json");
+    } else if (step === "devices") {
+      await migrateTenantModuleData(conn, dryRun, "devices", "devices.json");
+    } else if (step === "print-routes") {
+      await migrateTenantModuleData(conn, dryRun, "print-routes", "print-routes.json");
+    } else if (step === "print-jobs") {
+      await migrateTenantModuleData(conn, dryRun, "print-jobs", "print-jobs.json");
+    } else if (step === "attendance") {
+      await migrateTenantModuleData(conn, dryRun, "attendance", "attendance.json");
+    } else if (step === "leave") {
+      await migrateTenantModuleData(conn, dryRun, "leave-requests", "leave-requests.json");
+    } else if (step === "staff") {
+      await migrateTenantModuleData(conn, dryRun, "staff", "staff.json");
+    } else if (step === "staff-shifts") {
+      await migrateTenantModuleData(conn, dryRun, "staff-shifts", "staff-shifts.json");
+    } else if (step === "staff-requests") {
+      await migrateTenantModuleData(conn, dryRun, "staff-requests", "staff-requests.json");
+    } else if (step === "sessions") {
+      await migrateTenantModuleData(conn, dryRun, "sessions", "sessions.json");
+    } else if (step === "pos-shifts") {
+      await migrateTenantModuleData(conn, dryRun, "pos-shifts", "pos-shifts.json");
+    } else if (step === "recipes") {
+      await migrateTenantModuleData(conn, dryRun, "recipes", "recipes.json");
+    } else if (step === "daily-menu") {
+      await migrateTenantModuleData(conn, dryRun, "daily-menu", "daily-menu.json");
+    } else if (step === "qr-tables") {
+      await migrateTenantModuleData(conn, dryRun, "qr-tables", "qr-tables.json");
+    } else if (step === "catering-events") {
+      await migrateTenantModuleData(conn, dryRun, "catering-events", "catering-events.json");
+    } else if (step === "catering-presets") {
+      await migrateTenantModuleData(conn, dryRun, "catering-presets", "catering-presets.json");
+    } else if (step === "gs-codes-mirror") {
+      await migrateGlobalModuleData(conn, dryRun, "gs-codes-mirror", "gs-codes-mirror.json");
     } else {
       throw new Error(`step sconosciuto: ${step}`);
     }
@@ -841,6 +958,28 @@ async function main() {
     "reports",
     "storni",
     "cassa-shifts",
+    "inventory-transfers",
+    "stock-movements",
+    "order-food-costs",
+    "bookings",
+    "customers",
+    "haccp",
+    "devices",
+    "print-routes",
+    "print-jobs",
+    "attendance",
+    "leave",
+    "staff",
+    "staff-shifts",
+    "staff-requests",
+    "sessions",
+    "pos-shifts",
+    "recipes",
+    "daily-menu",
+    "qr-tables",
+    "catering-events",
+    "catering-presets",
+    "gs-codes-mirror",
   ];
   let steps;
   if (step === "all") {

@@ -69,8 +69,8 @@ async function syncLicenseFromPaidSession({
   const expiresAt = computeExpiresAt({ mode });
   const customerEmail = session?.customerEmail || null;
 
-  function pickActivationCodeFromPoolOrGenerate() {
-    const claimed = gsCodesMirror.claimAvailableForStripe({
+  async function pickActivationCodeFromPoolOrGenerate() {
+    const claimed = await gsCodesMirror.claimAvailableForStripe({
       assignedEmail: customerEmail,
       expiresAt,
     });
@@ -86,7 +86,7 @@ async function syncLicenseFromPaidSession({
   let poolClaimed = false;
 
   if (!tenantLicense) {
-    const picked = pickActivationCodeFromPoolOrGenerate();
+    const picked = await pickActivationCodeFromPoolOrGenerate();
     poolClaimed = picked.fromPool;
     tenantLicense = await licensesRepository.create({
       restaurantId: rid,
@@ -101,7 +101,7 @@ async function syncLicenseFromPaidSession({
   } else {
     let nextActivationCode = tenantLicense.activationCode;
     if (!nextActivationCode) {
-      const picked = pickActivationCodeFromPoolOrGenerate();
+      const picked = await pickActivationCodeFromPoolOrGenerate();
       nextActivationCode = picked.code;
       poolClaimed = picked.fromPool;
     }

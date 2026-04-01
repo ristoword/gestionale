@@ -25,7 +25,7 @@ exports.listInventory = async (req, res) => {
 // GET /api/inventory/transfers
 exports.listTransfers = async (req, res) => {
   const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
-  const data = inventoryTransfersRepository.getRecentTransfers(limit);
+  const data = await inventoryTransfersRepository.getRecentTransfers(limit);
   res.json(data);
 };
 
@@ -113,7 +113,7 @@ exports.transferInventory = async (req, res) => {
   if (!result.success) {
     return res.status(400).json({ error: result.error });
   }
-  inventoryTransfersRepository.addTransfer({
+  await inventoryTransfersRepository.addTransfer({
     type: "transfer_to_department",
     productId: result.transfer.productId,
     productName: result.transfer.productName,
@@ -146,7 +146,7 @@ exports.returnToCentral = async (req, res) => {
   if (!result.success) {
     return res.status(400).json({ error: result.error });
   }
-  inventoryTransfersRepository.addTransfer({
+  await inventoryTransfersRepository.addTransfer({
     type: "return_to_central",
     productId: result.return.productId,
     productName: result.return.productName,
@@ -282,7 +282,7 @@ exports.receive = async (req, res) => {
     unitCost: unitCost != null ? Number(unitCost) : null,
   });
 
-  inventoryTransfersRepository.addTransfer({
+  await inventoryTransfersRepository.addTransfer({
     type: "load",
     productId: product.id,
     productName: product.name,
@@ -371,7 +371,7 @@ function parseVoiceReceiving(text) {
 /** PATCH /api/inventory/transfers/:transferId — rettifica quantità/note di una ricevuta (tipo load) */
 exports.patchLoadTransfer = async (req, res) => {
   const transferId = req.params.transferId;
-  const transfer = inventoryTransfersRepository.getById(transferId);
+  const transfer = await inventoryTransfersRepository.getById(transferId);
   if (!transfer) {
     return res.status(404).json({ error: "Movimento non trovato" });
   }
@@ -389,7 +389,7 @@ exports.patchLoadTransfer = async (req, res) => {
   const oldQty = Number(transfer.quantity) || 0;
 
   if (quantity === undefined && note !== undefined) {
-    const updated = inventoryTransfersRepository.updateTransfer(transferId, {
+    const updated = await inventoryTransfersRepository.updateTransfer(transferId, {
       note: String(note),
     });
     return res.json({ success: true, transfer: updated });
@@ -410,7 +410,7 @@ exports.patchLoadTransfer = async (req, res) => {
 
   const patch = { quantity: newQty };
   if (note !== undefined) patch.note = String(note);
-  const updated = inventoryTransfersRepository.updateTransfer(transferId, patch);
+  const updated = await inventoryTransfersRepository.updateTransfer(transferId, patch);
   res.json({ success: true, transfer: updated });
 };
 

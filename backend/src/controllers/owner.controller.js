@@ -36,9 +36,9 @@ function gsPayloadSaysValid(data) {
  * Se GS_VALIDATE_USE_MIRROR=true: accetta codici presenti nel mirror RW (assigned → email deve coincidere).
  * Utile per test senza GS; in produzione lasciare false e usare validate reale + push batch.
  */
-function mirrorAllowsActivation(codeNorm, emailVal) {
+async function mirrorAllowsActivation(codeNorm, emailVal) {
   if (String(process.env.GS_VALIDATE_USE_MIRROR || "").toLowerCase() !== "true") return false;
-  const row = gsCodesMirror.findByCode(codeNorm);
+  const row = await gsCodesMirror.findByCode(codeNorm);
   if (!row) return false;
   const st = String(row.status || "").toLowerCase();
   if (st === "used" || st === "expired") return false;
@@ -91,7 +91,7 @@ async function completeActivation(req, res) {
     console.warn("[owner] validate GS:", e && e.message ? e.message : e);
   }
   const gsOk = gsPayloadSaysValid(gs.data);
-  const mirrorOk = !gsOk && mirrorAllowsActivation(codeNorm, emailVal);
+  const mirrorOk = !gsOk && (await mirrorAllowsActivation(codeNorm, emailVal));
   if (!gsOk && !mirrorOk) {
     return res.status(400).json({
       success: false,
@@ -215,7 +215,7 @@ async function completeActivation(req, res) {
   req.session.restaurantId = owner.restaurantId || "default";
 
   try {
-    gsCodesMirror.markUsedLocal(codeNorm, {
+    await gsCodesMirror.markUsedLocal(codeNorm, {
       assignedEmail: emailVal,
       activatedAt: nowIso,
       expiresAt: merged?.expiresAt || null,

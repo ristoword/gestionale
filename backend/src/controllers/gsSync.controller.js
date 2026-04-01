@@ -23,23 +23,23 @@ function requireSyncSecret(req, res, next) {
   next();
 }
 
-function postImportCodes(req, res) {
+async function postImportCodes(req, res) {
   const body = req.body || {};
   const codes = Array.isArray(body.codes) ? body.codes : Array.isArray(body) ? body : null;
   if (!codes || !codes.length) {
     return res.status(400).json({ ok: false, message: "Body atteso: { codes: [ ... ] }" });
   }
-  const state = gsCodesMirror.upsertBatch(codes, { merge: true });
+  const state = await gsCodesMirror.upsertBatch(codes, { merge: true });
   return res.json({
     ok: true,
     imported: codes.length,
     totalInMirror: (state.codes || []).length,
-    stats: gsCodesMirror.computeStats(),
+    stats: await gsCodesMirror.computeStats(),
   });
 }
 
-function getMirrorStats(req, res) {
-  return res.json({ ok: true, stats: gsCodesMirror.computeStats() });
+async function getMirrorStats(req, res) {
+  return res.json({ ok: true, stats: await gsCodesMirror.computeStats() });
 }
 
 module.exports = {

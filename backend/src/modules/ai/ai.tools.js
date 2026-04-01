@@ -27,7 +27,7 @@ async function getTodaySalesSummary(date = new Date()) {
 }
 
 async function getInventorySnapshot() {
-  const all = inventoryRepository.getAll();
+  const all = await inventoryRepository.getAll();
   return Array.isArray(all) ? all : [];
 }
 

@@ -43,7 +43,7 @@ async function buildContextForQuery() {
         dateFrom: dateFrom.toISOString(),
         dateTo: dateTo.toISOString(),
       }),
-      Promise.resolve(inventoryRepository.getAll()),
+      inventoryRepository.getAll(),
       recipesRepository.getAll(),
       reportsRepository.getDailyData(today),
       bookingsRepository.getAll(),

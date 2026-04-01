@@ -216,7 +216,7 @@ async function buildDashboardSummary(targetDate = new Date()) {
     return mins >= 15;
   }).length;
 
-  const inventoryLowStockCount = inventoryService.getLowStockCount();
+  const inventoryLowStockCount = await inventoryService.getLowStockCount();
   const totalFoodCostToday = await orderFoodCostsRepository.getTotalFoodCostForDate(date);
 
   const topItems = dailyReport.orders?.topItems || [];
@@ -226,7 +226,7 @@ async function buildDashboardSummary(targetDate = new Date()) {
     const revenue = toNumber(item.revenue, 0);
     const qty = toNumber(item.qty, 1);
     const recipe = await recipesRepository.getByMenuItemName(name);
-    const foodCost = recipe ? inventoryService.calculateRecipeIngredientCost(recipe, qty) : 0;
+    const foodCost = recipe ? await inventoryService.calculateRecipeIngredientCost(recipe, qty) : 0;
     topProfitableItems.push({
       name,
       revenue,
@@ -436,7 +436,7 @@ async function getDishMargins(targetDate = new Date()) {
       const qty = toNumber(item.qty, 1);
       const revenue = toNumber(item.price, 0) * qty;
       const recipe = await recipesRepository.findRecipeByMenuItemName(name);
-      const cogs = recipe ? inventoryService.calculateRecipeIngredientCost(recipe, qty) : 0;
+      const cogs = recipe ? await inventoryService.calculateRecipeIngredientCost(recipe, qty) : 0;
       const margin = revenue - cogs;
       const foodCostPercent = revenue > 0 && cogs > 0 ? (cogs / revenue) * 100 : null;
       if (!dishMap.has(name)) {

@@ -6,7 +6,7 @@ const mailService = require("../service/mail.service");
 
 // GET /api/inventory/value – total warehouse value (central stock × unit cost)
 exports.getInventoryValue = async (req, res) => {
-  const value = inventoryRepository.getTotalValue();
+  const value = await inventoryRepository.getTotalValue();
   res.json({ value, formatted: "€ " + value.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) });
 };
 
@@ -15,10 +15,10 @@ exports.listInventory = async (req, res) => {
   const location = (req.query.location || "").toLowerCase();
   const validLocations = ["central", "cucina", "sala", "bar", "proprieta"];
   if (location && validLocations.includes(location)) {
-    const data = inventoryRepository.getByLocation(location);
+    const data = await inventoryRepository.getByLocation(location);
     return res.json(data);
   }
-  const data = inventoryRepository.getAll();
+  const data = await inventoryRepository.getAll();
   res.json(data);
 };
 
@@ -31,7 +31,7 @@ exports.listTransfers = async (req, res) => {
 
 // GET /api/inventory/:id
 exports.getInventoryById = async (req, res) => {
-  const item = inventoryRepository.getById(req.params.id);
+  const item = await inventoryRepository.getById(req.params.id);
   if (!item) {
     return res.status(404).json({ error: "Prodotto magazzino non trovato" });
   }
@@ -47,7 +47,7 @@ exports.createInventory = async (req, res) => {
   if (!unit || typeof unit !== "string") {
     return res.status(400).json({ error: "Unità obbligatoria" });
   }
-  const item = inventoryRepository.create({
+  const item = await inventoryRepository.create({
     name,
     unit,
     quantity,
@@ -63,7 +63,7 @@ exports.createInventory = async (req, res) => {
 
 // PATCH /api/inventory/:id
 exports.updateInventory = async (req, res) => {
-  const item = inventoryRepository.update(req.params.id, req.body);
+  const item = await inventoryRepository.update(req.params.id, req.body);
   if (!item) {
     return res.status(404).json({ error: "Prodotto magazzino non trovato" });
   }
@@ -78,7 +78,7 @@ exports.adjustInventory = async (req, res) => {
     return res.status(400).json({ error: "ID non valido" });
   }
   const safeDelta = Number.isFinite(Number(delta)) ? Number(delta) : 0;
-  const existing = inventoryRepository.getById(id);
+  const existing = await inventoryRepository.getById(id);
   if (!existing) {
     return res.status(404).json({ error: "Prodotto non trovato" });
   }
@@ -90,7 +90,7 @@ exports.adjustInventory = async (req, res) => {
       message: "La quantità non può essere inferiore a zero.",
     });
   }
-  const item = inventoryRepository.adjustQuantity(id, safeDelta);
+  const item = await inventoryRepository.adjustQuantity(id, safeDelta);
   res.json(item);
 };
 
@@ -103,7 +103,7 @@ exports.transferInventory = async (req, res) => {
   if (!toDepartment || typeof toDepartment !== "string") {
     return res.status(400).json({ error: "toDepartment obbligatorio (cucina, sala, bar o proprieta)" });
   }
-  const result = inventoryRepository.transfer(
+  const result = await inventoryRepository.transfer(
     productId,
     toDepartment.trim().toLowerCase(),
     quantity,
@@ -136,7 +136,7 @@ exports.returnToCentral = async (req, res) => {
   if (!fromDepartment || typeof fromDepartment !== "string") {
     return res.status(400).json({ error: "fromDepartment obbligatorio (cucina, sala, bar o proprieta)" });
   }
-  const result = inventoryRepository.returnToCentral(
+  const result = await inventoryRepository.returnToCentral(
     productId,
     fromDepartment.trim().toLowerCase(),
     quantity,
@@ -162,7 +162,7 @@ exports.returnToCentral = async (req, res) => {
 
 // DELETE /api/inventory/:id
 exports.deleteInventory = async (req, res) => {
-  const ok = inventoryRepository.remove(req.params.id);
+  const ok = await inventoryRepository.remove(req.params.id);
   if (!ok) {
     return res.status(404).json({ error: "Prodotto magazzino non trovato" });
   }
@@ -178,7 +178,7 @@ const UNITS = ["kg", "lt", "g", "ml", "cl", "l", "unità", "pezzi", "pcs", "cass
 
 // GET /api/inventory/barcode/:code
 exports.getByBarcode = async (req, res) => {
-  const product = inventoryRepository.findInventoryItemByBarcode(req.params.code);
+  const product = await inventoryRepository.findInventoryItemByBarcode(req.params.code);
   if (!product) {
     return res.status(404).json({ error: "Barcode non trovato", found: false });
   }
@@ -222,17 +222,17 @@ exports.receive = async (req, res) => {
 
   let product = null;
   if (productId) {
-    product = inventoryRepository.getById(productId);
+    product = await inventoryRepository.getById(productId);
   }
   if (!product && barcode) {
-    product = inventoryRepository.findInventoryItemByBarcode(barcode);
+    product = await inventoryRepository.findInventoryItemByBarcode(barcode);
   }
   if (!product && productName && createIfUnknown === true) {
-    const existing = inventoryRepository.findInventoryItemByName(productName);
+    const existing = await inventoryRepository.findInventoryItemByName(productName);
     if (existing) {
       product = existing;
     } else {
-      product = inventoryRepository.create({
+      product = await inventoryRepository.create({
         name: String(productName).trim(),
         unit: u,
         quantity: 0,
@@ -250,10 +250,10 @@ exports.receive = async (req, res) => {
   }
 
   if (barcode && !product.barcode) {
-    inventoryRepository.update(product.id, { barcode: String(barcode).trim() });
+    await inventoryRepository.update(product.id, { barcode: String(barcode).trim() });
   }
 
-  const result = inventoryRepository.load(product.id, dest, qty, {
+  const result = await inventoryRepository.load(product.id, dest, qty, {
     unitCost: unitCost != null ? Number(unitCost) : undefined,
     lot: lot ? String(lot).trim() : undefined,
   });
@@ -402,7 +402,7 @@ exports.patchLoadTransfer = async (req, res) => {
 
   const delta = newQty - oldQty;
   if (delta !== 0) {
-    const result = inventoryRepository.adjustLoadCorrection(productId, dest, delta);
+    const result = await inventoryRepository.adjustLoadCorrection(productId, dest, delta);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }

@@ -299,7 +299,7 @@ async function getFoodCost(id, inventoryRepository) {
       if (cpu > 0 && qty > 0) {
         lineTotal = qty * cpu;
       } else if (inventoryRepository) {
-        const invItem = inventoryRepository.findInventoryItemByName(ing.name || ing.ingredientName);
+        const invItem = await inventoryRepository.findInventoryItemByName(ing.name || ing.ingredientName);
         const cpuInv = invItem ? inventoryRepository.getCostPerUnit(invItem) : 0;
         lineTotal = qty * cpuInv;
       }

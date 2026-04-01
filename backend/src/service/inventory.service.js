@@ -33,12 +33,12 @@ function getOrderTotal(order = {}) {
 /**
  * Calculate recipe ingredient cost (sum of qty * cost_per_unit from inventory).
  */
-function calculateRecipeIngredientCost(recipe, servedQty) {
+async function calculateRecipeIngredientCost(recipe, servedQty) {
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
   let cost = 0;
 
   for (const ing of ingredients) {
-    const invItem = inventoryRepository.findInventoryItemByName(ing.name);
+    const invItem = await inventoryRepository.findInventoryItemByName(ing.name);
     const qty = (Number(ing.quantity) ?? Number(ing.qty) ?? 0) * (Number(servedQty) || 1);
     const costPerUnit = invItem
       ? inventoryRepository.getCostPerUnit(invItem)
@@ -63,7 +63,7 @@ function unitsMatch(recipeUnit, invUnit) {
  * Validate recipe consumption without deducting (pre-check).
  * Returns { valid, failures } - valid is false if any ingredient fails.
  */
-function validateRecipeConsumption(recipe, servedQty) {
+async function validateRecipeConsumption(recipe, servedQty) {
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
   const department = recipe.department || recipe.area || "cucina";
   const failures = [];
@@ -73,7 +73,7 @@ function validateRecipeConsumption(recipe, servedQty) {
     const needQty = (Number(ing.quantity) ?? Number(ing.qty) ?? 0) * (Number(servedQty) || 1);
     if (!name || needQty <= 0) continue;
 
-    const invItem = inventoryRepository.findInventoryItemByName(name);
+    const invItem = await inventoryRepository.findInventoryItemByName(name);
     if (!invItem) {
       failures.push({
         type: "missing_inventory",
@@ -169,8 +169,8 @@ async function deductRecipeIngredients(order, itemName, recipe, servedQty) {
     const needQty = (Number(ing.quantity) ?? Number(ing.qty) ?? 0) * (Number(servedQty) || 1);
     if (!name || needQty <= 0) continue;
 
-    const invItem = inventoryRepository.findInventoryItemByName(name);
-    if (!invItem) {
+    const invItemLoop = await inventoryRepository.findInventoryItemByName(name);
+    if (!invItemLoop) {
       preCheckFailures.push({
         type: "missing_inventory",
         ingredient: name,
@@ -179,7 +179,7 @@ async function deductRecipeIngredients(order, itemName, recipe, servedQty) {
       continue;
     }
 
-    const invUnit = invItem.unit || "";
+    const invUnit = invItemLoop.unit || "";
     const ingUnit = ing.unit || "";
     if (invUnit && ingUnit && !unitsMatch(ingUnit, invUnit)) {
       preCheckFailures.push({
@@ -190,7 +190,7 @@ async function deductRecipeIngredients(order, itemName, recipe, servedQty) {
       continue;
     }
 
-    const deptStock = inventoryRepository.getDepartmentStock(invItem, department);
+    const deptStock = inventoryRepository.getDepartmentStock(invItemLoop, department);
     if (deptStock < needQty) {
       preCheckFailures.push({
         type: "insufficient_stock",
@@ -216,9 +216,9 @@ async function deductRecipeIngredients(order, itemName, recipe, servedQty) {
     const needQty = (Number(ing.quantity) ?? Number(ing.qty) ?? 0) * (Number(servedQty) || 1);
     if (!name || needQty <= 0) continue;
 
-    const invItem = inventoryRepository.findInventoryItemByName(name);
+    const invItem = await inventoryRepository.findInventoryItemByName(name);
     const before = inventoryRepository.getDepartmentStock(invItem, department);
-    const result = inventoryRepository.deductFromDepartment(name, needQty, department);
+    const result = await inventoryRepository.deductFromDepartment(name, needQty, department);
 
     if (!result.success) {
       return {
@@ -334,7 +334,7 @@ async function onOrderFinalized(order) {
       continue;
     }
 
-    const foodCost = calculateRecipeIngredientCost(recipe, servedQty);
+    const foodCost = await calculateRecipeIngredientCost(recipe, servedQty);
     totalFoodCost += foodCost;
     itemFoodCosts.push({ itemName, qty: servedQty, foodCost });
 
@@ -395,8 +395,8 @@ async function onOrderClosed(order) {
 /**
  * Count inventory items below min stock.
  */
-function getLowStockCount() {
-  const items = inventoryRepository.readInventory();
+async function getLowStockCount() {
+  const items = await inventoryRepository.readInventory();
   let count = 0;
   for (const item of items) {
     const stock = inventoryRepository.getStock(item);

@@ -33,6 +33,7 @@
  *   node scripts/db-migrate-json-to-mysql.js --step=staff-requests
  *   node scripts/db-migrate-json-to-mysql.js --step=sessions
  *   node scripts/db-migrate-json-to-mysql.js --step=pos-shifts
+ *   node scripts/db-migrate-json-to-mysql.js --step=inventory
  *   node scripts/db-migrate-json-to-mysql.js --step=all
  *   node scripts/db-migrate-json-to-mysql.js --step=restaurants --dry-run
  *
@@ -920,6 +921,8 @@ async function runStep(step, dryRun) {
       await migrateTenantModuleData(conn, dryRun, "catering-events", "catering-events.json");
     } else if (step === "catering-presets") {
       await migrateTenantModuleData(conn, dryRun, "catering-presets", "catering-presets.json");
+    } else if (step === "inventory") {
+      await migrateTenantModuleData(conn, dryRun, "inventory", "inventory.json");
     } else if (step === "gs-codes-mirror") {
       await migrateGlobalModuleData(conn, dryRun, "gs-codes-mirror", "gs-codes-mirror.json");
     } else {
@@ -979,6 +982,7 @@ async function main() {
     "qr-tables",
     "catering-events",
     "catering-presets",
+    "inventory",
     "gs-codes-mirror",
   ];
   let steps;

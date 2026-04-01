@@ -210,7 +210,7 @@ async function gatherOperationalData() {
       dateFrom: dateFrom.toISOString(),
       dateTo: dateTo.toISOString(),
     }),
-    Promise.resolve(inventoryRepository.getAll()),
+    inventoryRepository.getAll(),
     recipesRepository.getAll(),
   ]);
 
@@ -790,7 +790,7 @@ async function getDailyBrain() {
     await reportsRepository.getDailyData(today);
 
   const [inventory, recipes] = await Promise.all([
-    Promise.resolve(inventoryRepository.getAll()),
+    inventoryRepository.getAll(),
     recipesRepository.getAll(),
   ]);
 
@@ -864,7 +864,7 @@ async function getDailyBrain() {
 
 async function gatherKitchenContext() {
   const orders = await ordersRepository.getAllOrders();
-  const inventory = inventoryRepository.getAll();
+  const inventory = await inventoryRepository.getAll();
 
   const activeOrders = (orders || []).filter(
     (o) =>
@@ -917,7 +917,7 @@ async function gatherSalesContext() {
 }
 
 async function gatherProductionContext() {
-  const inventory = inventoryRepository.getAll();
+  const inventory = await inventoryRepository.getAll();
   const bookings = await bookingsRepository.getAll();
   const today = new Date();
 
@@ -943,7 +943,7 @@ async function gatherProductionContext() {
 }
 
 async function gatherInventoryContext() {
-  const inventory = inventoryRepository.getAll();
+  const inventory = await inventoryRepository.getAll();
   const today = new Date();
 
   const lowStock = (inventory || [])
@@ -973,7 +973,7 @@ async function gatherInventoryContext() {
  * Suggerimenti per: centrale sotto soglia, reparti quasi scarichi, prodotti da reintegrare.
  */
 async function getInventoryWarehouseSuggestion() {
-  const inventory = inventoryRepository.getAll();
+  const inventory = await inventoryRepository.getAll();
   const DEPARTMENTS = inventoryRepository.DEPARTMENTS || ["cucina", "sala", "bar", "proprieta"];
   const centralLow = [];
   const deptLow = {};
@@ -1186,7 +1186,7 @@ function findDishForIngredient(ingredient, course) {
 }
 
 async function gatherMenuContext() {
-  const inventory = inventoryRepository.getAll();
+  const inventory = await inventoryRepository.getAll();
   const today = new Date();
   const items = inventory || [];
 
@@ -1318,7 +1318,7 @@ async function tryAnswerSpecificQuestion(question) {
   }
 
   if (/cosa\s+manca|cosa\s+mancano|cosa\s+mancano\s+in\s+magazzino/i.test(q)) {
-    const context = inventoryRepository.getAll();
+    const context = await inventoryRepository.getAll();
     const lowStock = (context || [])
       .filter(
         (item) =>

@@ -60,6 +60,7 @@ Con `USE_MYSQL_DATABASE=true`, le API menu leggono/scrivono **`tenant_menus`**. 
 ## Flag `USE_MYSQL_DATABASE`
 
 - Modulo `src/config/mysqlPersistence.js` (`useMysqlPersistence()`): se `true`, i router con implementazione MySQL delegano a `mysql/*` (inclusi storni e turni cassa).
+- **Sessioni Express:** con lo stesso flag `true`, `src/config/session.js` usa **`express-mysql-session`** (tabella `sessions` in `db/schema.sql`). Non servono più file in `data/sessions/`. Rollback temporaneo: `USE_FILE_SESSION_STORE=true`.
 - Documentato anche in `docs/mysql-env.example.txt`.
 
 ## Ordine operativo consigliato (deploy)

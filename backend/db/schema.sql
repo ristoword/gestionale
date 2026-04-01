@@ -271,4 +271,14 @@ CREATE TABLE IF NOT EXISTS tenant_module_data (
   KEY idx_tenant_module_key (module_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------------
+-- Sessioni Express (express-mysql-session) — usata con USE_MYSQL_DATABASE=true
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sessions (
+  session_id VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+  expires      INT UNSIGNED NOT NULL,
+  data         MEDIUMTEXT COLLATE utf8mb4_bin NULL,
+  PRIMARY KEY (session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
 SET FOREIGN_KEY_CHECKS = 1;

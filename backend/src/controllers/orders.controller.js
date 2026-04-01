@@ -163,7 +163,9 @@ async function setStatus(req, res, next) {
 
     await broadcastOrderUpdates();
 
-    if (updated && isFinalState) {
+    const reallyFinal = ["servito", "chiuso"].includes(String(updated.status || "").toLowerCase());
+
+    if (updated && reallyFinal) {
       const inventoryService = getInventoryServiceSafe();
       if (inventoryService) {
         const shouldDeduct = await ordersService.tryMarkOrderInventoryProcessed(updated.id);

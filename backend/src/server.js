@@ -57,6 +57,10 @@ const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 initWebSocket(server, sessionMiddleware);
 
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 server.listen(PORT, "0.0.0.0", () => {
   const mode = process.env.NODE_ENV === "production" ? "production" : "dev";
   const baseUrl =

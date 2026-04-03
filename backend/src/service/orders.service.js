@@ -131,14 +131,20 @@ async function setStatus(id, status) {
   }
 
   let nextStatus = status;
-  /* Multi-corso: "servito" in cucina sulla portata corrente non chiude la comanda.
-   * Se non sei sull'ultimo corso in marcia, resta in_attesa così la KDS mostra ancora la comanda
-   * dopo la Marcia in sala (activeCourse avanza). Servito definitivo solo su ultimo corso. */
+  /* Multi-corso: "servito" sulla portata del corso attuale non chiude la comanda se non è l’ultimo corso.
+   * activeCourse non viene modificato qui (avanza solo con PATCH active-course in sala / marcia).
+   * Ordine resta in lista attiva con status in_attesa finché non è servito l’ultimo corso. */
   if (String(status || "").toLowerCase() === "servito") {
-    const maxC = getMaxCourseFromOrder(target);
-    const ac = Number(target.activeCourse) >= 1 ? Math.floor(Number(target.activeCourse)) : 1;
-    if (maxC != null && ac < maxC) {
-      nextStatus = "in_attesa";
+    const items = Array.isArray(target.items) ? target.items : [];
+    if (items.length > 0) {
+      const maxCourse = Math.max(...items.map((i) => Number(i.course) || 1));
+      const ac =
+        Number(target.activeCourse) >= 1 ? Math.floor(Number(target.activeCourse)) : 1;
+      if (ac < maxCourse) {
+        nextStatus = "in_attesa";
+      } else {
+        nextStatus = "servito";
+      }
     }
   }
 

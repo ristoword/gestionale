@@ -29,6 +29,8 @@ let orderFlowMode = null;
 let popupOpenTable = null;
 let dragState = null;
 let suppressTableClick = false;
+/** Evita doppio invio marcia (due PATCH ravvicinate → salto di corso). */
+let marciaRequestInFlight = false;
 
 // =============================
 //   LOCAL STORAGE — MAPPA / FLAGS / CORSI
@@ -361,6 +363,11 @@ function getMaxCourseFromOrderItems(o) {
  * ricostruisce corsi e voci dall'ordine sul server così popup / menù tornano allineati.
  * Usa solo ordini non serviti (vedi getPrimaryOrderForTableFlow).
  */
+/**
+ * Sovrascrive la bozza locale con corsi e activeCourse dall’ordine primario sul server
+ * (comanda non servita/chiusa). Non usa ensureCourseDraft per evitare ricorsione.
+ * Tavoli senza ordine primario restano in bozza locale pre-invio.
+ */
 function syncCourseDraftFromPrimaryOrder(tableNum) {
   const o = getPrimaryOrderForTableFlow(tableNum);
   if (!o || !Array.isArray(o.items) || o.items.length === 0) return;
@@ -379,7 +386,9 @@ function syncCourseDraftFromPrimaryOrder(tableNum) {
     });
   });
   const nums = [...byN.keys()].sort((a, b) => a - b);
-  const d = ensureCourseDraft(tableNum);
+  const k = String(tableNum);
+  if (!courseDrafts[k]) courseDrafts[k] = { courses: [], activeCourseId: null };
+  const d = courseDrafts[k];
   d.courses = nums.map((n) => ({
     id: `sync_${tableNum}_${n}`,
     n,
@@ -389,6 +398,18 @@ function syncCourseDraftFromPrimaryOrder(tableNum) {
   const match = d.courses.find((c) => c.n === ac);
   d.activeCourseId = match ? match.id : d.courses[0].id;
   saveCourseDrafts();
+}
+
+function hasPrimaryOpenOrderForCourses(tableNum) {
+  return getPrimaryOrderForTableFlow(tableNum) != null;
+}
+
+/** Con popup aperto, dopo ogni reload ordini riallinea la bozza al server (fonte di verità). */
+function resyncCourseDraftIfPopupOpen() {
+  if (popupOpenTable == null) return;
+  if (hasPrimaryOpenOrderForCourses(popupOpenTable)) {
+    syncCourseDraftFromPrimaryOrder(popupOpenTable);
+  }
 }
 
 async function apiSetStatus(id, status) {
@@ -687,7 +708,8 @@ function openTablePopup(tableNum) {
   const hasOrders = orders.length > 0;
   const f = getFlags(tableNum);
 
-  if (hasOrders) {
+  /* Comanda attiva (non servita): server = unica verità corsi / activeCourse per il popup. */
+  if (hasPrimaryOpenOrderForCourses(tableNum)) {
     syncCourseDraftFromPrimaryOrder(tableNum);
   }
 
@@ -794,6 +816,7 @@ function initPopupUiOnce() {
       return;
     }
     if (act === "next-course") {
+      if (marciaRequestInFlight) return;
       const o = getPrimaryOrderForTableFlow(tableNum);
       if (!o) {
         alert("Nessun ordine attivo su questo tavolo per la marcia.");
@@ -806,12 +829,15 @@ function initPopupUiOnce() {
         return;
       }
       const next = cur + 1;
+      marciaRequestInFlight = true;
       try {
         await apiPatchActiveCourse(o.id, next);
         await loadOrdersAndRender();
         openTablePopup(tableNum);
       } catch (err) {
         alert(err.message || "Errore aggiornamento marcia");
+      } finally {
+        marciaRequestInFlight = false;
       }
       return;
     }
@@ -878,6 +904,9 @@ function initPopupUiOnce() {
           });
         }
       }
+      if (hasPrimaryOpenOrderForCourses(tableNum)) {
+        syncCourseDraftFromPrimaryOrder(tableNum);
+      }
       const d = ensureCourseDraft(tableNum);
       lines.push("", "--- Bozza corsi (locale) ---");
       d.courses.forEach((c) => {
@@ -892,8 +921,14 @@ function initPopupUiOnce() {
 
 /** Blocco Start/Aggiungi corsi + elenco (stesso per tavolo libero o con comanda). */
 function buildPopupCoursesBlockHtml(tableNum) {
+  if (hasPrimaryOpenOrderForCourses(tableNum)) {
+    syncCourseDraftFromPrimaryOrder(tableNum);
+  }
   const d = ensureCourseDraft(tableNum);
-  courseStart(tableNum);
+  /* Pre-invio (nessun ordine primario attivo): bozza locale + Start per Corso 1. */
+  if (!hasPrimaryOpenOrderForCourses(tableNum)) {
+    courseStart(tableNum);
+  }
 
   const courseRows = d.courses
     .map((c) => {
@@ -1240,13 +1275,21 @@ function renderOrdersList() {
 //   CARICAMENTO ORDINI
 // =============================
 
+/** Stesso trattamento per GET ordini e push WebSocket: dati sempre allineati al backend (JSON o MySQL). */
+function applySalaOrdersFromServer(orders) {
+  allOrders = Array.isArray(orders) ? orders : [];
+  renderKpi(allOrders);
+  renderFloorMap();
+  renderOrdersList();
+  /* Popup aperto su comanda attiva: bozza corsi = specchio server (cucina, marcia, altri client). */
+  resyncCourseDraftIfPopupOpen();
+  renderSelectedItems();
+}
+
 async function loadOrdersAndRender() {
   try {
     const orders = await apiGetOrders();
-    allOrders = orders || [];
-    renderKpi(allOrders);
-    renderFloorMap();
-    renderOrdersList();
+    applySalaOrdersFromServer(orders);
   } catch (err) {
     console.error(err);
     alert("Errore caricamento ordini dalla sala.");
@@ -1496,10 +1539,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   window.addEventListener("rw:orders-update", (ev) => {
     if (ev.detail?.orders) {
-      allOrders = ev.detail.orders;
-      renderKpi(allOrders);
-      renderFloorMap();
-      renderOrdersList();
+      applySalaOrdersFromServer(ev.detail.orders);
     }
   });
 

@@ -172,6 +172,31 @@ async function setActiveCourse(id, activeCourse) {
   n = Math.floor(n);
   const maxC = getMaxCourseFromOrder(target);
   if (maxC != null && n > maxC) n = maxC;
+
+  const prev = Number(target.activeCourse) >= 1 ? Math.floor(Number(target.activeCourse)) : 1;
+  /* Marcia: un solo passo avanti (prev → prev+1). Impedisce PATCH a activeCourse=3 con prev=1,
+   * che in cucina mostrerebbe subito l’ultimo corso e il primo “Servito” chiuderebbe l’ordine. */
+  if (n > prev) {
+    if (n !== prev + 1 && n !== 1) {
+      const err = new Error(
+        "Marcia: avanza un solo corso alla volta (corso attuale " +
+          prev +
+          "). Un salto diretto al corso successivo non è consentito."
+      );
+      err.status = 400;
+      throw err;
+    }
+  }
+  if (n < prev) {
+    if (n !== 1 && n !== prev - 1) {
+      const err = new Error(
+        "Marcia: puoi solo tornare al corso precedente o reimpostare al corso 1."
+      );
+      err.status = 400;
+      throw err;
+    }
+  }
+
   target.activeCourse = n;
   target.updatedAt = new Date().toISOString();
   await ordersRepository.saveAllOrders(orders);

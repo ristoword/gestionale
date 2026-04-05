@@ -176,7 +176,7 @@ function getActiveCourse(tableNum) {
 function pushItemToActiveCourse(tableNum, item) {
   const d = ensureCourseDraft(tableNum);
   if (!d.courses.length) {
-    alert("Premi Start nel popup tavolo per creare il Corso 1.");
+    alert("Premi Start nel pannello Corsi (tavolo attivo) per creare il Corso 1.");
     return;
   }
   let c = getActiveCourse(tableNum);
@@ -393,6 +393,7 @@ function syncCourseDraftFromPrimaryOrder(tableNum) {
     id: `sync_${tableNum}_${n}`,
     n,
     items: byN.get(n),
+    serverStatus: getCourseServerState(o, n),
   }));
   const ac = Number(o.activeCourse) >= 1 ? Math.floor(Number(o.activeCourse)) : 1;
   const match = d.courses.find((c) => c.n === ac);
@@ -402,6 +403,112 @@ function syncCourseDraftFromPrimaryOrder(tableNum) {
 
 function hasPrimaryOpenOrderForCourses(tableNum) {
   return getPrimaryOrderForTableFlow(tableNum) != null;
+}
+
+function getCourseServerState(order, n) {
+  const cs = order && order.courseStates;
+  if (cs && typeof cs === "object") {
+    const v = cs[String(n)] ?? cs[n];
+    if (v != null && v !== "") return String(v).toLowerCase();
+  }
+  return null;
+}
+
+function statusLabelSalaCourse(st) {
+  const s = String(st || "").toLowerCase();
+  if (s === "queued") return "In attesa";
+  if (s === "in_attesa") return "In coda cucina";
+  if (s === "in_preparazione") return "In preparazione";
+  if (s === "pronto") return "Pronto";
+  if (s === "servito") return "Servito";
+  return s || "";
+}
+
+function resyncCourseDraftForActiveTable() {
+  const t = effectiveTableForItems();
+  if (t == null) return;
+  if (hasPrimaryOpenOrderForCourses(t)) {
+    syncCourseDraftFromPrimaryOrder(t);
+  }
+}
+
+function renderMainCoursePanel() {
+  const el = document.getElementById("sala-main-course-panel");
+  if (!el) return;
+  const tableNum = effectiveTableForItems();
+  if (tableNum == null) {
+    el.innerHTML =
+      '<p class="order-meta">Imposta il tavolo o apri un tavolo dalla mappa.</p>';
+    return;
+  }
+  if (hasPrimaryOpenOrderForCourses(tableNum)) {
+    syncCourseDraftFromPrimaryOrder(tableNum);
+  }
+  ensureCourseDraft(tableNum);
+  const d = ensureCourseDraft(tableNum);
+  if (!d.courses.length) {
+    el.innerHTML = `
+      <div class="sala-courses-actions sala-main-courses-actions">
+        <button type="button" id="btn-sala-course-start">Start (Corso 1)</button>
+      </div>
+      <p class="order-meta">Nessun corso — premi Start per iniziare.</p>
+    `;
+    return;
+  }
+
+  const actions = `
+    <div class="sala-courses-actions sala-main-courses-actions">
+      <button type="button" id="btn-sala-course-start">Start</button>
+      <button type="button" id="btn-sala-course-add">Aggiungi corso</button>
+    </div>`;
+
+  const rows = d.courses
+    .map((c) => {
+      const active = c.id === d.activeCourseId;
+      const rowCls = active ? "active" : "future";
+      const st = c.serverStatus;
+      const badge = st
+        ? `<span class="sala-course-status-badge">${escapeHtml(statusLabelSalaCourse(st))}</span>`
+        : "";
+      const itCount = c.items.length;
+      return `
+      <div class="sala-course-row ${rowCls}" data-course-id="${c.id}">
+        <div class="sala-course-head" data-sala-select-course="${c.id}" role="button" tabindex="0">
+          <span>Corso ${c.n}</span>
+          <span>${itCount} voci${badge}</span>
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  el.innerHTML = `${actions}<div class="sala-courses-list-main">${rows}</div>`;
+}
+
+function initMainCoursePanelOnce() {
+  const card = document.getElementById("sala-courses-card");
+  if (!card || card.dataset.bound) return;
+  card.dataset.bound = "1";
+  card.addEventListener("click", (e) => {
+    const tableNum = effectiveTableForItems();
+    if (tableNum == null) return;
+
+    if (e.target.id === "btn-sala-course-start") {
+      courseStart(tableNum);
+      renderSelectedItems();
+      return;
+    }
+    if (e.target.id === "btn-sala-course-add") {
+      courseAdd(tableNum);
+      renderSelectedItems();
+      return;
+    }
+    const head = e.target.closest("[data-sala-select-course]");
+    if (head) {
+      const id = head.getAttribute("data-sala-select-course");
+      setActiveCourse(tableNum, id);
+      renderSelectedItems();
+    }
+  });
 }
 
 /** Con popup aperto, dopo ogni reload ordini riallinea la bozza al server (fonte di verità). */
@@ -738,33 +845,6 @@ function initPopupUiOnce() {
     const tableNum = popupOpenTable;
     if (!tableNum) return;
 
-    if (e.target.id === "btn-course-start") {
-      const d = ensureCourseDraft(tableNum);
-      if (d.courses.length === 0) {
-        const id = newCourseId();
-        d.courses.push({ id, n: 1, items: [] });
-        d.activeCourseId = id;
-      } else if (!d.activeCourseId) {
-        d.activeCourseId = d.courses[0].id;
-      }
-      saveCourseDrafts();
-      openTablePopup(tableNum);
-      return;
-    }
-    if (e.target.id === "btn-course-add") {
-      courseAdd(tableNum);
-      openTablePopup(tableNum);
-      return;
-    }
-
-    const head = e.target.closest("[data-select-course]");
-    if (head) {
-      const id = head.getAttribute("data-select-course");
-      setActiveCourse(tableNum, id);
-      openTablePopup(tableNum);
-      return;
-    }
-
     const btn = e.target.closest("[data-act]");
     if (!btn) return;
     const act = btn.getAttribute("data-act");
@@ -775,9 +855,14 @@ function initPopupUiOnce() {
       activeTableContext = tableNum;
       orderFlowMode = "food";
       setFlags(tableNum, { reserved: false });
+      {
+        const d = ensureCourseDraft(tableNum);
+        if (!d.courses.length) courseStart(tableNum);
+      }
       closeTablePopup();
       document.getElementById("field-covers")?.focus();
       renderFloorMap();
+      renderSelectedItems();
       return;
     }
     if (act === "reserve") {
@@ -798,8 +883,13 @@ function initPopupUiOnce() {
       orderFlowMode = "food";
       document.getElementById("field-table").value = String(tableNum);
       document.getElementById("field-area").value = "cucina";
+      {
+        const d = ensureCourseDraft(tableNum);
+        if (!d.courses.length) courseStart(tableNum);
+      }
       closeTablePopup();
       document.getElementById("field-covers")?.focus();
+      renderSelectedItems();
       return;
     }
     if (act === "order-bar") {
@@ -842,7 +932,7 @@ function initPopupUiOnce() {
       return;
     }
     if (act === "remove-last") {
-      if (removeLastFromActiveCourse(tableNum)) openTablePopup(tableNum);
+      if (removeLastFromActiveCourse(tableNum)) renderSelectedItems();
       else alert("Nessun articolo da rimuovere nel corso attivo.");
       return;
     }
@@ -919,58 +1009,21 @@ function initPopupUiOnce() {
   });
 }
 
-/** Blocco Start/Aggiungi corsi + elenco (stesso per tavolo libero o con comanda). */
-function buildPopupCoursesBlockHtml(tableNum) {
-  if (hasPrimaryOpenOrderForCourses(tableNum)) {
-    syncCourseDraftFromPrimaryOrder(tableNum);
-  }
-  const d = ensureCourseDraft(tableNum);
-  /* Pre-invio (nessun ordine primario attivo): bozza locale + Start per Corso 1. */
-  if (!hasPrimaryOpenOrderForCourses(tableNum)) {
-    courseStart(tableNum);
-  }
-
-  const courseRows = d.courses
-    .map((c) => {
-      const active = c.id === d.activeCourseId;
-      const rowCls = active ? "active" : "future";
-      const itCount = c.items.length;
-      return `
-      <div class="sala-course-row ${rowCls}" data-course-id="${c.id}">
-        <div class="sala-course-head" data-select-course="${c.id}" role="button" tabindex="0">
-          <span>Corso ${c.n}</span>
-          <span>${itCount} voci</span>
-        </div>
-        <div class="sala-course-body">
-          ${
-            c.items.length
-              ? c.items
-                  .map(
-                    (it) =>
-                      `• ${escapeHtml(it.name)} x${it.qty}${it.area ? " (" + it.area + ")" : ""}`
-                  )
-                  .join("<br>")
-              : "(vuoto)"
-          }
-        </div>
-      </div>`;
-    })
-    .join("");
-
+/** Popup: solo hint — corsi e inserimento piatti dal pannello sinistro. */
+function buildPopupCoursesBlockHtml() {
   return `
-    <div class="sala-courses-block">
-      <div class="sala-courses-actions">
-        <button type="button" id="btn-course-start">Start</button>
-        <button type="button" id="btn-course-add">Aggiungi</button>
-      </div>
-      <div id="sala-courses-list">${courseRows || "<p>Nessun corso — premi Start</p>"}</div>
+    <div class="sala-courses-block sala-popup-courses-hint">
+      <p class="sala-popup-hint" style="margin:0;">
+        I corsi si gestiscono nel pannello <strong>Corsi (tavolo attivo)</strong> a sinistra.
+        Aggiungi piatti dal menù senza riaprire questo popup.
+      </p>
     </div>
   `;
 }
 
 function buildPopupFree(tableNum) {
   return `
-    <p class="sala-popup-hint">Tavolo libero — usa <strong>Start / Aggiungi</strong> per i corsi, poi il menù a sinistra per i piatti.</p>
+    <p class="sala-popup-hint">Tavolo libero — i corsi si creano nel pannello <strong>Corsi (tavolo attivo)</strong> a sinistra; poi usa il menù sotto per i piatti.</p>
     <div class="sala-popup-actions">
       <button type="button" class="sala-popup-btn" data-act="open-table">Apri tavolo</button>
       <button type="button" class="sala-popup-btn" data-act="reserve">Riserva tavolo</button>
@@ -983,8 +1036,8 @@ function buildPopupFree(tableNum) {
       <button type="button" class="sala-popup-btn" data-act="move-table">Sposta tavolo</button>
       <button type="button" class="sala-popup-btn" data-act="view-order">Anteprima bozza / ordine</button>
     </div>
-    <p class="sala-popup-hint" style="margin-top:12px;margin-bottom:6px;font-size:13px;">Corsi (bozza locale)</p>
-    ${buildPopupCoursesBlockHtml(tableNum)}
+    <p class="sala-popup-hint" style="margin-top:12px;margin-bottom:6px;font-size:13px;">Corsi</p>
+    ${buildPopupCoursesBlockHtml()}
     <div id="sala-view-order" class="sala-order-preview" style="display:none;margin-top:12px;"></div>
   `;
 }
@@ -1004,8 +1057,8 @@ function buildPopupReservedFree(tableNum) {
       <button type="button" class="sala-popup-btn" data-act="move-table">Sposta tavolo</button>
       <button type="button" class="sala-popup-btn" data-act="view-order">Anteprima bozza / ordine</button>
     </div>
-    <p class="sala-popup-hint" style="margin-top:12px;margin-bottom:6px;font-size:13px;">Corsi (bozza locale)</p>
-    ${buildPopupCoursesBlockHtml(tableNum)}
+    <p class="sala-popup-hint" style="margin-top:12px;margin-bottom:6px;font-size:13px;">Corsi</p>
+    ${buildPopupCoursesBlockHtml()}
     <div id="sala-view-order" class="sala-order-preview" style="display:none;margin-top:12px;"></div>
   `;
 }
@@ -1016,7 +1069,7 @@ function buildPopupOccupied(tableNum) {
     po && Number(po.activeCourse) >= 1 ? Math.floor(Number(po.activeCourse)) : 1;
   const maxC = getMaxCourseFromOrderItems(po);
   return `
-    <p class="sala-popup-hint">Comanda attiva — <strong>Marca corso (server): ${ac}</strong>${maxC > 1 ? ` / fino a corso ${maxC}` : ""}. Il corso attivo è evidenziato sotto; usa <strong>Marcia prossima portata</strong> per il corso successivo.</p>
+    <p class="sala-popup-hint">Comanda attiva — corso operativo in cucina: <strong>${ac}</strong>${maxC > 1 ? ` / fino a corso ${maxC}` : ""}. Dopo ogni <strong>Servito</strong> la cucina passa al corso successivo. Il dettaglio corsi è nel pannello a sinistra.</p>
     <div class="sala-popup-actions">
       <button type="button" class="sala-popup-btn food" data-act="order-food">Prendi ordine (cucina / food)</button>
       <button type="button" class="sala-popup-btn bar" data-act="order-bar">Aggiungi bevande (bar)</button>
@@ -1029,7 +1082,7 @@ function buildPopupOccupied(tableNum) {
       <button type="button" class="sala-popup-btn danger" data-act="close-table">Chiudi tavolo (ordini)</button>
       <button type="button" class="sala-popup-btn" data-act="view-order">Vedi ordine completo</button>
     </div>
-    ${buildPopupCoursesBlockHtml(tableNum)}
+    ${buildPopupCoursesBlockHtml()}
     <div id="sala-view-order" class="sala-order-preview" style="display:none;margin-top:12px;"></div>
   `;
 }
@@ -1080,7 +1133,7 @@ function renderSelectedItems() {
   const d = ensureCourseDraft(tableNum);
 
   if (!d.courses.length) {
-    box.innerHTML = `<div class="order-meta">Nessun corso — dal popup tavolo premi <strong>Start</strong> o aggiungi piatti dopo aver premuto Start.</div>`;
+    box.innerHTML = `<div class="order-meta">Nessun corso — nel pannello <strong>Corsi (tavolo attivo)</strong> premi <strong>Start</strong>.</div>`;
     return;
   }
 
@@ -1141,7 +1194,10 @@ function setupAddFromMenu() {
 
     const d = ensureCourseDraft(tableNum);
     if (!d.courses.length) {
-      alert("Premi Start nel popup tavolo per creare il Corso 1.");
+      courseStart(tableNum);
+    }
+    if (!d.courses.length) {
+      alert("Premi Start nel pannello Corsi (tavolo attivo) per creare il Corso 1.");
       return;
     }
     if (!d.activeCourseId && d.courses.length) {
@@ -1196,7 +1252,10 @@ function setupAddCustom() {
 
     const d = ensureCourseDraft(tableNum);
     if (!d.courses.length) {
-      alert("Premi Start nel popup tavolo per creare il Corso 1.");
+      courseStart(tableNum);
+    }
+    if (!d.courses.length) {
+      alert("Premi Start nel pannello Corsi (tavolo attivo) per creare il Corso 1.");
       return;
     }
 
@@ -1283,6 +1342,7 @@ function applySalaOrdersFromServer(orders) {
   renderOrdersList();
   /* Popup aperto su comanda attiva: bozza corsi = specchio server (cucina, marcia, altri client). */
   resyncCourseDraftIfPopupOpen();
+  resyncCourseDraftForActiveTable();
   renderSelectedItems();
 }
 
@@ -1331,16 +1391,13 @@ async function handleCreateOrder() {
     if (!ok) return;
   }
 
-  /* Marca iniziale sempre corso 1 (KDS un corso alla volta; la sala avanza con "Marcia prossima portata"). */
-  const activeCourseNum = 1;
-
+  /* Il backend imposta il primo corso con piatti (min course) come operativo; il corso attivo UI non conta. */
   const payload = {
     table: tableNum,
     covers: coversNum,
     area,
     waiter,
     notes,
-    activeCourse: activeCourseNum,
     items: itemsPayload,
   };
 
@@ -1517,6 +1574,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadCourseDrafts();
 
   initPopupUiOnce();
+  initMainCoursePanelOnce();
 
   await loadOfficialMenu();
   populateMenuSelect();

@@ -190,6 +190,25 @@ async function renderKpi(orders) {
   }
 }
 
+function kdsCourseStateLabel(st) {
+  const s = String(st || "").toLowerCase();
+  if (s === "queued") return "In attesa turno";
+  if (s === "in_attesa") return "In coda cucina";
+  if (s === "in_preparazione") return "In preparazione";
+  if (s === "pronto") return "Pronto";
+  if (s === "servito") return "Servito";
+  return s || "—";
+}
+
+function getOrderCourseState(order, cn) {
+  const cs = order && order.courseStates;
+  if (cs && typeof cs === "object") {
+    const v = cs[String(cn)] ?? cs[cn];
+    if (v != null && v !== "") return String(v).toLowerCase();
+  }
+  return null;
+}
+
 function buildCourseBlocksHtml(order) {
   const items = Array.isArray(order.items) ? order.items : [];
   const activeCourse = Number(order.activeCourse) >= 1 ? Number(order.activeCourse) : 1;
@@ -205,8 +224,11 @@ function buildCourseBlocksHtml(order) {
   }
   const blocks = nums
     .map((cn) => {
+      const st = getOrderCourseState(order, cn);
+      const stLabel = st ? kdsCourseStateLabel(st) : "";
       let courseCls = "kds-course-future";
-      if (cn === activeCourse) courseCls = "kds-course-active";
+      if (st === "servito") courseCls = "kds-course-past";
+      else if (cn === activeCourse) courseCls = "kds-course-active";
       else if (cn < activeCourse) courseCls = "kds-course-past";
       const cls = `kds-course-block ${courseCls}`;
       const rows = byCourse
@@ -218,11 +240,14 @@ function buildCourseBlocksHtml(order) {
           return `<div class="kds-course-line">${escapeHtml(i.name || "-")} x${i.qty ?? 1}${note}</div>`;
         })
         .join("");
-      return `<div class="${cls}"><div class="kds-course-title">Corso ${cn}</div>${rows}</div>`;
+      const badge = stLabel
+        ? `<span class="kds-course-state-badge">${escapeHtml(stLabel)}</span>`
+        : "";
+      return `<div class="${cls}"><div class="kds-course-title">Corso ${cn} ${badge}</div>${rows}</div>`;
     })
     .join("");
   return `
-    <div class="kds-marca-hint">Marca corso (sala): <strong>${activeCourse}</strong> · blocchi separati per ogni uscita</div>
+    <div class="kds-marca-hint">Corso operativo: <strong>${activeCourse}</strong> · stati per portata</div>
     <div class="kds-courses-wrap">${blocks}</div>
   `;
 }

@@ -1,20 +1,158 @@
 // backend/src/service/orders.service.js
 // Business logic for orders. Data access via orders.repository only.
+//
+// Multi-corso (courseFlowVersion / courseStates):
+// - Ogni numero corso presente nelle righe ha uno stato in order.courseStates["n"].
+// - Valori: queued | in_attesa | in_preparazione | pronto | servito
+// - activeCourse = corso operativo in cucina (primo non servito dopo avanzamenti).
+// - All'invio: primo corso con piatti (min course) = in_attesa, gli altri queued.
+// - Servito in cucina: chiude il corso corrente, attiva il successivo con piatti; solo
+//   quando tutti i corsi sono servito → order.status = servito.
 
 const ordersRepository = require("../repositories/orders.repository");
+
+function courseKey(n) {
+  return String(Math.floor(Number(n)));
+}
+
+function getSortedCourseNumsFromItems(items) {
+  const list = Array.isArray(items) ? items : [];
+  const set = new Set();
+  for (const it of list) {
+    const c = Number(it && it.course);
+    const cn = Number.isFinite(c) && c >= 1 ? Math.floor(c) : 1;
+    set.add(cn);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
+function getCourseState(order, n) {
+  const cs = order && order.courseStates && typeof order.courseStates === "object" ? order.courseStates : {};
+  const v = cs[courseKey(n)];
+  if (v != null && v !== "") return String(v).toLowerCase();
+  return "queued";
+}
+
+function setCourseState(order, n, state) {
+  if (!order.courseStates || typeof order.courseStates !== "object") order.courseStates = {};
+  order.courseStates[courseKey(n)] = String(state).toLowerCase();
+}
+
+/** Migrazione ordini senza courseStates (JSON vecchio / MySQL solo items). */
+function migrateLegacyCourseStates(order, nums) {
+  const cs = {};
+  const st = String(order.status || "").toLowerCase();
+  let ac = Number(order.activeCourse);
+  if (!Number.isFinite(ac) || ac < 1) ac = nums.length ? nums[0] : 1;
+  if (nums.length) {
+    const maxN = nums[nums.length - 1];
+    if (ac > maxN) ac = maxN;
+    if (ac < nums[0]) ac = nums[0];
+  }
+
+  if (st === "servito") {
+    nums.forEach((n) => {
+      cs[courseKey(n)] = "servito";
+    });
+    return cs;
+  }
+
+  for (const n of nums) {
+    if (n < ac) {
+      cs[courseKey(n)] = "servito";
+    } else if (n === ac) {
+      if (st === "in_preparazione" || st === "pronto" || st === "in_attesa") {
+        cs[courseKey(n)] = st;
+      } else {
+        cs[courseKey(n)] = "in_attesa";
+      }
+    } else {
+      cs[courseKey(n)] = "queued";
+    }
+  }
+  return cs;
+}
+
+/**
+ * Garantisce order.courseStates coerente con items. Mutua l'ordine passato.
+ */
+function ensureCourseStatesForOrder(order) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const nums = getSortedCourseNumsFromItems(items);
+  if (!nums.length) {
+    if (!order.courseStates || typeof order.courseStates !== "object") order.courseStates = {};
+    return;
+  }
+  if (!order.courseStates || typeof order.courseStates !== "object") {
+    order.courseStates = migrateLegacyCourseStates(order, nums);
+    return;
+  }
+  for (const n of nums) {
+    const k = courseKey(n);
+    if (order.courseStates[k] == null || order.courseStates[k] === "") {
+      order.courseStates[k] = "queued";
+    }
+  }
+}
+
+function buildCourseStatesForNewOrder(items) {
+  const nums = getSortedCourseNumsFromItems(items);
+  const cs = {};
+  if (!nums.length) return cs;
+  const first = nums[0];
+  for (const n of nums) {
+    cs[courseKey(n)] = n === first ? "in_attesa" : "queued";
+  }
+  return cs;
+}
+
+function allCoursesServed(order) {
+  const nums = getSortedCourseNumsFromItems(order.items);
+  if (!nums.length) return true;
+  return nums.every((n) => getCourseState(order, n) === "servito");
+}
+
+function applyServitoMultiCourse(target) {
+  const items = Array.isArray(target.items) ? target.items : [];
+  ensureCourseStatesForOrder(target);
+  const nums = getSortedCourseNumsFromItems(items);
+  if (!nums.length) {
+    target.status = "servito";
+    return;
+  }
+
+  /* Chiude sempre il primo corso con piatti non ancora servito (ordine sequenziale). */
+  const current = nums.find((n) => getCourseState(target, n) !== "servito");
+  if (current == null) {
+    target.status = "servito";
+    return;
+  }
+
+  setCourseState(target, current, "servito");
+
+  const next = nums.find((n) => getCourseState(target, n) !== "servito");
+  if (next != null) {
+    target.activeCourse = next;
+    setCourseState(target, next, "in_attesa");
+    target.status = "in_attesa";
+  } else {
+    target.status = "servito";
+  }
+}
 
 async function listOrders() {
   try {
     const orders = await ordersRepository.getAllOrders();
     return Array.isArray(orders) ? orders : [];
   } catch (err) {
-    // CORE PROTECTION: order listing must never crash because of IO/parsing issues.
     return [];
   }
 }
 
 async function getOrderById(id) {
-  return ordersRepository.getOrderById(id);
+  const o = await ordersRepository.getOrderById(id);
+  if (!o) return null;
+  return normalizeOrderForRead({ ...o, items: Array.isArray(o.items) ? o.items.map((i) => ({ ...i })) : [] });
 }
 
 function getOrderDateStr(order) {
@@ -28,32 +166,26 @@ function getOrderDateStr(order) {
   return `${y}-${m}-${day}`;
 }
 
-/**
- * Returns only operationally active orders.
- * EXCLUDES: chiuso, annullato, closed, cancelled, archived, pagato (final states).
- * Used by Sala, Cassa, Supervisor active view. Closed/cancelled never appear in active.
- *
- * HARD RULE: this function must NEVER throw. Optional business intelligence
- * (recipes, food cost, inventory, reports, AI) must not be required here.
- */
 async function listActiveOrders() {
   let all = [];
   try {
     all = await ordersRepository.getAllOrders();
   } catch (err) {
-    // If anything goes wrong reading orders, return an empty list instead of breaking UI.
     all = [];
   }
   const excludeStatuses = ["chiuso", "annullato", "closed", "cancelled", "archived", "pagato", "paid"];
-  return all.filter((o) => {
+  const filtered = all.filter((o) => {
     const status = String(o.status || "").toLowerCase().trim();
     return !excludeStatuses.includes(status);
   });
+  return filtered.map((o) =>
+    normalizeOrderForRead({
+      ...o,
+      items: Array.isArray(o.items) ? o.items.map((i) => ({ ...i })) : [],
+    })
+  );
 }
 
-/**
- * Returns all orders for a specific date (for storico giornaliero).
- */
 async function listOrdersByDate(dateStr) {
   const all = await ordersRepository.getAllOrders();
   const target = String(dateStr || "").slice(0, 10);
@@ -71,12 +203,11 @@ function normalizeItemCourse(it) {
   return { ...it, course };
 }
 
-/** Nuova comanda in cucina: sempre corso 1 in marcia (un corso alla volta). */
-function deriveInitialActiveCourse(items, bodyActiveCourse) {
-  const list = Array.isArray(items) ? items : [];
-  if (list.length > 0) return 1;
-  const ac = Number(bodyActiveCourse);
-  return Number.isFinite(ac) && ac >= 1 ? Math.floor(ac) : 1;
+/** Ordine vuoto: activeCourse dal body o 1. Con piatti: ignorare body — primo corso con piatti (min). */
+function deriveInitialActiveCourse(items) {
+  const nums = getSortedCourseNumsFromItems(items);
+  if (nums.length) return nums[0];
+  return 1;
 }
 
 function getMaxCourseFromOrder(order) {
@@ -91,6 +222,42 @@ function getMaxCourseFromOrder(order) {
   return m;
 }
 
+function normalizeOrderActiveCourseForRead(order) {
+  if (!order || typeof order !== "object") return order;
+  const maxC = getMaxCourseFromOrder(order);
+  if (maxC == null) return order;
+  let ac = Number(order.activeCourse);
+  if (!Number.isFinite(ac) || ac < 1) ac = 1;
+  if (ac > maxC) ac = maxC;
+
+  const nums = getSortedCourseNumsFromItems(order.items);
+  if (nums.length && getCourseState(order, ac) === "servito") {
+    const next = nums.find((n) => getCourseState(order, n) !== "servito");
+    if (next != null) ac = next;
+  }
+
+  const prev = order.activeCourse;
+  if (prev === ac || Number(prev) === ac) return { ...order, activeCourse: ac };
+  if (String(process.env.DEBUG_ORDER_FLOW || "").toLowerCase() === "true") {
+    // eslint-disable-next-line no-console
+    console.warn("[orders] normalizeOrderActiveCourseForRead", {
+      orderId: order.id,
+      table: order.table,
+      before: prev,
+      after: ac,
+      maxCourse: maxC,
+    });
+  }
+  return { ...order, activeCourse: ac };
+}
+
+function normalizeOrderForRead(order) {
+  if (!order || typeof order !== "object") return order;
+  const o = { ...order };
+  ensureCourseStatesForOrder(o);
+  return normalizeOrderActiveCourseForRead(o);
+}
+
 async function createOrder(payload) {
   const body = payload || {};
   const orders = await ordersRepository.getAllOrders();
@@ -100,7 +267,8 @@ async function createOrder(payload) {
   const rawItems = Array.isArray(body.items) ? body.items : [];
   const items = rawItems.map(normalizeItemCourse);
 
-  const activeCourse = deriveInitialActiveCourse(items, body.activeCourse);
+  const courseStates = buildCourseStatesForNewOrder(items);
+  const activeCourse = deriveInitialActiveCourse(items);
 
   const newOrder = {
     id,
@@ -111,6 +279,8 @@ async function createOrder(payload) {
     notes: body.notes || "",
     items,
     activeCourse,
+    courseStates,
+    courseFlowVersion: 1,
     status: "in_attesa",
     createdAt: now,
     updatedAt: now,
@@ -118,7 +288,7 @@ async function createOrder(payload) {
 
   orders.push(newOrder);
   await ordersRepository.saveAllOrders(orders);
-  return newOrder;
+  return normalizeOrderForRead({ ...newOrder });
 }
 
 async function setStatus(id, status) {
@@ -130,29 +300,39 @@ async function setStatus(id, status) {
     throw err;
   }
 
-  let nextStatus = status;
-  /* Multi-corso: la cucina non avanza activeCourse (solo la sala / marcia con PATCH active-course).
-   * Servito su corso non ultimo → in_attesa; su ultimo corso → servito. */
-  if (String(status || "").toLowerCase() === "servito") {
-    const items = Array.isArray(target.items) ? target.items : [];
-    if (items.length > 0) {
-      const maxCourse = Math.max(...items.map((i) => Number(i.course) || 1));
-      let ac = target.activeCourse || 1;
-      ac = Math.floor(Number(ac));
-      if (!Number.isFinite(ac) || ac < 1) ac = 1;
-      if (ac < maxCourse) {
-        nextStatus = "in_attesa";
-      } else {
-        nextStatus = "servito";
-      }
-    }
+  const lower = String(status || "").toLowerCase();
+  const now = new Date().toISOString();
+
+  ensureCourseStatesForOrder(target);
+
+  if (lower === "servito") {
+    applyServitoMultiCourse(target);
+    target.updatedAt = now;
+    await ordersRepository.saveAllOrders(orders);
+    return normalizeOrderForRead({ ...target });
   }
 
-  target.status = nextStatus;
-  target.updatedAt = new Date().toISOString();
+  if (lower === "in_preparazione" || lower === "pronto" || lower === "in_attesa") {
+    const nums = getSortedCourseNumsFromItems(target.items);
+    const current = nums.find((n) => getCourseState(target, n) !== "servito");
+    if (current == null) {
+      target.status = "servito";
+      target.updatedAt = now;
+      await ordersRepository.saveAllOrders(orders);
+      return normalizeOrderForRead({ ...target });
+    }
+    setCourseState(target, current, lower);
+    target.activeCourse = current;
+    target.status = lower;
+    target.updatedAt = now;
+    await ordersRepository.saveAllOrders(orders);
+    return normalizeOrderForRead({ ...target });
+  }
 
+  target.status = status;
+  target.updatedAt = now;
   await ordersRepository.saveAllOrders(orders);
-  return target;
+  return normalizeOrderForRead({ ...target });
 }
 
 async function setActiveCourse(id, activeCourse) {
@@ -170,12 +350,12 @@ async function setActiveCourse(id, activeCourse) {
     throw err;
   }
   n = Math.floor(n);
+  ensureCourseStatesForOrder(target);
+  const nums = getSortedCourseNumsFromItems(target.items);
   const maxC = getMaxCourseFromOrder(target);
   if (maxC != null && n > maxC) n = maxC;
 
   const prev = Number(target.activeCourse) >= 1 ? Math.floor(Number(target.activeCourse)) : 1;
-  /* Marcia: un solo passo avanti (prev → prev+1). Impedisce PATCH a activeCourse=3 con prev=1,
-   * che in cucina mostrerebbe subito l’ultimo corso e il primo “Servito” chiuderebbe l’ordine. */
   if (n > prev) {
     if (n !== prev + 1 && n !== 1) {
       const err = new Error(
@@ -198,15 +378,14 @@ async function setActiveCourse(id, activeCourse) {
   }
 
   target.activeCourse = n;
+  if (nums.includes(n) && getCourseState(target, n) === "queued") {
+    setCourseState(target, n, "in_attesa");
+  }
   target.updatedAt = new Date().toISOString();
   await ordersRepository.saveAllOrders(orders);
-  return target;
+  return normalizeOrderForRead({ ...target });
 }
 
-/**
- * Try to mark order as inventory-processed. Returns true if we marked it (caller should deduct),
- * false if already marked (idempotent – do not deduct again).
- */
 async function tryMarkOrderInventoryProcessed(id) {
   const orders = await ordersRepository.getAllOrders();
   const target = orders.find((o) => String(o.id) === String(id));

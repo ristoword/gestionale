@@ -566,6 +566,31 @@ body {
   border-top: 1px solid #2b3140;
 }
 
+/* Corsi nel pannello principale (colonna sinistra) */
+.sala-main-course-panel {
+  min-height: 40px;
+}
+
+.sala-main-courses-actions {
+  margin-bottom: 10px;
+}
+
+.sala-courses-list-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sala-course-status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 184, 0, 0.15);
+  color: var(--accent);
+}
+
 .sala-order-preview {
   font-size: 12px;
   line-height: 1.45;

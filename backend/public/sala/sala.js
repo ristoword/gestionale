@@ -374,15 +374,22 @@ function syncCourseDraftFromPrimaryOrder(tableNum) {
 
   const byN = new Map();
   o.items.forEach((it) => {
-    const n = Number(it.course) >= 1 ? Math.floor(Number(it.course)) : 1;
+    const rawC = it.course != null ? Number(it.course) : NaN;
+    const n = Number.isFinite(rawC) && rawC >= 1 ? Math.floor(rawC) : 1;
     if (!byN.has(n)) byN.set(n, []);
+    const noteVal =
+      it.note != null && String(it.note).trim() !== ""
+        ? it.note
+        : it.notes != null && String(it.notes).trim() !== ""
+          ? it.notes
+          : null;
     byN.get(n).push({
       name: it.name,
       qty: it.qty,
       category: it.category || null,
       area: it.area,
       price: it.price != null ? Number(it.price) : null,
-      note: it.note || null,
+      note: noteVal,
     });
   });
   const nums = [...byN.keys()].sort((a, b) => a - b);
@@ -484,7 +491,8 @@ function renderMainCoursePanel() {
           ? `<div class="sala-course-dish-empty">Nessun piatto — seleziona questo corso e aggiungi dal menù sotto.</div>`
           : c.items
               .map((it, idx) => {
-                const note = it.note ? ` · ${escapeHtml(String(it.note))}` : "";
+                const noteRaw = it.note != null ? it.note : it.notes;
+                const note = noteRaw ? ` · ${escapeHtml(String(noteRaw))}` : "";
                 return `<div class="sala-course-dish-row">
                   <span class="sala-course-dish-text">${escapeHtml(it.name || "—")} <span class="sala-course-dish-qty">×${it.qty ?? 1}</span>${note}</span>
                   <button type="button" class="btn-xs danger sala-course-remove-btn" data-sala-remove-item data-course-id="${escapeHtml(c.id)}" data-item-index="${idx}" aria-label="Rimuovi">Rimuovi</button>
@@ -533,12 +541,13 @@ function initMainCoursePanelOnce() {
       return;
     }
 
-    if (e.target.id === "btn-sala-course-start") {
+    /* Usa closest: il click può colpire testo/icona dentro il pulsante, non l'elemento con id. */
+    if (e.target.closest("#btn-sala-course-start")) {
       courseStart(tableNum);
       renderSelectedItems();
       return;
     }
-    if (e.target.id === "btn-sala-course-add") {
+    if (e.target.closest("#btn-sala-course-add")) {
       courseAdd(tableNum);
       renderSelectedItems();
       return;

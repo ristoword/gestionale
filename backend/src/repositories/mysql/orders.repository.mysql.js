@@ -50,7 +50,16 @@ function rowToItem(row) {
     type: row.type != null ? String(row.type) : undefined,
     notes: row.notes != null ? String(row.notes) : "",
   };
-  return { ...ex, ...base };
+  const merged = { ...ex, ...base };
+  /* course vive in extra JSON: non deve essere perso (multi-portata). */
+  if (ex && ex.course != null) {
+    const cn = Number(ex.course);
+    merged.course = Number.isFinite(cn) && cn >= 1 ? Math.floor(cn) : 1;
+  } else if (merged.course != null) {
+    const cn = Number(merged.course);
+    merged.course = Number.isFinite(cn) && cn >= 1 ? Math.floor(cn) : 1;
+  }
+  return merged;
 }
 
 function rowToOrder(row, items) {

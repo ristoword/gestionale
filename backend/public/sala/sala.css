@@ -571,6 +571,117 @@ body {
   min-height: 40px;
 }
 
+.sala-courses-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.sala-courses-toolbar .btn {
+  min-height: 40px;
+}
+
+.sala-courses-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sala-course-card {
+  border-radius: var(--radius-md);
+  border: 2px solid #343848;
+  background: #181b24;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sala-course-card.is-active {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35);
+}
+
+.sala-course-card-head {
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(22, 163, 74, 0.1);
+  border-bottom: 1px solid #2b3140;
+}
+
+.sala-course-card.is-active .sala-course-card-head {
+  background: rgba(220, 38, 38, 0.22);
+}
+
+.sala-course-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sala-course-num-label {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.sala-course-active-pill {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.35);
+  color: #fecaca;
+}
+
+.sala-course-head-right {
+  flex-shrink: 0;
+}
+
+.sala-course-card-body {
+  padding: 8px 12px 12px;
+  font-size: 13px;
+}
+
+.sala-course-dish-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 0;
+}
+
+.sala-course-dish-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #252a36;
+}
+
+.sala-course-dish-row:last-child {
+  border-bottom: none;
+}
+
+.sala-course-dish-text {
+  color: var(--text-soft);
+  flex: 1;
+  min-width: 0;
+}
+
+.sala-course-dish-qty {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sala-course-remove-btn {
+  flex-shrink: 0;
+}
+
 .sala-main-courses-actions {
   margin-bottom: 10px;
 }
@@ -589,6 +700,16 @@ body {
   border-radius: 999px;
   background: rgba(245, 184, 0, 0.15);
   color: var(--accent);
+}
+
+.sala-selected-hint {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.sala-selected-items-hint {
+  min-height: 0;
+  padding: 8px 0 0;
 }
 
 .sala-order-preview {

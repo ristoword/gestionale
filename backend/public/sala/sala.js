@@ -445,43 +445,68 @@ function renderMainCoursePanel() {
     syncCourseDraftFromPrimaryOrder(tableNum);
   }
   ensureCourseDraft(tableNum);
-  const d = ensureCourseDraft(tableNum);
+  let d = ensureCourseDraft(tableNum);
+  /* Bozza senza comanda sul server: almeno Corso 1, senza popup. */
+  if (!d.courses.length && !hasPrimaryOpenOrderForCourses(tableNum)) {
+    courseStart(tableNum);
+    d = ensureCourseDraft(tableNum);
+  }
+
   if (!d.courses.length) {
     el.innerHTML = `
-      <div class="sala-courses-actions sala-main-courses-actions">
-        <button type="button" id="btn-sala-course-start">Start (Corso 1)</button>
+      <div class="sala-courses-toolbar">
+        <button type="button" class="btn ghost" id="btn-sala-course-start">+ Corso (inizia)</button>
       </div>
-      <p class="order-meta">Nessun corso — premi Start per iniziare.</p>
+      <p class="order-meta">Nessun corso — premi <strong>+ Corso</strong> oppure apri un ordine già inviato per questo tavolo.</p>
     `;
     return;
   }
 
   const actions = `
-    <div class="sala-courses-actions sala-main-courses-actions">
-      <button type="button" id="btn-sala-course-start">Start</button>
-      <button type="button" id="btn-sala-course-add">Aggiungi corso</button>
+    <div class="sala-courses-toolbar">
+      <button type="button" class="btn ghost" id="btn-sala-course-add" title="Aggiungi una portata">+ Corso</button>
     </div>`;
 
-  const rows = d.courses
+  const cards = d.courses
     .map((c) => {
       const active = c.id === d.activeCourseId;
-      const rowCls = active ? "active" : "future";
+      const cardCls = active ? "sala-course-card is-active" : "sala-course-card";
       const st = c.serverStatus;
       const badge = st
         ? `<span class="sala-course-status-badge">${escapeHtml(statusLabelSalaCourse(st))}</span>`
         : "";
-      const itCount = c.items.length;
+      const activePill = active
+        ? `<span class="sala-course-active-pill" aria-current="true">Attivo</span>`
+        : "";
+
+      const dishRows =
+        c.items.length === 0
+          ? `<div class="sala-course-dish-empty">Nessun piatto — seleziona questo corso e aggiungi dal menù sotto.</div>`
+          : c.items
+              .map((it, idx) => {
+                const note = it.note ? ` · ${escapeHtml(String(it.note))}` : "";
+                return `<div class="sala-course-dish-row">
+                  <span class="sala-course-dish-text">${escapeHtml(it.name || "—")} <span class="sala-course-dish-qty">×${it.qty ?? 1}</span>${note}</span>
+                  <button type="button" class="btn-xs danger sala-course-remove-btn" data-sala-remove-item data-course-id="${escapeHtml(c.id)}" data-item-index="${idx}" aria-label="Rimuovi">Rimuovi</button>
+                </div>`;
+              })
+              .join("");
+
       return `
-      <div class="sala-course-row ${rowCls}" data-course-id="${c.id}">
-        <div class="sala-course-head" data-sala-select-course="${c.id}" role="button" tabindex="0">
-          <span>Corso ${c.n}</span>
-          <span>${itCount} voci${badge}</span>
+      <div class="${cardCls}" data-course-card="${c.id}">
+        <div class="sala-course-card-head" data-sala-select-course="${c.id}" role="button" tabindex="0" title="Clic per rendere attivo questo corso">
+          <div class="sala-course-head-left">
+            <span class="sala-course-num-label">Corso ${c.n}</span>
+            ${activePill}
+          </div>
+          <div class="sala-course-head-right">${badge}</div>
         </div>
+        <div class="sala-course-card-body">${dishRows}</div>
       </div>`;
     })
     .join("");
 
-  el.innerHTML = `${actions}<div class="sala-courses-list-main">${rows}</div>`;
+  el.innerHTML = `${actions}<div class="sala-courses-cards">${cards}</div>`;
 }
 
 function initMainCoursePanelOnce() {
@@ -491,6 +516,22 @@ function initMainCoursePanelOnce() {
   card.addEventListener("click", (e) => {
     const tableNum = effectiveTableForItems();
     if (tableNum == null) return;
+
+    const rmBtn = e.target.closest("[data-sala-remove-item]");
+    if (rmBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const courseId = rmBtn.getAttribute("data-course-id");
+      const idx = Number(rmBtn.getAttribute("data-item-index"));
+      const draft = ensureCourseDraft(tableNum);
+      const course = draft.courses.find((x) => x.id === courseId);
+      if (course && Array.isArray(course.items) && course.items[idx] !== undefined) {
+        course.items.splice(idx, 1);
+        saveCourseDrafts();
+        renderSelectedItems();
+      }
+      return;
+    }
 
     if (e.target.id === "btn-sala-course-start") {
       courseStart(tableNum);
@@ -1120,6 +1161,7 @@ function effectiveTableForItems() {
 }
 
 function renderSelectedItems() {
+  renderMainCoursePanel();
   const box = document.getElementById("selected-items");
   if (!box) return;
 
@@ -1129,48 +1171,8 @@ function renderSelectedItems() {
     return;
   }
 
-  ensureCourseDraft(tableNum);
-  const d = ensureCourseDraft(tableNum);
-
-  if (!d.courses.length) {
-    box.innerHTML = `<div class="order-meta">Nessun corso — nel pannello <strong>Corsi (tavolo attivo)</strong> premi <strong>Start</strong>.</div>`;
-    return;
-  }
-
-  box.innerHTML = "";
-  d.courses.forEach((c) => {
-    const isActive = c.id === d.activeCourseId;
-    const block = document.createElement("div");
-    block.className = "selected-course-block";
-    const title = document.createElement("div");
-    title.className = "selected-course-title";
-    title.textContent = `Corso ${c.n}${isActive ? " (attivo)" : ""}`;
-    block.appendChild(title);
-
-    if (!c.items.length) {
-      const empty = document.createElement("div");
-      empty.className = "order-meta";
-      empty.textContent = "(nessun piatto)";
-      block.appendChild(empty);
-    } else {
-      c.items.forEach((item, idx) => {
-        const row = document.createElement("div");
-        row.className = "selected-item-row";
-        row.innerHTML = `<span>${escapeHtml(item.name)} x${item.qty} • ${item.area || ""}</span>`;
-        const rm = document.createElement("button");
-        rm.className = "btn-xs danger";
-        rm.textContent = "Rimuovi";
-        rm.addEventListener("click", () => {
-          c.items.splice(idx, 1);
-          saveCourseDrafts();
-          renderSelectedItems();
-        });
-        row.appendChild(rm);
-        block.appendChild(row);
-      });
-    }
-    box.appendChild(block);
-  });
+  box.innerHTML =
+    '<p class="order-meta sala-selected-hint">Corsi e piatti sono nel riquadro <strong>Corsi ordine</strong> sopra. Clic sul corso per attivarlo; il menù aggiunge al corso attivo.</p>';
 }
 
 function setupAddFromMenu() {

@@ -85,8 +85,11 @@
 
         <article class="card" id="sala-courses-card">
           <header class="card-header">
-            <h2>Corsi (tavolo attivo)</h2>
-            <p>Seleziona il corso: i piatti del menù sotto vanno nel corso evidenziato. Non serve riaprire il popup.</p>
+            <h2>Corsi ordine</h2>
+            <p>
+              Tutte le portate qui: clic su un corso per attivarlo (evidenziato). I piatti dal menù vanno nel corso attivo.
+              <strong>+ Corso</strong> aggiunge una portata. Nessun popup necessario per cambiare corso.
+            </p>
           </header>
           <div class="card-body">
             <div id="sala-main-course-panel" class="sala-main-course-panel" aria-live="polite"></div>
@@ -188,8 +191,8 @@
             </div>
 
             <div class="full">
-              <h3 style="font-size:12px;margin:6px 0 4px;">Piatti nell'ordine (corso attivo)</h3>
-              <div id="selected-items" class="selected-items-box">
+              <h3 style="font-size:12px;margin:6px 0 4px;">Ordine</h3>
+              <div id="selected-items" class="selected-items-box sala-selected-items-hint">
               </div>
             </div>
 
@@ -279,6 +282,6 @@
   <script src="/shared/auth-guard.js" data-allowed-roles="owner,sala"></script>
   <script src="/shared/websocket.js"></script>
   <script src="/shared/staff-access.js"></script>
-  <script src="sala.js?v=20260402"></script>
+  <script src="sala.js?v=20260403"></script>
 </body>
 </html>

@@ -100,7 +100,8 @@ async function submitJob(payload) {
   const job = await printJobsRepository.create(jobData);
 
   if (!device) {
-    logger.warn("Print job without device", {
+    // info: assenza stampante è frequente; warn su stderr finiva come "error" nei log aggregati
+    logger.info("Print job without device", {
       jobId: job.id,
       eventType,
       department,

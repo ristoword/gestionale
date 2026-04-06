@@ -259,13 +259,29 @@ function kdsCourseStateLabel(st, order, cn) {
   return s || "—";
 }
 
+/**
+ * Stato corso allineato al backend (orders.service getCourseState).
+ * Se courseStates manca del tutto (ordini vecchi), deriva da order.status + activeCourse come migrateLegacyCourseStates.
+ */
 function getOrderCourseState(order, cn) {
   const cs = order && order.courseStates;
-  if (cs && typeof cs === "object") {
+  const hasStructured = cs && typeof cs === "object" && Object.keys(cs).length > 0;
+  if (hasStructured) {
     const v = cs[String(cn)] ?? cs[cn];
     if (v != null && v !== "") return String(v).toLowerCase();
+    return "queued";
   }
-  return null;
+  const nums = getSortedCourseNumsFromItemsLocal(order);
+  if (!nums.length) return null;
+  const ac = Number(order.activeCourse) >= 1 ? Math.floor(Number(order.activeCourse)) : nums[0];
+  const ost = String(order.status || "").toLowerCase();
+  if (cn < ac) return "servito";
+  if (cn === ac) {
+    if (ost === "in_preparazione" || ost === "pronto" || ost === "in_attesa") return ost;
+    if (ost === "servito") return "servito";
+    return "in_attesa";
+  }
+  return "queued";
 }
 
 function buildCourseBlocksHtml(order) {

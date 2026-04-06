@@ -208,7 +208,8 @@ function validateStripeCheckout() {
   }
   const wh = process.env.STRIPE_WEBHOOK_SECRET && String(process.env.STRIPE_WEBHOOK_SECRET).trim();
   if (!wh) {
-    console.warn(
+    // stdout: molti host taggano stderr (console.warn) come severity error nei log strutturati
+    console.log(
       "[CONFIG][STRIPE] STRIPE_WEBHOOK_SECRET mancante: POST /api/stripe/webhook è disattivato (200 noop)."
     );
   }

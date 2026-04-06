@@ -358,7 +358,8 @@ async function onOrderFinalized(order) {
   processedClosedOrders.add(processKey);
 
   if (allWarnings.length > 0) {
-    logger.warn("Inventory deduction warnings", { orderId: order.id, warnings: allWarnings.length });
+    // info: avvisi non bloccanti (es. ricetta mancante); evita falsi "error" su stderr
+    logger.info("Inventory deduction warnings", { orderId: order.id, warnings: allWarnings.length });
   }
   if (totalFoodCost > 0 || allWarnings.length > 0) {
     logger.info("Inventory deduction event", { orderId: order.id, totalFoodCost, itemCount: itemFoodCosts.length });

@@ -938,6 +938,9 @@ function initPopupUiOnce() {
         if (!d.courses.length) courseStart(tableNum);
       }
       closeTablePopup();
+      requestAnimationFrame(() => {
+        document.getElementById("sala-card-new-order")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
       document.getElementById("field-covers")?.focus();
       renderFloorMap();
       renderSelectedItems();
@@ -966,6 +969,9 @@ function initPopupUiOnce() {
         if (!d.courses.length) courseStart(tableNum);
       }
       closeTablePopup();
+      requestAnimationFrame(() => {
+        document.getElementById("sala-card-new-order")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
       document.getElementById("field-covers")?.focus();
       renderSelectedItems();
       return;
@@ -1087,14 +1093,18 @@ function initPopupUiOnce() {
   });
 }
 
-/** Popup: solo hint — corsi e inserimento piatti dal pannello sinistro. */
+/** Popup: stessi accessi del menu sinistro (chiude il popup e scorre al blocco). */
 function buildPopupCoursesBlockHtml() {
   return `
     <div class="sala-courses-block sala-popup-courses-hint">
-      <p class="sala-popup-hint" style="margin:0;">
-        I corsi si gestiscono nel pannello <strong>Corsi (tavolo attivo)</strong> a sinistra.
-        Aggiungi piatti dal menù senza riaprire questo popup.
+      <p class="sala-popup-hint" style="margin:0 0 8px;">
+        Tavolo già attivo a sinistra. Corsi in <strong>Corsi (tavolo attivo)</strong>. Piatti:
       </p>
+      <div class="sala-popup-quick-links">
+        <button type="button" class="sala-popup-btn sala-popup-link" data-popup-link="menu">Menù</button>
+        <button type="button" class="sala-popup-btn sala-popup-link" data-popup-link="daily">Menu del giorno</button>
+        <button type="button" class="sala-popup-btn sala-popup-link" data-popup-link="custom">Fuori menù</button>
+      </div>
     </div>
   `;
 }

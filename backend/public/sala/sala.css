@@ -491,6 +491,20 @@ body {
   color: #ffb4b4;
 }
 
+.sala-popup-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sala-popup-quick-links .sala-popup-btn {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: min(100%, 140px);
+  min-height: 44px;
+  font-size: 14px;
+}
+
 .sala-popup-hint {
   font-size: 12px;
   color: var(--text-soft);

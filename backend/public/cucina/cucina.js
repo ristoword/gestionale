@@ -159,10 +159,11 @@ async function updateOrderStatus(id, status) {
 // =======================================
 
 async function renderKpi(orders) {
-  const prep = orders.filter((o) => o.status === "in_preparazione").length;
-  const ready = orders.filter((o) => o.status === "pronto").length;
+  const prep = orders.filter((o) => getKitchenDisplayState(o) === "in_preparazione").length;
+  const ready = orders.filter((o) => getKitchenDisplayState(o) === "pronto").length;
   const late = orders.filter((o) => {
-    if (o.status === "pronto" || o.status === "servito") return false;
+    const ds = getKitchenDisplayState(o);
+    if (ds === "pronto" || ds === "servito") return false;
     const m = minutesFrom(o.createdAt);
     return m !== null && m >= 20;
   }).length;
@@ -190,13 +191,71 @@ async function renderKpi(orders) {
   }
 }
 
-function kdsCourseStateLabel(st) {
+function getSortedCourseNumsFromItemsLocal(order) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const set = new Set();
+  for (const it of items) {
+    const c = Number(it && it.course);
+    const cn = Number.isFinite(c) && c >= 1 ? Math.floor(c) : 1;
+    set.add(cn);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
+function getMaxCourseNumFromOrder(order) {
+  const nums = getSortedCourseNumsFromItemsLocal(order);
+  return nums.length ? nums[nums.length - 1] : null;
+}
+
+/** Stato “operativo” per colonne KDS: basato sul primo corso non servito. */
+function getKitchenDisplayState(order) {
+  const nums = getSortedCourseNumsFromItemsLocal(order);
+  if (!nums.length) return String(order.status || "in_attesa").toLowerCase();
+  const current = nums.find((n) => getOrderCourseState(order, n) !== "servito");
+  if (current == null) return "servito";
+  const st = String(getOrderCourseState(order, current) || "in_attesa").toLowerCase();
+  if (st === "queued") return "in_attesa";
+  return st;
+}
+
+function canUseInPrep(order) {
+  const nums = getSortedCourseNumsFromItemsLocal(order);
+  if (!nums.length) return false;
+  const current = nums.find((n) => getOrderCourseState(order, n) !== "servito");
+  if (current == null) return false;
+  const st = String(getOrderCourseState(order, current) || "in_attesa").toLowerCase();
+  return st === "in_attesa" || st === "queued";
+}
+
+function canUsePronto(order) {
+  const nums = getSortedCourseNumsFromItemsLocal(order);
+  if (!nums.length) return false;
+  const current = nums.find((n) => getOrderCourseState(order, n) !== "servito");
+  if (current == null) return false;
+  return String(getOrderCourseState(order, current) || "").toLowerCase() === "in_preparazione";
+}
+
+function canUseServito(order) {
+  const nums = getSortedCourseNumsFromItemsLocal(order);
+  if (!nums.length) return false;
+  const lastN = nums[nums.length - 1];
+  const current = nums.find((n) => getOrderCourseState(order, n) !== "servito");
+  if (current == null) return false;
+  if (current !== lastN) return false;
+  return String(getOrderCourseState(order, current) || "").toLowerCase() === "pronto";
+}
+
+function kdsCourseStateLabel(st, order, cn) {
   const s = String(st || "").toLowerCase();
   if (s === "queued") return "In attesa turno";
   if (s === "in_attesa") return "In coda cucina";
   if (s === "in_preparazione") return "In preparazione";
   if (s === "pronto") return "Pronto";
-  if (s === "servito") return "Servito";
+  if (s === "servito") {
+    const maxN = order ? getMaxCourseNumFromOrder(order) : null;
+    if (maxN != null && cn !== maxN) return "Portato";
+    return "Servito";
+  }
   return s || "—";
 }
 
@@ -225,7 +284,7 @@ function buildCourseBlocksHtml(order) {
   const blocks = nums
     .map((cn) => {
       const st = getOrderCourseState(order, cn);
-      const stLabel = st ? kdsCourseStateLabel(st) : "";
+      const stLabel = st ? kdsCourseStateLabel(st, order, cn) : "";
       let courseCls = "kds-course-future";
       if (st === "servito") courseCls = "kds-course-past";
       else if (cn === activeCourse) courseCls = "kds-course-active";
@@ -257,7 +316,8 @@ function createOrderCard(order) {
   card.className = "order-card";
 
   const age = minutesFrom(order.createdAt);
-  if (age !== null && age >= 20 && order.status !== "pronto") {
+  const displaySt = getKitchenDisplayState(order);
+  if (age !== null && age >= 20 && displaySt !== "pronto") {
     card.classList.add("late");
   }
 
@@ -265,7 +325,11 @@ function createOrderCard(order) {
 
   const itemsHtml = buildCourseBlocksHtml(order);
 
-  const statusClass = `status-${order.status || "in_preparazione"}`;
+  const statusClass = `status-${displaySt || "in_preparazione"}`;
+
+  const dPrep = canUseInPrep(order) ? "" : " disabled";
+  const dReady = canUsePronto(order) ? "" : " disabled";
+  const dServed = canUseServito(order) ? "" : " disabled";
 
   card.innerHTML = `
     <div>
@@ -282,13 +346,13 @@ function createOrderCard(order) {
         ${timeStr ? timeStr : ""}${age !== null ? ` • ${age} min` : ""}
       </div>
       <span class="order-status-badge ${statusClass}">
-        ${statusLabel(order.status)}
+        ${statusLabel(displaySt)}
       </span>
     </div>
     <div class="order-actions">
-      <button class="btn-xs warning" data-action="to-prep">In prep</button>
-      <button class="btn-xs success" data-action="to-ready">Pronto</button>
-      <button class="btn-xs info" data-action="to-served">Servito</button>
+      <button class="btn-xs warning" data-action="to-prep"${dPrep}>In prep</button>
+      <button class="btn-xs success" data-action="to-ready"${dReady}>Pronto</button>
+      <button class="btn-xs info" data-action="to-served"${dServed}>Servito</button>
       <button class="btn-xs danger" data-action="to-cancel">Annulla</button>
     </div>
   `;
@@ -297,6 +361,7 @@ function createOrderCard(order) {
   const id = order.id;
 
   card.querySelector("[data-action='to-prep']").addEventListener("click", async () => {
+    if (!canUseInPrep(order)) return;
     try {
       await updateOrderStatus(id, "in_preparazione");
       await loadAndRenderOrders();
@@ -310,6 +375,7 @@ function createOrderCard(order) {
   });
 
   card.querySelector("[data-action='to-ready']").addEventListener("click", async () => {
+    if (!canUsePronto(order)) return;
     try {
       await updateOrderStatus(id, "pronto");
       await loadAndRenderOrders();
@@ -323,6 +389,7 @@ function createOrderCard(order) {
   });
 
   card.querySelector("[data-action='to-served']").addEventListener("click", async () => {
+    if (!canUseServito(order)) return;
     try {
       await updateOrderStatus(id, "servito");
       await loadAndRenderOrders();
@@ -377,12 +444,13 @@ function renderKdsColumns(orders) {
 
   active.forEach((order) => {
     let column = colPending;
+    const ds = getKitchenDisplayState(order);
 
-    if (order.status === "in_preparazione") {
+    if (ds === "in_preparazione") {
       column = colPrep;
-    } else if (order.status === "pronto") {
+    } else if (ds === "pronto") {
       column = colReady;
-    } else if (!order.status || order.status === "in_attesa") {
+    } else if (!ds || ds === "in_attesa") {
       column = colPending;
     }
 

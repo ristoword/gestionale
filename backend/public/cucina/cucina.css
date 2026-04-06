@@ -373,6 +373,11 @@ body {
 /*        PULSANTI GRANDI       */
 /* ============================= */
 
+.order-actions .btn-xs:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .order-actions {
   display: flex;
   gap: 12px;

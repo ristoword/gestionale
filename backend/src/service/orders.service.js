@@ -6,8 +6,9 @@
 // - Valori: queued | in_attesa | in_preparazione | pronto | servito
 // - activeCourse = corso operativo in cucina (primo non servito dopo avanzamenti).
 // - All'invio: primo corso con piatti (min course) = in_attesa, gli altri queued.
-// - Servito in cucina: chiude il corso corrente, attiva il successivo con piatti; solo
-//   quando tutti i corsi sono servito → order.status = servito.
+// - Pronto in cucina: completa la portata corrente; se non è l’ultima → avanza corso,
+//   order.status = in_attesa. Ultima portata → corso in stato pronto, order in_attesa.
+// - Servito: solo ultimo corso già pronto → chiude l’ordine (order.status = servito).
 
 const ordersRepository = require("../repositories/orders.repository");
 
@@ -106,13 +107,18 @@ function buildCourseStatesForNewOrder(items) {
   return cs;
 }
 
-function allCoursesServed(order) {
-  const nums = getSortedCourseNumsFromItems(order.items);
-  if (!nums.length) return true;
-  return nums.every((n) => getCourseState(order, n) === "servito");
+function throwOrderBadRequest(message) {
+  const err = new Error(message);
+  err.status = 400;
+  throw err;
 }
 
-function applyServitoMultiCourse(target) {
+/**
+ * Pronto: completa la portata in preparazione.
+ * - Non ultimo corso → corso marcato servito (portata uscita), successivo in_attesa, ordine in_attesa.
+ * - Ultimo corso → corso pronto (in attesa di Servito in sala), ordine in_attesa.
+ */
+function applyProntoAdvance(target) {
   const items = Array.isArray(target.items) ? target.items : [];
   ensureCourseStatesForOrder(target);
   const nums = getSortedCourseNumsFromItems(items);
@@ -120,24 +126,57 @@ function applyServitoMultiCourse(target) {
     target.status = "servito";
     return;
   }
-
-  /* Chiude sempre il primo corso con piatti non ancora servito (ordine sequenziale). */
   const current = nums.find((n) => getCourseState(target, n) !== "servito");
   if (current == null) {
     target.status = "servito";
     return;
   }
-
-  setCourseState(target, current, "servito");
-
-  const next = nums.find((n) => getCourseState(target, n) !== "servito");
-  if (next != null) {
-    target.activeCourse = next;
-    setCourseState(target, next, "in_attesa");
-    target.status = "in_attesa";
-  } else {
-    target.status = "servito";
+  const lastN = nums[nums.length - 1];
+  const st = getCourseState(target, current);
+  if (current === lastN && st === "pronto") {
+    throwOrderBadRequest("Ultimo corso già pronto: usa Servito per chiudere l'ordine.");
   }
+  if (st !== "in_preparazione") {
+    throwOrderBadRequest("Pronto solo dopo In preparazione sul corso attivo.");
+  }
+  if (current !== lastN) {
+    setCourseState(target, current, "servito");
+    const next = nums.find((n) => getCourseState(target, n) !== "servito");
+    if (next != null) {
+      target.activeCourse = next;
+      setCourseState(target, next, "in_attesa");
+    }
+    target.status = "in_attesa";
+    return;
+  }
+  setCourseState(target, current, "pronto");
+  target.activeCourse = current;
+  target.status = "in_attesa";
+}
+
+/** Servito: solo ultimo corso già pronto → chiude l'ordine. */
+function applyServitoLastCourseOnly(target) {
+  const items = Array.isArray(target.items) ? target.items : [];
+  ensureCourseStatesForOrder(target);
+  const nums = getSortedCourseNumsFromItems(items);
+  if (!nums.length) {
+    target.status = "servito";
+    return;
+  }
+  const current = nums.find((n) => getCourseState(target, n) !== "servito");
+  if (current == null) {
+    target.status = "servito";
+    return;
+  }
+  const lastN = nums[nums.length - 1];
+  if (current !== lastN) {
+    throwOrderBadRequest("Servito solo sull'ultima portata.");
+  }
+  if (getCourseState(target, current) !== "pronto") {
+    throwOrderBadRequest("Servito solo quando l'ultimo corso è Pronto.");
+  }
+  setCourseState(target, current, "servito");
+  target.status = "servito";
 }
 
 async function listOrders() {
@@ -306,13 +345,20 @@ async function setStatus(id, status) {
   ensureCourseStatesForOrder(target);
 
   if (lower === "servito") {
-    applyServitoMultiCourse(target);
+    applyServitoLastCourseOnly(target);
     target.updatedAt = now;
     await ordersRepository.saveAllOrders(orders);
     return normalizeOrderForRead({ ...target });
   }
 
-  if (lower === "in_preparazione" || lower === "pronto" || lower === "in_attesa") {
+  if (lower === "pronto") {
+    applyProntoAdvance(target);
+    target.updatedAt = now;
+    await ordersRepository.saveAllOrders(orders);
+    return normalizeOrderForRead({ ...target });
+  }
+
+  if (lower === "in_preparazione" || lower === "in_attesa") {
     const nums = getSortedCourseNumsFromItems(target.items);
     const current = nums.find((n) => getCourseState(target, n) !== "servito");
     if (current == null) {

@@ -870,6 +870,16 @@ function openTablePopup(tableNum) {
     syncCourseDraftFromPrimaryOrder(tableNum);
   }
 
+  /* Contesto ordine come “Apri tavolo”: tavolo attivo e corsi pronti nel pannello sinistro. */
+  const ft = document.getElementById("field-table");
+  if (ft) ft.value = String(tableNum);
+  activeTableContext = tableNum;
+  orderFlowMode = "food";
+  {
+    const d = ensureCourseDraft(tableNum);
+    if (!d.courses.length) courseStart(tableNum);
+  }
+
   if (!hasOrders && !f.reserved) {
     body.innerHTML = buildPopupFree(tableNum);
   } else if (!hasOrders && f.reserved) {
@@ -894,6 +904,24 @@ function initPopupUiOnce() {
   document.getElementById("sala-popup")?.addEventListener("click", async (e) => {
     const tableNum = popupOpenTable;
     if (!tableNum) return;
+
+    const quick = e.target.closest("[data-popup-link]");
+    if (quick) {
+      const kind = quick.getAttribute("data-popup-link");
+      closeTablePopup();
+      requestAnimationFrame(() => {
+        if (kind === "menu") {
+          document.getElementById("sala-card-menu")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          document.getElementById("menu-category")?.focus();
+        } else if (kind === "daily") {
+          document.getElementById("daily-menu-sala-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (kind === "custom") {
+          document.getElementById("sala-card-menu")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          document.getElementById("custom-name")?.focus();
+        }
+      });
+      return;
+    }
 
     const btn = e.target.closest("[data-act]");
     if (!btn) return;
@@ -1119,7 +1147,7 @@ function buildPopupOccupied(tableNum) {
     po && Number(po.activeCourse) >= 1 ? Math.floor(Number(po.activeCourse)) : 1;
   const maxC = getMaxCourseFromOrderItems(po);
   return `
-    <p class="sala-popup-hint">Comanda attiva — corso operativo in cucina: <strong>${ac}</strong>${maxC > 1 ? ` / fino a corso ${maxC}` : ""}. Dopo ogni <strong>Servito</strong> la cucina passa al corso successivo. Il dettaglio corsi è nel pannello a sinistra.</p>
+    <p class="sala-popup-hint">Comanda attiva — corso operativo in cucina: <strong>${ac}</strong>${maxC > 1 ? ` / fino a corso ${maxC}` : ""}. In cucina: <strong>In prep</strong> → <strong>Pronto</strong> per ogni portata; <strong>Servito</strong> solo sull’ultima portata pronta. Corsi e piatti a sinistra o con i link sotto.</p>
     <div class="sala-popup-actions">
       <button type="button" class="sala-popup-btn food" data-act="order-food">Prendi ordine (cucina / food)</button>
       <button type="button" class="sala-popup-btn bar" data-act="order-bar">Aggiungi bevande (bar)</button>

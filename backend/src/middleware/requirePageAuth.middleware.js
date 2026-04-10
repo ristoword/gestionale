@@ -22,6 +22,7 @@ const PROTECTED_PATTERNS = [
   /^\/change-password\/change-password\.html$/,
   /^\/dashboard\/dashboard\.html$/,
   /^\/sala\/sala\.html$/,
+  /^\/sala\/sala-fullscreen\.html$/,
   /^\/cucina\/cucina\.html$/,
   /^\/pizzeria\/pizzeria\.html$/,
   /^\/bar\/bar\.html$/,

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>RISTOWORD – Sala (schermo intero)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="sala-fullscreen.css" />
+</head>
+<body class="ct-sala-fs">
+  <header class="ct-fs-topbar">
+    <div class="ct-fs-brand">
+      <span class="ct-fs-logo">RW</span>
+      <span>RISTOWORD – Sala</span>
+    </div>
+    <nav class="ct-fs-nav" aria-label="Collegamenti rapidi">
+      <a href="/dashboard/dashboard.html">Dashboard</a>
+      <a href="/staff/staff.html">Staff</a>
+      <a href="/cucina/cucina.html">Cucina</a>
+      <a href="/cassa/cassa.html">Cassa</a>
+      <a href="/sala/sala.html" title="Vista classica due colonne">Sala classica</a>
+    </nav>
+    <div class="ct-fs-right">
+      <div id="ct-fs-clock" class="ct-fs-clock" aria-live="polite">—:—:—</div>
+    </div>
+  </header>
+  <div class="ct-fs-frame-wrap">
+    <iframe
+      class="ct-fs-frame"
+      title="Sala — mappa e ordini"
+      src="sala.html"
+      importance="high"
+    ></iframe>
+  </div>
+  <script>
+    (function clock() {
+      const el = document.getElementById("ct-fs-clock");
+      function tick() {
+        const d = new Date();
+        el.textContent = d.toLocaleTimeString("it-IT", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+      tick();
+      setInterval(tick, 1000);
+    })();
+  </script>
+</body>
+</html>

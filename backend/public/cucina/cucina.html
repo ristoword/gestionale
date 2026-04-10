@@ -6,12 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="cucina.css" />
   <link rel="stylesheet" href="/shared/staff-access.css" />
+  <link rel="stylesheet" href="/shared/print-layout.css" />
 </head>
 <body>
   <div class="layout">
 
     <!-- HEADER -->
-    <header class="topbar">
+    <header class="topbar no-print">
       <div class="topbar-left">
         <h1>RISTOWORD – Cucina</h1>
         <p class="subtitle">
@@ -252,11 +253,14 @@
       <!-- VIEW 3: LISTA SPESA / COMANDI VOCALI -->
       <section id="view-spesa" class="view">
         <article class="card">
-          <header class="card-header">
-            <h2>Lista spesa vocale</h2>
-            <p>
-              Premi il microfono e detta: "2 casse acqua, 5 kg limoni, 10 kg entrecote..."
-            </p>
+          <header class="card-header" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;">
+            <div>
+              <h2>Lista spesa vocale</h2>
+              <p>
+                Premi il microfono e detta: "2 casse acqua, 5 kg limoni, 10 kg entrecote..."
+              </p>
+            </div>
+            <button type="button" class="btn ghost no-print" id="btn-print-cucina-spesa" title="Stampa lista spesa">Stampa</button>
           </header>
           <div class="card-body">
             <div class="voice-row">
@@ -312,9 +316,12 @@
       <section id="view-haccp" class="view">
         <div class="two-cols">
           <article class="card">
-            <header class="card-header">
-              <h2>Registrazione HACCP</h2>
-              <p>Temperature frigo / congelatore + firma operatore</p>
+            <header class="card-header" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;">
+              <div>
+                <h2>Registrazione HACCP</h2>
+                <p>Temperature frigo / congelatore + firma operatore</p>
+              </div>
+              <button type="button" class="btn ghost no-print" id="btn-print-haccp" title="Stampa modulo e contenuto visibile">Stampa</button>
             </header>
             <div class="card-body form-grid">
               <label>
@@ -461,6 +468,6 @@
   <script src="/shared/auth-guard.js" data-allowed-roles="owner,cucina"></script>
   <script src="/shared/websocket.js"></script>
   <script src="/shared/staff-access.js"></script>
-  <script src="cucina.js?v=20260406"></script>
+  <script src="cucina.js?v=20260407"></script>
 </body>
 </html>

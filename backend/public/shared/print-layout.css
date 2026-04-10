@@ -1,0 +1,38 @@
+/**
+ * Stampa browser: aggiungere classi .no-print a barre, navigazione e pulsanti.
+ * Includere dopo il CSS della pagina.
+ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .layout,
+  .shell,
+  .main,
+  .daily-menu-main {
+    background: #fff !important;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: none;
+  }
+
+  .card,
+  article.card,
+  .card-me {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}
